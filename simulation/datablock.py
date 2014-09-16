@@ -10,6 +10,31 @@ def cleanup_all():
   for block in blocklist[:]:
     block.cleanup()
 
+  
+# Define default statistics functions    
+def default_mean_func(datablock):
+  """Default mean function"""
+  data = datablock.get_data()
+  return sum(data) / len(data)  
+def default_std_func(datablock):
+  """Default standard deviation function"""
+  data = datablock.get_data()
+  n = len(data)
+  mean = datablock.get_mean()
+  return math.sqrt(sum([(val - mean)**2 for val in data]) / (n - 1))
+def default_error_func(datablock):
+  """Default error function"""
+  data = datablock.get_data()
+  n = len(data)
+  if n > 1:
+    mean = datablock.get_mean()
+    std = datablock.get_std()
+#    return [-std / math.sqrt(n) + mean, std / math.sqrt(n) + mean]
+    return std / math.sqrt(n)
+  else:
+#    return [float("-inf"), float("inf")]
+    return float('inf')
+      
 
 class Datablock(object):
   """Represents a set of data points sampled on an unknown
@@ -26,6 +51,8 @@ class Datablock(object):
   mean_func = None
   std_func = None
   error_func = None
+  
+  cleaned = False
   
   def __init__(self, datatype = 'float',
               mean_func = None, std_func = None, error_func = None):
@@ -64,7 +91,8 @@ class Datablock(object):
   
   def __del__(self):
     """Cleans up by calling cleanup()."""
-    self.cleanup()
+    if not self.cleaned:
+      self.cleanup()
   
   ## Opening/Closing
   #  Blocks may be opened and closed explicitly for improved efficiency.
@@ -115,51 +143,31 @@ class Datablock(object):
   def get_num_points(self):
     return len(self.get_data())
   def get_mean(self):
-    return self.mean_func(self.get_data())
+    return self.mean_func(self)
   def get_std(self):
-    return self.std_func(self.get_data())
-  def get_error_bars(self):
-    return self.error_func(self.get_data())
-  
-  
-  # Define default statistics functions    
-  def default_mean_func(self, data):
-    """Default mean function"""
-    return sum(data) / len(data)  
-  def default_std_func(self, data):
-    """Default standard deviation function"""
-    n = len(data)
-    mean = self.mean_func(data)
-    return math.sqrt(sum([(val - mean)**2 for val in data]) / (n - 1))
-  def default_error_func(self, data):
-    """Default error function"""
-    n = len(data)
-    if n > 1:
-      mean = self.mean_func(data)
-      std = self.std_func(data)
-      return [-std / math.sqrt(n) + mean, std / math.sqrt(n) + mean]
-    else:
-      return [float("-inf"), float("inf")]
+    return self.std_func(self)
+  def get_error(self):
+    return self.error_func(self)
   
   def set_mean_func(self, mean_func):
     """Sets the mean function to that provided, or
     sets it to the default if mean_func is None."""
     if mean_func == None:
-      self.mean_func = self.default_mean_func
+      self.mean_func = default_mean_func
     else:
       self.mean_func = mean_func
   def set_std_func(self, std_func):
     """Sets the standard deviation function to that provided,
     or sets it to the default if std_func is None."""
     if std_func == None:
-      self.std_func = self.default_std_func
+      self.std_func = default_std_func
     else:
       self.std_func = std_func
   def set_error_func(self, error_func):
     """Sets the error function to that provided, or
     sets it to the default if error_func is None."""
     if error_func == None:
-      self.error_func = self.default_error_func
+      self.error_func = default_error_func
     else:
       self.error_func = error_func
   
@@ -169,3 +177,5 @@ class Datablock(object):
     The datablock object should not be handled after calling this function"""
     if not options.flags['no-cleanup']:
       os.remove(self.filepath)
+    blocklist.remove(self)
+    self.cleaned = True
