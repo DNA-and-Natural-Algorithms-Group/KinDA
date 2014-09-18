@@ -1,8 +1,9 @@
 """
 complex.py
 
-Copyright (c) 2010 Caltech. All rights reserved.
+Copyright (c) 2010-2014 Caltech. All rights reserved.
 Coded by: Joseph Schaeffer (schaeffer@dna.caltech.edu)
+          Joseph Berleant (jberleant@dna.caltech.edu)
 
 This module defines a simple dna `complex` object.
 
@@ -17,30 +18,88 @@ class Complex(object):
   """
   A representation of a single connected complex of strands.
   """
-  unique_id = 0
+  id_counter = 0
   
-  def __init__(self, name=None, boltzmann_sample=False,*args, **kargs):
+  def __init__(self, *args, **kargs):
     """
     Initialization:
     
     Keyword Arguments:
-    sequence [type=str]          -- Flat sequence to use for this complex.
-    structure [type=str]         -- Flat structure to use for this complex.
-    name [type=str]              -- Name of the complex. If None (the default),
-                                    it is automatically generated with the
-                                    form 'automatic' + a unique integer.
+    name [type=str]                -- Name of the complex. An automatic name
+                                      "complex_###" is assigned if this is not
+                                      given.
+    strands [type=list of strands] -- List of strands in this complex
+    structure [type=str OR list]   -- Structure for this complex, in dot-paren
+                                      notation or strand-sequence list notation
+                                      as used by Casey's enumerator. Note that
+                                      only the latter representation can be
+                                      used for pseudoknotted structures.
     """
-    if 'sequence' in kargs and 'structure' in kargs:
-      self.strand_list = [Strand(sequence=i) for i in kargs['sequence'].split("+")]
-      self._fixed_structure = kargs['structure']
-    elif 'strands' in kargs and 'structure' in kargs:
-      self.strand_list = kargs['strands']
-      self._init_parse_structure( kargs['structure'] )
-
-    self.id = Complex.unique_id
-    self.name = kargs.get('name') or "automatic" + str(Complex.unique_id)
-    Complex.unique_id += 1
-      
+    # Assign id
+    self.id = Complex.id_counter
+    Complex.id_counter += 1
+    
+    # Assign DNA object type
+    self._object_type = 'complex'
+    
+    # Assign name
+    if 'name' in kargs: self.name = kargs['name']
+    else: self.name = "complex_{0}".format(self.id)
+    
+    # Assign strands
+    if 'strands' in kargs: self._strands = kargs['strands'][:]
+    else: raise ValueError("'strands' key argument required for complex.")
+    
+    # Calculate length (this may not ever be useful...)
+    self._length = sum([s.length for s in self.strands])
+    
+    # Assign structure
+    if 'structure' in kargs: self.structure = kargs['structure']
+    else: self.structure = ''
+  
+  ## Basic properties
+  @property
+  def length(self):
+    return self._length
+    
+  @property
+  def structure(self):
+    ### TODO
+  @structure.setter
+  def structure(self, new_struct):
+    ### TODO
+  def bound_to(self, nucleotide_index):
+    ### TODO
+    
+  @property
+  def pseduoknotted(self):
+    return self._pseudoknotted
+    
+  ## Equivalence
+  def equivalent_to(self, other):
+    ### TODO
+    
+    
+  ## DNA object hierarchy
+  @property
+  def strands(self):
+    return self._strands
+  def base_domains(self):
+    return [s.base_domains for s in self._strands]
+  
+  
+  ## Output
+  def __str__(self):
+    ### TODO
+    
+    
+  ## Auxiliary functions
+  # Structure parsing
+  def parse_dotparen(self, struct):
+    ### TODO
+  def parse_strandlist(self, struct):
+    ### TODO
+  
   def __str__( self ):
     return "\
 Complex: {fieldnames[0]:>9}: '{0.name}'\n\
@@ -81,16 +140,6 @@ should have the layout [{2}].".format( total_flat_length,
                             # domain_lists into one big ordered list
                             # of domains
         self._fixed_structure = "".join(i[0]*i[1] for i in matched_list)
-
-
-  def get_unique_ids( self ):
-    """
-    Produce the set of unique strands in this Complex
-
-    Return Value:
-      -- A `set` of the unique strand names.
-    """
-    return set([i.id for i in self.strand_list])
 
   def canonical_strand( self ):
     """Return the name of the `canonical` strand for this complex.

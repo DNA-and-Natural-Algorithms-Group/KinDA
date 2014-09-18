@@ -1,8 +1,9 @@
 """
 domain.py
 
-Copyright (c) 2010 Caltech. All rights reserved.
+Copyright (c) 2010-2014 Caltech. All rights reserved.
 Coded by: Joseph Schaeffer (schaeffer@dna.caltech.edu)
+          Joseph Berleant (jberleant@dna.caltech.edu)
 
 This module defines a simple dna `domain` object.
 
@@ -11,114 +12,152 @@ This module defines a simple dna `domain` object.
 """
 
 
-from strand import Strand
-
-def generate_sequence( n, allowed_bases = ['G','C','T','A'], base_probability = None ):
-    """ Generate a sequence of N base pairs.
-
-    Bases are chosen from the allowed_bases [any sequence type], and
-    according to the probability distribution base_probability - if
-    none is specified, uses uniform distribution."""
-
-    import random
-    
-    result = ""
-    if base_probability is None:
-        return result.join([random.choice( allowed_bases ) for i in range(n)])
-    else:
-        def uniform_seq( r ):
-            """ This function returns a lambda to be used on a sequence of tuples of
-            (p,item) e.g. via reduce(uniform_seq(.75), seq, (0.0,'none')).
-
-            In this situation, the lambda computes (p',item'), where
-            p' is the sum of consecutive probabilities in the sequence
-            <= r, and item' is the corresponding item.
-
-            It achieves this by updating the result with the new sum
-            of probabilities and last item checked until the the
-            summed probability has exceeded the target.
-
-            Note: r should be in [0.0,1.0) as produced by random(),
-            any input r >= 1.0 (assuming the sequence given sums to
-            1.0) will give the final element as the result which is technically incorrect.
-            """
-            return lambda x,y: (x[0]+y[0],y[1]) if r>=x[0] else (x[0],x[1])
-        return result.join( [reduce( uniform_seq( random.random() ),
-                              zip(base_probability,allowed_bases),
-                              (0.0,'Invalid Probabilities'))[1] 
-                              # note this subscript [1] pulls out the item
-                              # selected by the reduce since the result was a tuple.
-                      for i in range(n)]
-                     )
+from constraints import Constraints
 
 
 class Domain(object):
   """
-  Represents a sequence domain, for use in defining strands and stop conditions for Multistrand.
+  Represents a DNA domain, a sequence of specified length with constraints
+  on the allowed nucleotides at each position in the domain.
   """
-  _domain_unique_id = 0
+  id_counter = 0
 
   def __init__(self, *args, **kargs ):
     """
     Initialization:
 
     Keyword Arguments:
-    name [type=str,required]       -- Name of this domain.
-    sequence [type=str,default=""] -- Sequence of this domain, e.g. 'AGGCAGATA'
-    length [default=0]             -- Length of this domain. A 0-length domain
-                                      may be useful in some rare cases. If
-                                      sequence is set, length should ALWAYS be
-                                      == len(sequence), but this is not strictly
-                                      enforced.
+    name [type=str,required]          -- Name of this domain.
+    constraints [type=str]            -- Sequence constraints on this domain.
+                                         Specifiers may be any of
+                                         A,T,C,G,R,Y,W,S,M,K,B,V,D,H,N.
+                                         Either constraints or subdomains
+                                         must be specified.
+    subdomains [type=list of Domains] -- List of component Domain objects. Either
+                                         constraints or subdomains must be specified.
     """
-    self.id = Domain._domain_unique_id
-    Domain._domain_unique_id += 1
-    self.sequence = ""
-    self.length = 0
-    for k,v in kargs.iteritems():
-      self.__setattr__( k, v )
+    # Assign id
+    self.id = Domain.id_counter
+    Domain.id_counter += 1
+    
+    # Assign DNA object type
+    self._object_type = 'domain'
+    
+    # Assign name
     if 'name' not in kargs:
       raise ValueError("Must pass a 'name' keyword argument.")
-
-  def gen_sequence( self, *args, **kargs ):
-    """ Uses the same parameters as 'multistrand.utils.generate_sequence', but sets the length to the domain's length."""
-    if 'n' in kargs:
-      del kargs['n']
-    self.sequence = generate_sequence(n = self.length, *args, **kargs )
-
+    self.name = kargs['name']
+    
+    # Assign constraints or subdomain list
+    if 'constraints' in kargs and 'subdomains' not in kargs:
+      self._constraints = Constraints(kargs['constraints'])
+      self._length = len(constraints)
+      self.is_composite = False
+    elif 'subdomains' in kargs and 'constraints' not in kargs:
+      self._subdomains = kargs['subdomains']
+      self._length = sum([d.length for d in subdomains])
+      self.is_composite = True
+    else:
+      raise ValueError("Must pass one of 'constraints' or 'subdomains' keyword argument.")
+      
+      
+  ## Basic properties
   @property
-  def C(self):
+  def length(self):
+    """ The number of nucleotides in this domain. """
+    return self._length
+    
+  @property
+  def constraints(self):
+    """Returns the Constraints object or concatenation of the constraint
+    string of the subdomains."""
+    return "".join([d._constraints for d in self.base_domains()])
+  @constraints.setter
+  def constraints(self, new_constraints):
+    """Sets the constraint string or sets the constraints of the subdomains.
+    If repeated domains are assigned different constraints, the result is
+    the intersection of those constraints."""
+    assert len(new_constraints) == self._length
+    for d in self.base_domains():
+      d._constraints = Constraints("N" * d._length)
+    self.add_constraints(new_constraints)
+  def add_constraints(self, new_constraints):
+    """Applies the constraints on top of existing constraints on this domain."""
+    assert len(new_constraints) == self._length
+    i = 0
+    for d in self.base_domains():
+      subconstraints = new_constraints[i : i+d._length]
+      d._constraints = d._constraints.intersection(subconstraints)
+      i += d._length
+
+      
+  ## Equivalence and complementarity
+  @property
+  def is_complement(self):
+    """This is always False for a Domain object.
+    ComplementaryDomains negate this."""
+    return False
+  @property
+  def complement(self):
     """
     The complementary domain, specifically the one whose bases in
     the standard 5' to 3' ordering are exactly matching base pairs to
     the original.
-
-    >>> a = Domain( sequence='AGGACCATT')
-    >>> a.sequence
-    AGGACCATT
-    >>> b = a.C
-    >>> b.sequence
-    AATCCTCCT
-    >>> b.name
-    >>> b.C == a
-    True
     """
     return ComplementaryDomain( self )
+  def equivalent_to(self, other):
+    """Two domains are equivalent if their base domain lists are equal.
+    Note that this is a more generous definition than equality."""
+    seqs1 = self.base_domains()
+    seqs2 = other.base_domains()
+    return seqs1 == seqs2
+  def complementary_to(self, other):
+    """Two domains are complementary if their base domain lists are the
+    complementary-reverse of each other."""
+    seqs1 = self.base_domains()
+    seqs2_rc = [d.complement for d in reversed(other.base_domains())]
+    return seqs1 == seqs2_rc
+    
 
-  def __add__( self, other ):
-    if isinstance(other,Domain):
-      return Strand( domains = [self,other] )
+  ## Domain hierarchy
+  @property
+  def subdomains(self):
+    """Returns the subdomains that originally defined this domain. Note
+    that these subdomains may be formed from subdomains as well. For
+    the maximally split representation of the domain, use base_domains().
+    If this domain was originally defined as non-composite, this returns
+    a list with only this domain."""
+    if self.is_composite:
+      return self._subdomains
     else:
-      return NotImplemented
+      return[self]
+  def base_domains(self):
+    """Breaks down the domain into non-composite domains."""
+    if self.is_composite:
+      return sum([d.base_domains() for d in self._subdomains], [])
+    else:
+      return [self]
+     
 
+  ## (In)equality
+  def __eq__(self, other):
+    """Returns True iff the two objects are domains, have the same id, and are
+    not complements of each other."""
+    return (self._object_type == other._object_type and
+            self.id == other.id and
+            self.is_complement == other.is_complement)
+  def __ne__(self, other):
+    """Returns True iff the two objects are not equal."""
+    return not self.__eq__(other)
+    
+  ## Output
   def __str__( self ):
-    return ("\
-Domain : {fieldnames[0]:>9}: '{0.name}'\n\
-       : {fieldnames[1]:>9}: {0.length}\n".format( self, fieldnames=['Name','Length'] ) +
-  (self.sequence and
-     '       : {fieldname:>9}: {0}\n'.format( self.sequence, fieldname='Seq' )
-     or ''))
-
+    """Human-readable output formatting for a domain."""
+    if self.is_composite:
+      info = "[" + ", ".join([str(d) for d in self._subdomains]) + "]"
+    else:
+      info = self._constraints
+    return "Domain {0}: {1} ({2})".format(self.name, info, self._length)
 
 
 class ComplementaryDomain( Domain):
@@ -129,55 +168,95 @@ class ComplementaryDomain( Domain):
   members.
 
   """
-  complement = {'G':'C',
-                'C':'G',
-                'A':'T',
-                'T':'A'}
-    
   def __init__(self, complemented_domain ):
-    self.id = complemented_domain.id
-    
-    self._domain = complemented_domain
+    """Create a new ComplementaryDomain in terms of a given domain.
+    Note that very little data is stored directly this domain. Most
+    data is calculated as requested in terms of the given domain."""
+    self._object_type = 'domain'
+    self._complement = complemented_domain
 
+  ## Basic properties  
   @property
-  def length(self):
-    return self._domain.length
-
+  def id(self):
+    """ The id of a ComplementaryDomain is the id of its complement."""
+    return self._complement.id
   @property
   def name(self):
-    if self._domain.name.endswith("*") or \
-       self._domain.name.endswith("'"):
-      return self._domain.name.rstrip("*'")
+    """ The name of a ComplementaryDomain is the name of its complement with
+    the presence of the trailing asterisk (*) toggled. """
+    if self._complement.name.endswith("*") or \
+       self._complement.name.endswith("'"):
+      return self._complement.name.rstrip("*'")
     else:
-      return self._domain.name + "*"
+      return self._complement.name + "*"
+  
+  @property
+  def is_composite(self):
+    """ A ComplementaryDomain is composite iff its complement is composite. """
+    return self._complement.is_composite
+      
+  @property
+  def length(self):
+    """ Returns the length of the ComplementaryDomain, which equals that
+    of its complement."""
+    return self._complement.length
 
   @property
-  def sequence( self ):
-    if self._domain.sequence == None:
-      raise ValueError
-    else:
-      return "".join([ComplementaryDomain.complement[i] for i in reversed(self._domain.sequence.upper())])
-
-  def gen_sequence( self, *args, **kargs ):
-    """ Uses the same parameters as 'multistrand.utils.generate_sequence', but sets the length to the domain's length."""
-    self._domain.gen_sequence( *args, **kargs )
-
+  def constraints(self):
+    """ Returns the sequence constraints of this ComplementaryDomain.
+    The constraints are the complementary-reverse of the constraints of
+    this domain's complement."""
+    return self._complement.constraints.complement
+  @constraints.setter
+  def constraints(self, new_constraints):
+    """ Sets the sequence constraints of this ComplementaryDomain
+    by setting the sequence constraints of its complement to the
+    complement of the given constraints."""
+    self._complement.constraints = new_constraints.complement
+  def add_constraints(self, new_constraints):
+    """ Applies the given constraints on top of any existing sequence
+    constraints on this ComplementaryDomain. """
+    self._complement.add_constraints(new_constraints.complement)
+    
+      
+  ## Equivalence and complementarity
   @property
-  def C(self):
-    """
-    The complementary domain, specifically the one whose bases in
-    the standard 5' to 3' ordering are exactly matching base pairs to
-    the original.
+  def is_complement(self):
+    """ Equivalent to not self.complement.is_complement. """
+    return not self._complement.is_complement
+  @property
+  def complement(self):
+    """ Returns the domain used to instantiate this ComplementaryDomain. """
+    return self._complement
+  def equivalent_to(self, other):
+    """ Returns true if the RHS is complementary to the complement of the LHS. """
+    return self._complement.complementary_to(other)
+  def complementary_to(self, other):
+    """ Returns true if the RHS is equivalent to the complement of the LHS. """
+    return self._complement.equivalent_to(other)
+    
+    
+  ## Domain hierarchy
+  @property
+  def subdomains(self):
+    """ Returns the subdomain list for this ComplementaryDomain. This is
+    the complementary-reverse of the subdomain list of its complement."""
+    return [d.complement for d in reversed(self._complement.subdomains)]
+  def base_domains(self):
+    """ Returns the list of non-composite domains that compose this
+    ComplementaryDomain. This is the complementary-reverse of the list
+    for its complement."""
+    return [d.complement for d in reversed(self._complement.base_domains())]
 
-    >>> a = Domain( sequence='AGGACCATT')
-    >>> a.sequence
-    AGGACCATT
-    >>> b = a.C
-    >>> b.sequence
-    AATCCTCCT
-    >>> b.name
-    >>> b.C == a
-    True
-    """
-    return self._domain
-
+  ## (In)equality
+  def __eq__(self, other):
+    """ Returns True iff their complements are equal."""
+    return self._complement == other.complement
+  def __ne__(self, other):
+    """ Returns True iff they are not equal."""
+    return not self.__eq__(other)
+    
+  ## Output
+  def __str__( self ):
+    """ Human-readable output formatting for this ComplementaryDomain."""
+    return "ComplementaryDomain {0}: ~[{1}]".format(self.name, str(self._complement))

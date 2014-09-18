@@ -1,8 +1,9 @@
 """
 strand.py
 
-Copyright (c) 2010 Caltech. All rights reserved.
+Copyright (c) 2010-2014 Caltech. All rights reserved.
 Coded by: Joseph Schaeffer (schaeffer@dna.caltech.edu)
+          Joseph Berleant (jberleant@dna.caltech.edu)
 
 This module defines a simple dna `strand` object.
 
@@ -11,135 +12,138 @@ This module defines a simple dna `strand` object.
 """
 
 
-import warnings
+from domain import Domain
 
 class Strand(object):
   """
-  Represents a Multistrand Strand object.
+  Represents a Strand object, composed of a series of domains or a set of
+  sequence constraints.
   """
-  unique_id = 0
+  id_counter = 0
 
   def __init__(self, *args, **kargs ):
     """
-    Initializes a new Strand object.
-    """
-    try:    self._sequence = kargs['sequence']
-    except: self._sequence = ""
-
-    try:    self.name = kargs['name']
-    except: self.name = "Automatic_" + str(Strand.unique_id)
-
-    try:    self.domain_list = kargs['domains']
-    except: self.domain_list = []
-
-    self.id = Strand.unique_id
-    Strand.unique_id += 1
-
-  @property
-  def sequence( self ):
-    """
-    The sequence associated with this strand, computing it as
-    necessary from the domains.
+    Initializes a new Strand object.  The following keyword arguments are
+    accepted: name, domains OR constraints.
     
-    Raises:
-    ValueError -- Is raised when this attribute is accessed and there was
-                  no sequence, either from Domains or by explicit assignment. 
-
-    .. warning::
-       While you may set the sequence of a Strand after creation,
-       it must **NOT** have any domains defined. In the future this behavior
-       may be changed, in which case it will implicitly set the sequences of
-       those domains.
+    If direct sequence constraints are specified, a new domain is defined
+    with these constraints, and is assigned as the domain list for this
+    Strand.
     """
-    if len(self.domain_list) == 0 and len(self._sequence) == 0:
-      raise ValueError("ERROR: Strand was queried for a sequence, but it has no domains and no explicitly set sequence.")
-    if len(self._sequence) > 0 and len(self.domain_list) == 0:
-      return self._sequence
-    if len(min( self.domain_list, key = lambda x: len(x.sequence)-int(x.length) ).sequence) < 0:
-      raise ValueError("ERROR: Strand was queried for a sequence, but at least one contained domain had a length longer than its current sequence.")
-
-    self._sequence = "".join( [x.sequence for x in self.domain_list] )
-    return self._sequence
-
-  @sequence.setter
-  def sequence( self, value ):
-    """
-    Check the passed in value to make sure it's sane.
-    """
-    try:
-      if not all([i.upper() in 'AGCT' for i in value]):
-        raise ValueError("At least one of the bases in sequence [{0}] was not a valid base; The first offending character was '{1}', at position {2}.".format( value, value.lstrip('agctAGCT')[0], value.index( value.lstrip('agctAGCT')[0] ) ))
-    except TypeError:
-      raise ValueError("A strand may only be set to a string of valid bases.")
-    self._sequence = value
-
-  def __str__(self):
-    try:
-      temp_seq = self.sequence
-    except ValueError:
-      temp_seq = self._sequence
-    # We want to ignore a possible ValueError here, as it just means
-    # the base components haven't been set up yet, but someone may
-    # want to actually print a strand at any point. Other types of
-    # exceptions should still be passed on though, so we need to be
-    # specific here.
-
-    if len(temp_seq) > 30:
-      return "\
-Strand: {b}       Name:'{0.name}'\n\
-      : Sequence [{2}]:{0.sequence}\n\
-      : {b}    Domains:{1}".format( self,
-                                    [i.name for i in self.domain_list],
-                                    len(temp_seq),
-                                    b=" "*(len(str(len(temp_seq)))))
-    elif len(temp_seq) > 0:
-      return "Strand: Name:'{0.name}' Sequence [{2}]:{0.sequence} Domains:{1}".format( self, [i.name for i in self.domain_list], len(temp_seq) )
+    
+    # Assign id
+    self.id = Strand.id_counter
+    Strand.id_counter += 1
+    
+    # Assign DNA object type
+    self._object_type = 'strand'
+    
+    # Assign name
+    if 'name' in kargs: self.name = kargs['name']
+    else: name = 'strand_{0}'.format(self.id)
+    
+    # If sequence constraints were specified, create a dummy domain with
+    # these constraints. Otherwise, assign the given list of domains.
+    if 'domains' in kargs and 'constraints' not in kargs:
+      self._domains = kargs['domains']
+    elif 'constraints' in kargs and 'domains' not in kargs:
+      d = Domain(name = self.name + "_domain",
+                 constraints = kargs['constraints'])
+      self._domains = [d]
     else:
-      return "Strand: Name:'{0.name}' Domains:{1}".format( self, [i.name for i in self.domain_list] )
-
-  def __add__(self, other ):
-    """ Addition of two strands results in a strand composed of each piece. Addition of a strand and a domain adds the domain onto the strand."""
-    if isinstance(other, Strand):
-      try:
-        fullseq = self.sequence + other.sequence
-      except ValueError:
-        fullseq = ""
-      return Strand( name = self.name + '+' + other.name,
-                     domains = self.domain_list + other.domain_list,
-                     sequence = fullseq )
-    try:
-      try:
-        fullseq = self.sequence + other.sequence
-      except ValueError:
-        fullseq = ""
-      return Strand( name = self.name,
-                     domains = self.domain_list + [other],
-                     sequence = fullseq)
-    except AttributeError:
-      return NotImplemented
-
-  def __radd__( self, other ):
-    try:
-      try:
-        fullseq = other.sequence + self.sequence
-      except ValueError:
-        fullseq = ""
-      return Strand( name = self.name,
-                     domains =  [other] + self.domain_list,
-                     sequence = fullseq )
-    except AttributeError:
-      return NotImplemented
-    #radd is used when the other operand does not support the op.
-
-
+      raise ValueError("Must specify strand constraints or domain list.")
+      
+    # Assign length
+    self._length = sum([d.length for d in self._domains])
+   
+   
+  ## Basic properties
   @property
-  def C(self):
+  def length(self):
+    """ Returns the length of this strand, which equals the sum of the
+    lengths of the component domains."""
+    return self._length
+    
+  @property
+  def constraints( self ):
     """
-    Returns a Strand object that is complementary to this one.
+    The sequence constraints associated with this strand, computing it as
+    necessary from the domains.
     """
-
+    return "".join([d._constraints for d in self.base_domains()])
+  @constraints.setter
+  def constraints( self, new_constraints ):
+    """
+    Set the sequence constraints on this Strand. If repeated domains
+    are assigned different constraints, the result is the intersection
+    of all constraints assigned to the domain.
+    """
+    assert len(new_constraints) == self._length
+    for d in self.base_domains():
+      d._constraints = Constraints("N" * d._length)
+    self.add_constraints(new_constraints)
+  def add_constraints(self, new_constraints):
+    """
+    Applies the given constraints on top of any existing constraints on the
+    sequence of this strand.
+    """
+    assert len(new_constraints) == self._length
+    i = 0
+    for d in self.base_domains():
+      subconstraints = new_constraints[i : i+d._length]
+      d._constraints = d._constraints.intersection(subconstraints)
+      i += d._length
+  
+   
+  ## Complementarity and equivalence
+  @property
+  def is_complement(self):
+    """ Returns False. """
+    return False
+  @property
+  def complement(self):
+    """ Returns a ComplementaryStrand object defined by this Strand. """
     return ComplementaryStrand(self)
+  def equivalent_to(self, other):
+    """ Returns True iff the operand is a strand with the same
+    base domain breakdown. """
+    return (self._object_type == other._object_type and
+            self.base_domains() == other.base_domains())
+  def complementary_to(self, other):
+    """ Returns True iff the complement of the operand is a strand with
+    the same domain breakdown. """
+    return (self._object_type == other._object_type and
+            self.base_domains() == other.complement.base_domains())
+  
+  
+  ## DNA object hierarchy
+  @property
+  def domains(self):
+    """ Returns the domains originally used to define this strand. 
+    If sequence constraints were used to define the strand, returns
+    a list with the new domain that holds these constraints."""
+    return self._domains
+  def base_domains(self):
+    """ Returns the unique list of non-composite domains that compose
+    this strand."""
+    return sum([d.base_domains() for d in self._domains], [])
 
+  ## (In)equality
+  def __eq__(self, other):
+    """ Two strands are equal if they have the same id and are
+    not complements of each other."""
+    return (self._object_type == other._object_type and
+            self.id == other.id and
+            self.is_complement == other.is_complement)
+  def __ne__(self, other):
+    """ Returns True iff the two strands are not equal."""
+    return not self.__eq__(other)
+  
+  ## Output
+  def __str__(self):
+    """ Human-readable output formatting for this Strand object."""
+    info = "[" + ", ".join([str(d) for d in self._domains]) + "]"
+    return "Strand {0}: {1} ({2})".format(self.name, info, self._length)
 
 class ComplementaryStrand( Strand ):
   """
@@ -148,45 +152,87 @@ class ComplementaryStrand( Strand ):
   original. It provides the same interfaces as a strand.
   """
 
-  complement = {'G':'C',
-                'C':'G',
-                'A':'T',
-                'T':'A'}
-
-  unique_id = 0
-
   def __init__( self, complemented_strand ):
-    self.id = ComplementaryStrand.unique_id
-    ComplementaryStrand.unique_id += 1
-    self._strand = complemented_strand
-    self._sequence = ""
+    """ Creates a new ComplementaryStrand object defined in
+    terms of the given strand."""
+    self.id = complemented_strand.id
+    
+    self._object_type = 'strand'
+    
+    self._complement = complemented_strand
 
+  ## Basic properties
   @property
   def name( self ):
+    """ Returns the name string for this ComplementaryStrand. The name
+    is the same as that of its complement, with the presence of the
+    trailing asterisk (*) toggled."""
     if self._strand.name.endswith("*") or \
        self._strand.name.endswith("'"):
       return self._strand.name.rstrip("*'")
     else:
       return self._strand.name + "*"
-
+  
   @property
-  def sequence(self):
-    self._sequence = "".join(
-        [ComplementaryStrand.complement[i] for i in reversed(self._strand.sequence)])
-    # Note that if Strand.sequence was 0 (e.g. since one domain didn't
-    # have a sequence yet), the Strand.sequence call will raise an
-    # exception, so we never reach these later lines.
-    return self._sequence
-
+  def length(self):
+    """ Returns the length of this ComplementaryStrand, which equals
+    the length of its complement."""
+    return self._complement.length
+    
   @property
-  def domain_list(self):
-    return [d.C for d in reversed(self._strand.domain_list)]
+  def constraints(self):
+    """ Returns the Constraints object for this ComplementaryStrand. This
+    is the complementary-reverse of the constraints on its complement."""
+    return self._complement.constraints.complement
+  @constraints.setter
+  def constraints(self, new_constraints):
+    """ Sets the Constraints on this ComplementaryStrand by setting those
+    of its complement to the complement of the input constraints."""
+    self._complement.constraints = new_constraints.complement
+  def add_constraints(self, new_constraints):
+    """ Applies the given constraints on top of this ComplementaryStrand by
+    applying the complement of these constraints onto its complement. """
+    self._complement.add_constraints(new_constraints.complement)
 
+
+  ## Complementarity and equivalence
   @property
-  def C(self):
-    """
-    Returns a Strand object that is complementary to this one.
-    """
+  def is_complement(self):
+    """ Returns True iff its complement returns False."""
+    return not self._complement.is_complement
+  @property
+  def complement(self):
+    """ Returns the complementary strand used to define this
+    ComplementaryStrand."""
+    return self._complement
+  def equivalent_to(self, other):
+    """ Returns True iff the RHS is complementary to the LHS's
+    complement."""
+    return self._complement.complementary_to(other)
+  def complementary_to(self, other):
+    """ Returns True iff the RHS is equivalent to the LHS's complement."""
+    return self._complement.equivalent_to(other)
 
-    return self._strand
-
+  ## DNA object hierarchy
+  @property
+  def domains(self):
+    """ Returns the complementary-reverse of the domains that define this
+    ComplementaryStrand's complement. """
+    return [d.complement for d in reversed(self._complement.domains)]
+  def base_domains(self):
+    """ Returns the unique list of non-composite domains for this
+    ComplementaryStrand. This is complementary-reverse of the list for
+    this strand's complement."""
+    return [d.complement for d in reversed(self._complement.base_domains())]
+    
+  ## (In)equality
+  def __eq__(self, other):
+    """ Returns True iff the complements of the LHS and RHS are equal."""
+    return self._complement == other.complement
+  def __ne__(self, other):
+    """ Returns True iff the LHS and RHS are not equal."""
+    return not self.__eq__(other)
+    
+  ## Output
+    """ Human-readable output formatting for this ComplementaryStrand."""
+    return "ComplementaryStrand {0}: ~[{1}]".format(self.name, str(self._complement))
