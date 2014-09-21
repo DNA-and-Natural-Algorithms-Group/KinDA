@@ -5,6 +5,9 @@ import multistrand.objects as MSObjects
 from multistrand.options import Options as MSOptions
 from multistrand.system import SimSystem as MSSimSystem
 
+from dnaobjects import utils
+
+import options
 from datablock import Datablock
 
 # GLOBALS
@@ -13,57 +16,108 @@ TRANSITION_MODE = 256
 FIRST_PASSAGE_MODE = 16
 FIRST_STEP_MODE = 48
 
+EXACT_MACROSTATE = 0
+BOUND_MACROSTATE = 1
+DISASSOC_MACROSTATE = 2
+LOOSE_MACROSTATE = 3
+COUNT_MACROSTATE = 4
+
 # Custom statistical functions:
 def rate_mean_func(datablock):
+  """Computes the expected rate given that the sampled reaction times
+  follow an exponential distribution with a mean of 1/r. In this case,
+  the correct estimate for the rate is the harmonic mean of the r's.
+  If no data has been collected, returns NaN."""
   data = datablock.get_data()
-  times = [1.0 / t for t in data]
-  time_mean = sum(times) / len(times)
-  return 1.0 / time_mean
+  if len(data) > 0:
+    times = [1.0 / r for r in data]
+    return len(times) / sum(times)
+  else:
+    return float('nan')
 def rate_error_func(datablock):
+  """Estimates the standard error for the rate estimate from the
+  standard error for the measured reaction times. Based on local linearity
+  of r=1/t, the error in the rates has the same proportion of the estimated
+  rate as the error in the times.
+  If 1 or fewer data points are collected, returns float('inf')."""
   data = datablock.get_data()
   n = len(data)
   if n > 1:
-    times = [1.0 / t for t in data]
+    times = [1.0 / r for r in data]
     time_mean = sum(times) / n
     time_std = math.sqrt(sum([(t - time_mean)**2 for t in times]) / (n - 1))
     time_error = time_std / math.sqrt(n)
     # Based on estimated local linearity of relationship between t and r=1/t
-    error = time_error / time_mean**2
+    return time_error / time_mean**2
   else:
-    error = float('inf')
-  return error
+    return float('inf')
 def bernoulli_std_func(datablock):
   return math.sqrt(datablock.get_mean() * (1 - datablock.get_mean()))
 def bernoulli_error_func(datablock):
   data = datablock.get_data()
   n = len(data)
-  return datablock.get_std() / math.sqrt(n)
+  if n > 0:
+    return datablock.get_std() / math.sqrt(n)
+  else:
+    return float('inf')
     
 # MultistrandJob class definition
 class MultistrandJob(object):
   """Represents a simulation job to be sent to Multistrand. Allows the
   calculation of reaction rates/times and error bars on calculated data.
   Depending on the output mode, different statistics are calculated on
-  the trajectory results."""
+  the trajectory results.
+  This is the parent class to the more useful job classes that compile
+  specific information for each job mode type."""
   datablocks = {}
   
   ms_options = None
   
-  def __init__(self, ms_options):
-    self.ms_options = ms_options
+  def __init__(self, start_complexes, stop_conditions, sim_mode):
+    self.ms_options = self.setup_options(start_state = start_complexes,
+                                         stop_conditions = stop_conditions,
+                                         mode = sim_mode)
     
     self.datablocks["overall_time"] = Datablock()
     self.datablocks["overall_rate"] = Datablock(mean_func = rate_mean_func,
                                                 error_func = rate_error_func)
+                                                
+  def setup_options(self, *args, **kargs):
+    ## Create state_state with Multistrand Complexes
+    resting_sets = []
+    stop_conditions = kargs['stop_conditions']
+    start_complexes = kargs['start_state']
+    sc_complexes = sum([utils.get_dependent_complexes(m) for m in stop_conditions], [])
+    complexes = list(set(start_complexes + sc_complexes))
+    strands = list(set(sum([c.strands for c in complexes], [])))
+    domains = list(set(sum([s.base_domains() for s in strands], [])))
     
-  def get_overall_rate(self):
-    return self.datablocks["overall_rate"].get_mean()
-  def get_overall_rate_error(self):
-    return self.datablocks["overall_rate"].get_error()
-  def get_overall_time(self):
-    return self.datablocks["overall_time"].get_mean()
-  def get_overall_time_error(self):
-    return self.datablocks["overall_time"].get_error()
+    ms_data = utils.to_Multistrand(domains, strands, complexes, resting_sets, stop_conditions)
+    domains_dict = ms_data[0]
+    strands_dict = ms_data[1]
+    complexes_dict = ms_data[2]
+    resting_sets_dict = ms_data[3]
+    macrostates_dict = ms_data[4]
+    
+    ## Create Options object using options.multistrand_params
+    start_state = [complexes_dict[c] for c in start_complexes]
+    o = MSOptions(start_state = start_state,
+                  dangles = options.multistrand_params['dangles'],
+                  simulation_time = options.multistrand_params['sim_time'],
+                  parameter_type = options.multistrand_params['param_type'],
+                  substrate_type = options.multistrand_params['substrate_type'],
+                  rate_method = options.multistrand_params['rate_method'])
+    o.simulation_mode = kargs['mode']
+    o.temperature = options.multistrand_params['temp']
+#    o.output_interval = options.multistrand_params['output_interval']
+    o.stop_conditions = [macrostates_dict[m] for m in stop_conditions]
+    
+    return o
+    
+  def get_statistic(self, reaction, stat = 'rate'):
+    return self.datablocks[reaction + "_" + stat].get_mean()
+  def get_statistic_error(self, reaction, stat = 'rate'):
+    return self.datablocks[reaction + "_" + stat].get_error()
   
   def run_simulations(self, num_sims):
     self.ms_options.num_simulations = num_sims
@@ -76,7 +130,7 @@ class MultistrandJob(object):
   def process_results(self):
     results = self.ms_options.interface.results
     times = [r.time for r in results]
-    rates = [1.0/t for t in times]
+    rates = [1.0/t for t in times if t != 0]
     
     self.datablocks["overall_time"].add_data(times)
     self.datablocks["overall_rate"].add_data(rates)
@@ -84,36 +138,23 @@ class MultistrandJob(object):
     del self.ms_options.interface.results[:]
       
   
-  def reduce_rate_error_to(self, threshold, type, tag):
-    """type is either 'absolute' or 'relative', where 'relative' indicates
-    that the threshold indicates a decimal fraction of the estimated rate.
-    threshold is a list of two elements, indicating the lower and upper errors
-    acceptable."""
-    def get_updated_error():
-      block = self.datablocks[tag + "_rate"]
-      if type == 'absolute': 
-        error_goal = threshold
-      else:
-        error_goal = threshold * block.get_mean()
-      return (block.get_error(), error_goal)
-    cur_error, error_goal = get_updated_error()
-    block = self.datablocks[tag + "_rate"]
-      
-    while cur_error > error_goal:
+  def reduce_error_to(self, rel_goal, abs_goal, reaction = 'overall', stat = 'rate'):
+    """Runs simulations to reduce the error to either rel_goal*mean or abs_goal."""
+    tag = reaction + "_" + stat
+    block = self.datablocks[tag]
+    
+    error = block.get_error()
+    goal = max(abs_goal, rel_goal * block.get_mean())  
+    while error > goal:
       # Estimate additional trials based on inverse square root relationship
       # between error and number of trials
-      reduction = cur_error / error_goal
+      reduction = error / goal
       num_trials = int(block.get_num_points() * (reduction**2 - 1) + 1)
       num_trials = min(num_trials, 50)
       self.run_simulations(num_trials)
-      cur_error, error_goal = get_updated_error()
+      error = block.get_error()
+      goal = max(abs_goal, rel_goal * block.get_mean())
     
-  def reduce_rate_error_to(self, threshold, type):
-    """type is either 'absolute' or 'relative', where 'relative' indicates
-    that the threshold indicates a decimal fraction of the estimated rate.
-    threshold is a list of two elements, indicating the lower and upper errors
-    acceptable."""
-    self.reduce_rate_error_to(threshold, type, "overall")
     
 
 class FirstPassageTimeModeJob(MultistrandJob):
@@ -123,26 +164,17 @@ class FirstPassageTimeModeJob(MultistrandJob):
   
   ms_options = None
   
-  def __init__(self, ms_options):
-    assert (ms_options.simulation_mode == TRAJECTORY_MODE
-      or ms_options.simulation_mode == FIRST_PASSAGE_MODE)
+  def __init__(self, start_complexes, stop_conditions):
       
-    super(FirstPassageTimeModeJob, self).__init__(ms_options)
+    super(FirstPassageTimeModeJob, self).__init__(start_complexes,
+                                                  stop_conditions,
+                                                  FIRST_PASSAGE_MODE)
       
-    self.tags = [sc.tag for sc in ms_options.stop_conditions]
-    for sc in ms_options.stop_conditions:
+    self.tags = [sc.tag for sc in self.ms_options.stop_conditions]
+    for sc in self.ms_options.stop_conditions:
       self.datablocks[sc.tag + "_time"] = Datablock()
       self.datablocks[sc.tag + "_rate"] = Datablock(mean_func = rate_mean_func,
                                                     error_func = rate_error_func)
-  
-  def get_reaction_rate(self, tag):
-    return self.datablocks[tag + "_rate"].get_mean()
-  def get_reaction_rate_error(self, tag):
-    return self.datablocks[tag + "_rate"].get_error()
-  def get_reaction_time(self, tag):
-    return self.datablocks[tag + "_time"].get_mean()
-  def get_reaction_time_error(self, tag):
-    return self.datablocks[tag + "_time"].get_error()
   
   def process_results(self):
     results = self.ms_options.interface.results
@@ -169,25 +201,24 @@ class TransitionModeJob(MultistrandJob):
   
   ms_options = None
   
-  def __init__(self, ms_options):
-    assert ms_options.simulation_mode == TRANSITION_MODE
+  def __init__(self, start_complexes, macrostates, stop_states):
+    stop_conditions = macrostates[:]
+    
+    # This actually modifies the stop macrostates in place, so this could be bad
+    for sc in stop_states:
+      sc.name = "stop:" + sc.name
+      stop_conditions.append(sc)
       
-    super(TransitionModeJob, self).__init__(ms_options)
+    super(TransitionModeJob, self).__init__(start_complex, stop_conditions, TRANSITION_MODE)
       
-    self.states = [sc.tag for sc in ms_options.stop_conditions]
+    self.states = [sc.tag for sc in self.ms_options.stop_conditions]
   
-  def get_reaction_rate(self, start_states, end_states):
+  def get_statistic(self, start_states, end_states, stat = 'rate'):
     tag = self.get_tag(start_states, end_states)
-    return self.datablocks[tag + "_rate"].get_mean()
-  def get_reaction_rate_error(self, start_states, end_states):
+    return self.datablocks[tag + "_" + stat].get_mean()
+  def get_statistic_error(self, start_states, end_states, stat = 'rate'):
     tag = self.get_tag(start_states, end_states)
-    return self.datablocks[tag + "_rate"].get_error()
-  def get_reaction_time(self, start_states, end_states):
-    tag = self.get_tag(start_states, end_states)
-    return self.datablocks[tag + "_time"].get_mean()
-  def get_reaction_time_error(self, start_states, end_states):
-    tag = self.get_tag(start_states, end_states)
-    return self.datablocks[tag + "_time"].get_error()
+    return self.datablocks[tag + "_" + stat].get_error()
   
   def process_results(self):
     results = self.ms_options.interface.results
@@ -230,11 +261,10 @@ class TransitionModeJob(MultistrandJob):
     return filter(lambda x: sum(x[1])>0, transition_path)
     
   
-  def reduce_rate_error_to(self, threshold, type, start_states, end_states):
-    """type is either 'absolute' or 'relative', where 'relative' indicates
-    that the threshold indicates a decimal fraction of the calculated
-    statistic."""
-    self.reduce_rate_error_to(threshold, type, self.get_tag(start_states, end_states))
+  def reduce_error_to(self, rel_goal, abs_goal,
+                      start_states, end_states, stat = 'rate'):
+    super(TransitionModeJob, self).reduce_error_to(rel_goal, abs_goal,
+        self.get_tag(start_states, end_states), stat)
     
   def get_tag(self, start_states, end_states):
     assert all([s in self.states for s in start_states]), "Unknown start state given in %s" % start_states
@@ -255,47 +285,21 @@ class FirstStepModeJob(MultistrandJob):
   
   ms_options = None
   
-  def __init__(self, ms_options):
-    assert ms_options.simulation_mode == FIRST_STEP_MODE
+  def __init__(self, start_complexes, stop_conditions):
+  
+    super(FirstStepModeJob, self).__init__(start_complexes, stop_conditions, FIRST_STEP_MODE)
       
-    super(FirstStepModeJob, self).__init__(ms_options)
-      
-    self.tags = [sc.tag for sc in ms_options.stop_conditions]
+    self.tags = [sc.tag for sc in self.ms_options.stop_conditions]
     self.tags.append("None")
     for tag in self.tags:
       self.datablocks[tag + "_prob"] = Datablock(std_func = bernoulli_std_func,
                                                   error_func = bernoulli_error_func)
       self.datablocks[tag + "_kcoll"] = Datablock(mean_func = rate_mean_func,
                                                   error_func = rate_error_func)
+      self.datablocks[tag + "_k1"] = Datablock()
       self.datablocks[tag + "_k2"] = Datablock(mean_func = rate_mean_func,
                                                   error_func = rate_error_func)
 
-  
-  def get_reaction_prob(self, tag):
-    return self.datablocks[tag + "_prob"].get_mean()
-  def get_reaction_prob_error(self, tag):
-    return self.datablocks[tag + "_prob"].get_error()
-  def get_reaction_kcoll(self, tag):
-    return self.datablocks[tag + "_kcoll"].get_mean()
-  def get_reaction_kcoll_error(self, tag):
-    return self.datablocks[tag + "_kcoll"].get_error()
-  def get_reaction_k1(self, tag):
-    return self.get_reaction_prob(tag) * self.get_reaction_kcoll(tag)
-  def get_reaction_k1_error(self, tag):
-    """Assumes success and kcoll are uncorrelated. This is not the case."""
-    n = self.datablocks[tag + "_kcoll"].get_num_points()
-    prob = self.get_reaction_prob(tag)
-    prob_err = self.get_reaction_prob_error(tag)
-    kcoll = self.get_reaction_kcoll(tag)
-    kcoll_err = self.get_reaction_kcoll_error(tag)
-    return math.sqrt(prob * kcoll_err +
-                     prob_err * kcoll +
-                     prob_err * kcoll_err) / math.sqrt(n)
-  def get_reaction_k2(self, tag):
-    return self.datablocks[tag + "_k2"].get_mean()
-  def get_reaction_k2_error(self, tag):
-    return self.datablocks[tag + "_k2"].get_error()
-  
   def process_results(self):
     results = self.ms_options.interface.results
     
@@ -308,35 +312,12 @@ class FirstStepModeJob(MultistrandJob):
       relevant_sims = filter(lambda x: x.tag == tag, results)
       successes = map(lambda x: int(x.tag == tag), results)
       kcolls = [r.collision_rate for r in relevant_sims]
+      k1s = map(lambda x: int(x.tag == tag) * x.collision_rate, results)
       k2s = [1.0 / r.time for r in relevant_sims]
       self.datablocks[tag + "_prob"].add_data(successes)
       self.datablocks[tag + "_kcoll"].add_data(kcolls)
+      self.datablocks[tag + "_k1"].add_data(k1s)
       self.datablocks[tag + "_k2"].add_data(k2s)
       
     del self.ms_options.interface.results[:]
     
-  def reduce_rate_error_to(self, threshold, type, tag):
-    """type is either 'absolute' or 'relative', where 'relative' indicates
-    that the threshold indicates a decimal fraction of the estimated rate.
-    threshold is a list of two elements, indicating the lower and upper errors
-    acceptable."""
-    def get_updated_error():
-      block = self.datablocks[tag]
-      if type == 'absolute': 
-        error_goal = threshold
-      else:
-        error_goal = threshold * block.get_mean()
-      return (block.get_error(), error_goal)
-    cur_error, error_goal = get_updated_error()
-    block = self.datablocks[tag]
-      
-    while cur_error > error_goal:
-      # Estimate additional trials based on inverse square root relationship
-      # between error and number of trials
-      print "Error should be reduced from %s to %s" % (cur_error, error_goal)
-      reduction = cur_error / error_goal
-      num_trials = int(block.get_num_points() * (reduction**2 - 1) + 1)
-      num_trials = min(num_trials, 50)
-      self.run_simulations(num_trials)
-      cur_error, error_goal = get_updated_error()
-      
