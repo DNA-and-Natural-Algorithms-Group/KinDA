@@ -40,7 +40,7 @@ class Strand(object):
     
     # Assign name
     if 'name' in kargs: self.name = kargs['name']
-    else: name = 'strand_{0}'.format(self.id)
+    else: self.name = 'strand_{0}'.format(self.id)
     
     # If sequence constraints were specified, create a dummy domain with
     # these constraints. Otherwise, assign the given list of domains.
@@ -138,6 +138,9 @@ class Strand(object):
   def __ne__(self, other):
     """ Returns True iff the two strands are not equal."""
     return not self.__eq__(other)
+  def __hash__(self):
+    """ Returns a hash value on Strands."""
+    return self.id
   
   ## Output
   def __str__(self):
@@ -228,10 +231,13 @@ class ComplementaryStrand( Strand ):
   ## (In)equality
   def __eq__(self, other):
     """ Returns True iff the complements of the LHS and RHS are equal."""
-    return self._complement == other.complement
+    return self._complement.__eq__(other.complement)
   def __ne__(self, other):
     """ Returns True iff the LHS and RHS are not equal."""
     return not self.__eq__(other)
+  def __hash__(self):
+    """ Returns a hash value on ComplementaryStrands. """
+    return -self._complement.__hash__()
     
   ## Output
     """ Human-readable output formatting for this ComplementaryStrand."""

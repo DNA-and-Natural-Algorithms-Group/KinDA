@@ -27,7 +27,8 @@ class Domain(object):
     Initialization:
 
     Keyword Arguments:
-    name [type=str,required]          -- Name of this domain.
+    name [type=str]                   -- Name of this domain. If not given,
+                                         an automatic one is generated.
     constraints [type=str]            -- Sequence constraints on this domain.
                                          Specifiers may be any of
                                          A,T,C,G,R,Y,W,S,M,K,B,V,D,H,N.
@@ -44,18 +45,17 @@ class Domain(object):
     self._object_type = 'domain'
     
     # Assign name
-    if 'name' not in kargs:
-      raise ValueError("Must pass a 'name' keyword argument.")
-    self.name = kargs['name']
+    if 'name' in kargs: self.name = kargs['name']
+    else: self.name = 'domain_{0}'.format(self.id)
     
     # Assign constraints or subdomain list
     if 'constraints' in kargs and 'subdomains' not in kargs:
       self._constraints = Constraints(kargs['constraints'])
-      self._length = len(constraints)
+      self._length = len(self._constraints)
       self.is_composite = False
     elif 'subdomains' in kargs and 'constraints' not in kargs:
       self._subdomains = kargs['subdomains']
-      self._length = sum([d.length for d in subdomains])
+      self._length = sum([d.length for d in self._subdomains])
       self.is_composite = True
     else:
       raise ValueError("Must pass one of 'constraints' or 'subdomains' keyword argument.")
@@ -71,7 +71,7 @@ class Domain(object):
   def constraints(self):
     """Returns the Constraints object or concatenation of the constraint
     string of the subdomains."""
-    return "".join([d._constraints for d in self.base_domains()])
+    return Constraints("".join([d._constraints for d in self.base_domains()]))
   @constraints.setter
   def constraints(self, new_constraints):
     """Sets the constraint string or sets the constraints of the subdomains.
@@ -149,6 +149,9 @@ class Domain(object):
   def __ne__(self, other):
     """Returns True iff the two objects are not equal."""
     return not self.__eq__(other)
+  def __hash__(self):
+    """ Hash function for Domains. """
+    return self.id
     
   ## Output
   def __str__( self ):
@@ -202,11 +205,17 @@ class ComplementaryDomain( Domain):
     return self._complement.length
 
   @property
-  def constraints(self):
+  def _constraints(self):
     """ Returns the sequence constraints of this ComplementaryDomain.
     The constraints are the complementary-reverse of the constraints of
     this domain's complement."""
     return self._complement.constraints.complement
+  @property
+  def constraints(self):
+    """ Returns the sequence constraints of this ComplementaryDomain.
+    The constraints are the complementary-reverse of the constraints of
+    this domain's complement."""
+    return self._constraints
   @constraints.setter
   def constraints(self, new_constraints):
     """ Sets the sequence constraints of this ComplementaryDomain
@@ -251,10 +260,13 @@ class ComplementaryDomain( Domain):
   ## (In)equality
   def __eq__(self, other):
     """ Returns True iff their complements are equal."""
-    return self._complement == other.complement
+    return self._complement.__eq__(other.complement)
   def __ne__(self, other):
     """ Returns True iff they are not equal."""
     return not self.__eq__(other)
+  def __hash__(self):
+    """ Hash function for ComplementaryDomains. """
+    return -self._complement.__hash__()
     
   ## Output
   def __str__( self ):

@@ -13,6 +13,7 @@ This module defines a simple dna `complex` object.
 
 
 from strand import Strand
+from structure import Structure
 
 class Complex(object):
   """
@@ -66,8 +67,8 @@ class Complex(object):
     
   @property
   def structure(self):
-    """ Returns the binding of this complex in strand-list notation."""
-    return self._structure.structure
+    """ Returns the binding of this complex in a Structure object."""
+    return self._structure
   @structure.setter
   def structure(self, new_struct):
     """ Sets the binding of this complex. Accepts a structure in dot-paren
@@ -105,6 +106,18 @@ class Complex(object):
     """ Returns a list of the non-composite domain breakdown for each
     strand in the complex. """
     return [s.base_domains() for s in self._strands]
+  
+  
+  ## (In)equality
+  def __eq__(self, other): 
+    """ Returns True if the two complexes have the same id. """
+    return self._object_type == other._object_type and self.id == other.id
+  def __ne__(self, other):
+    """ Returns True if the complexes are not equal. """
+    return not self.__eq__(other)
+  def __hash__(self):
+    """ Returns a hash value for this Complex. """
+    return self.id
   
   
   ## Output
