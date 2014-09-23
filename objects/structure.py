@@ -40,6 +40,7 @@ def parse_dotparen(structure):
         i += 1
       elif char == '*' or char == '?':  # nucleotide binding is unspecified
         bond_dict[loc] = '?'
+        i += 1
       elif char != ' ':
         raise ValueError("Invalid dot-paren structure.")
 
@@ -60,7 +61,7 @@ def expand_domain_dotparen(structure, strands):
   strand_structs = structure.replace(" ","").split("+")
   expanded = ""
   for strand, strand_struct in zip(strands, strand_structs):
-    domains = strand.domains
+    domains = strand.base_domains()
     for d, char in zip(domains, strand_struct):
       expanded += char * d.length
     expanded += "+"
@@ -72,7 +73,7 @@ def expand_domain_strandlist(structure, strands):
   expanded = []
   for strand, strand_struct in zip(strands, structure):
     struct = []
-    for d, bound in zip(strand.domains, strand_struct):
+    for d, bound in zip(strand.base_domains(), strand_struct):
       if bound == None:
         struct.extend([None] * d.length)
       else:
@@ -80,9 +81,9 @@ def expand_domain_strandlist(structure, strands):
         b_domain_ind = bound[1]
         b_domain_start = sum([bd.length
                                 for bd
-                                in strands[b_strand_ind].domains[0:b_domain_ind]])
+                                in strands[b_strand_ind].base_domains()[0:b_domain_ind]])
         b_domain_end = b_domain_start + d.length
-        indices = reversed(range(bound_domain_start, bound_domain_end))
+        indices = reversed(range(b_domain_start, b_domain_end))
         struct.extend(zip([bound[0]] * d.length, indices))
     expanded.append(struct)
   return expanded
@@ -119,7 +120,7 @@ class Structure(object):
   def structure(self, struct):
     """ Sets this structure with a dot-paren string or strand-list
     representation. """
-    domains_per_strand = [len(s.domains) for s in self.strands]
+    domains_per_strand = [len(s.base_domains()) for s in self.strands]
     nucleos_per_strand = [s.length for s in self.strands]
     if isinstance(struct, list):  ## Assume strand-list notation
       # determine if domain- or nucleotide-level specification
@@ -206,9 +207,9 @@ class Structure(object):
     for strand_num, strand in enumerate(self.strands):
       for i in range(strand.length):
         bound = self.bound_to(strand_num, i)
-        if bound != None and (strand_num, i) < bound:
+        if bound != None and bound != '?' and (strand_num, i) < bound:
           stack.append((strand_num, i))
-        elif bound != None and bound < (strand_num, i):
+        elif bound != None and bound != '?' and bound < (strand_num, i):
           if bound != stack.pop():
             # There's a pseudoknot!
             return True

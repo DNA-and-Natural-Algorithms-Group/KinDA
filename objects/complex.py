@@ -125,4 +125,6 @@ class Complex(object):
     """ Human-readable output formatting for this Complex object. """
     strand_info = "[" + ", ".join([str(s) for s in self._strands]) + "]"
     return "Complex {0} {1}: {2}".format(self.name, strand_info, self.structure)
+  def __repr__(self):
+    return "Complex({0})".format(self.name)
     

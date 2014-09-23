@@ -33,7 +33,7 @@ def read_PIL(filename):
   complexes = []
   # Parse each line with regular expressions
   for l in spec_file:
-    print l,
+    #print l,
     line = strip_comment(l).strip()
     if line == "":
       continue
