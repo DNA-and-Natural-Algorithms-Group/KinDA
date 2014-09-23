@@ -170,11 +170,11 @@ class ComplementaryStrand( Strand ):
     """ Returns the name string for this ComplementaryStrand. The name
     is the same as that of its complement, with the presence of the
     trailing asterisk (*) toggled."""
-    if self._strand.name.endswith("*") or \
-       self._strand.name.endswith("'"):
-      return self._strand.name.rstrip("*'")
+    if self._complement.name.endswith("*") or \
+       self._complement.name.endswith("'"):
+      return self._complement.name.rstrip("*'")
     else:
-      return self._strand.name + "*"
+      return self._complement.name + "*"
   
   @property
   def length(self):

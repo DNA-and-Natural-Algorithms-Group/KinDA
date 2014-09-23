@@ -1,6 +1,3 @@
-from complex import Complex
-from structure import Structure
-from macrostate import Macrostate
 
 ## Sequence utilities
 # Global DNA nucelotide groups
@@ -30,6 +27,75 @@ def random_sequence(constraint, base_probs = None):
     base_probs = {'A': 0.2, 'T': 0.2, 'C': 0.3, 'G': 0.3}
     
   return "".join(map(lambda b: choose_base(base_group[b], base_probs), constraint))
+  
+## Functions for Domain objects
+def split_domain(domain, pos):  
+  """ Splits a domain into two subdomains. """
+  from domain import Domain
+  
+  section1 = Domain(name = domain.name + "[:{0}]".format(pos),
+                    constraints = domain.constraints[:pos])
+  section2 = Domain(name = domain.name + "[{0}:]".format(pos + 1),
+                    constraints = domain.constraints[pos:])
+      
+  domain.subdomains = [section1, section2]
+
+def equate_domains(domains):
+  """This is pretty slow and inefficient."""
+  from domain import Domain
+  
+  def update_subdomains_list(subdomains):
+    new_subdomains = []
+    for i, d in enumerate(subdomains):
+      if d.is_composite:
+        new_subdomains.extend(d.subdomains)
+      else:
+        new_subdomains.append(d)
+    return new_subdomains
+  def equate_coincident_domains(domain1, domain2):
+    assert domain1.length == domain2.length
+    
+    # Make a new Domain with constraints from both domains
+    new_domain = Domain(name = "~(" + min(domain1.name, domain2.name) + ")",
+                        constraints = domain1.constraints)
+    new_domain.add_constraints(domain2.constraints)
+    
+    # Redirect domain1 and domain2 to point to new domain
+    domain1.subdomains = [new_domain]
+    domain2.subdomains = [new_domain]
+  
+  domains = list(domains)
+  index = 1
+  while index < len(domains):
+    domains1 = domains[index-1].base_domains()
+    domains2 = domains[index].base_domains()
+    
+    # Iterate through each the sub-domain lists for each Domain object,
+    # splitting up larger domain objects as needed
+    while len(domains1) != 0:
+      d1 = domains1[0]
+      d2 = domains2[0]
+      if d1.length > d2.length:
+        # The first subdomain of the first Domain is longer, so split it
+        split_domain(d1, d2.length)
+        equate_coincident_domains(d1.subdomains[0], d2)
+      elif d2.length > d1.length:
+        # The first subdomain of the second Domain is longer, so split it
+        split_domain(d2, d1.length)
+        equate_coincident_domains(d2.subdomains[0], d1)
+      elif d1.complementary_to(d2):
+        assert(d1.length % 2 == 0), "Unable to equate odd-length %s with its complement." % d1
+        split_domain(d1, d1.length / 2) # Split sequence in half, make the halves complementary
+        equate_coincident_domains(d1.subdomains[0], d1.subdomains[1].complement)
+      elif d1 != d2: # lengths are equal but they are not the same domain
+        # The domains coincide, so make them redirect to a common domain
+        equate_coincident_domains(d1, d2)
+        
+      domains1 = update_subdomains_list(domains1)[1:]
+      domains2 = update_subdomains_list(domains2)[1:]
+        
+    index+=1
+  
     
 ## Functions for Complex objects
 def defect(complex, structure):
@@ -51,6 +117,8 @@ def domain_defect(complex, strand_num, domain_num, structure):
   specified target structure. If the domain is not completely bound
   or unbound, the results are not very meaningful.
   The defect is calculated as a fraction of the domain's length."""
+  from structure import Structure
+  
   strandlist = structure.structure[:]
   strands = structure.strands
   
@@ -92,6 +160,8 @@ def max_domain_defect(complex, structure):
 def get_dependent_complexes(macrostate):
   """ Returns a list of the Complex objects upon which this
   Macrostate depends. """
+  from macrostate import Macrostate
+  
   if macrostate.type == Macrostate.types['conjunction']:
     return list(set(sum([get_dependent_complexes(m) for m in macrostate.macrostates], [])))
   else:
@@ -99,6 +169,8 @@ def get_dependent_complexes(macrostate):
     
 ## Complex -> Macrostate functions
 def exact_complex_macrostate(complex):
+  from macrostate import Macrostate
+
   return Macrostate(name = "macrostate_" + complex.name,
                     type = 'exact',
                     complex = complex)
@@ -107,6 +179,10 @@ def loose_domain_macrostate(complex, strand_num, domain_num, cutoff):
   of interest. The cutoff is a fractional defect within this domain. The
   results are not meaningful if the domain is not completely bound or 
   completely unbound."""
+  from complex import Complex
+  from structure import Structure
+  from macrostate import Macrostate
+
   strandlist = complex.structure.to_strandlist()[:]
   strands = complex.strands
   
@@ -125,29 +201,31 @@ def loose_domain_macrostate(complex, strand_num, domain_num, cutoff):
         strandlist[strand_n][i] = '?'
       else:
         n += 1
-  new_struct = Structure(structure = strandlist, strands = structure.strands)
   
   ms_complex = Complex(name = complex.name + "_({0},{1})".format(strand_num, domain_num),
                        strands = strands,
-                       structure = new_struct)
+                       structure = strandlist)
   return Macrostate(name = "macrostate_" + ms_complex.name,
                     type = 'loose',
+                    complex = ms_complex,
                     cutoff = int(cutoff * n))
         
 def similar_complex_macrostate(complex, cutoff):
   """ Returns a Macrostate that matches a complex such that every domain
   matches the given complex's structure to within the cutoff fraction. """
+  from macrostate import Macrostate
+
   macrostates = []
   for strand_num, strand in enumerate(complex.strands):
     for domain_num in range(len(strand.domains)):
-      macrostates.append(loose_domain_macrostate(complex, strand_num, domain_num, cutoff)
+      macrostates.append(loose_domain_macrostate(complex, strand_num, domain_num, cutoff))
   return Macrostate(name = complex.name + "_loose-domains",
                     type = 'conjunction',
                     macrostates = macrostates)
   
   
 ## Multistrand utilities
-def to_Multistrand(domains, strands = [], complexes = [], resting_sets = [], macrostates = []):
+def to_Multistrand_domains(domains):
   import multistrand.objects as MS
   
   ## Create dict of Multistrand Domain objects
@@ -157,16 +235,22 @@ def to_Multistrand(domains, strands = [], complexes = [], resting_sets = [], mac
       seq = random_sequence(d.constraints)
       ms_domains[d] = MS.Domain(name = d.name, sequence = seq, length = d.length)
       ms_domains[d.complement] = ms_domains[d].C
-    
-  ## Create dict of Multistrand Strand objects
+  return ms_domains
+  
+def to_Multistrand_strands(strands, ms_domains):
+  import multistrand.objects as MS
+  
   ms_strands = {}
   for s in strands:
     if not s.is_complement:
       strand_domains = [ms_domains[d] for d in s.base_domains()]
       ms_strands[s] = MS.Strand(name = s.name, domains = strand_domains)
       ms_strands[s.complement] = ms_strands[s].C
-      
-  ## Create dict of Multistrand Complex objects
+  return ms_strands    
+  
+def to_Multistrand_complexes(complexes, ms_strands):
+  import multistrand.objects as MS
+  
   ms_complexes = {}
   for c in complexes:
     complex_strands = [ms_strands[s] for s in c.strands]
@@ -174,14 +258,21 @@ def to_Multistrand(domains, strands = [], complexes = [], resting_sets = [], mac
     ms_complexes[c] = MS.Complex(name = c.name,
                                  strands = complex_strands,
                                  structure = struct)
+  return ms_complexes
   
-  ## Create dict of Multistrand RestingState objects
+def to_Multistrand_restingstates(resting_sets, ms_complexes):
+  import multistrand.objects as MS
+  
   ms_restingstates = {}
   for rs in resting_sets:
     cpxs = [ms_complexes[c] for c in rs.complexes]
     ms_restingstates[rs] = MS.RestingState(name = rs.name, complex_set = cpxs)
+  return ms_restingstates
   
-  ## Create dict of Multistrand Macrostate objects
+def to_Multistrand_macrostates(macrostates, ms_complexes):
+  import multistrand.objects as MS
+  from macrostate import Macrostate
+  
   EXACT = 0
   BOUND = 1
   DISASSOC = 2
@@ -205,8 +296,31 @@ def to_Multistrand(domains, strands = [], complexes = [], resting_sets = [], mac
       c = ms_complexes[m.complex]
       ms_macrostates[m] = MS.Macrostate(m.name, [(c, LOOSE, m.cutoff)])
     elif m.type == Macrostate.types['conjunction']:
+      for ms in m.macrostates:
+        if ms not in ms_macrostates:
+          ms_macrostates[ms] = to_Multistrand_macrostates([ms], ms_complexes).values()[0]
       states = sum([ms_macrostates[s].complex_items for s in m.macrostates], [])
       ms_macrostates[m] = MS.Macrostate(m.name, states)
+  return ms_macrostates
+  
+def to_Multistrand(domains, strands = [], complexes = [], resting_sets = [], macrostates = []):
+  import multistrand.objects as MS
+  from macrostate import Macrostate
+  
+  ## Create dict of Multistrand Domain objects
+  ms_domains = to_Multistrand_domains(domains)
+    
+  ## Create dict of Multistrand Strand objects
+  ms_strands = to_Multistrand_strands(strands, ms_domains)
+      
+  ## Create dict of Multistrand Complex objects
+  ms_complexes = to_Multistrand_complexes(complexes, ms_strands)
+  
+  ## Create dict of Multistrand RestingState objects
+  ms_restingstates = to_Multistrand_restingstates(resting_sets, ms_complexes)
+  
+  ## Create dict of Multistrand Macrostate objects
+  ms_macrostates = to_Multistrand_macrostates(macrostates, ms_complexes)
     
   return (ms_domains, ms_strands, ms_complexes, ms_restingstates, ms_macrostates)
     

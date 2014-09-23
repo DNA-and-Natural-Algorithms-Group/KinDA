@@ -131,6 +131,12 @@ class Domain(object):
       return self._subdomains
     else:
       return[self]
+  @subdomains.setter
+  def subdomains(self, domains):
+    """ Sets the subdomains property of this Domain object and sets its
+    is_composite flag to True. """
+    self._subdomains = domains
+    self.is_composite = True
   def base_domains(self):
     """Breaks down the domain into non-composite domains."""
     if self.is_composite:
@@ -251,6 +257,11 @@ class ComplementaryDomain( Domain):
     """ Returns the subdomain list for this ComplementaryDomain. This is
     the complementary-reverse of the subdomain list of its complement."""
     return [d.complement for d in reversed(self._complement.subdomains)]
+  @subdomains.setter
+  def subdomains(self, domains):
+    """ Sets the subdomain list for this ComplementaryDomain and sets its
+    is_composite field to True. """
+    self._complement.subdomains = [d.complement for d in reversed(domains)]
   def base_domains(self):
     """ Returns the list of non-composite domains that compose this
     ComplementaryDomain. This is the complementary-reverse of the list

@@ -121,7 +121,7 @@ class Structure(object):
     representation. """
     domains_per_strand = [len(s.domains) for s in self.strands]
     nucleos_per_strand = [s.length for s in self.strands]
-    if len(struct) == len(self._strands):  ## Assume strand-list notation
+    if isinstance(struct, list):  ## Assume strand-list notation
       # determine if domain- or nucleotide-level specification
       elems_per_strand = [len(s) for s in struct]
       if elems_per_strand == domains_per_strand:  ## Assume domain-level specification
