@@ -40,7 +40,7 @@ class RestingSet(object):
     else: self.name = 'resting_set{0}'.format(self.id)
     
     # Assign complexes
-    self._complexes = set(kargs['complexes'])
+    self._complexes = list(set(kargs['complexes']))
     
   @property
   def complexes(self):

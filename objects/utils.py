@@ -1,3 +1,5 @@
+from complex import Complex
+from structure import Structure
 from macrostate import Macrostate
 
 ## Sequence utilities
@@ -40,27 +42,36 @@ def defect(complex, structure):
       if (complex.bound_to(strand_num, i) != structure.bound_to(strand_num, i)
           and structure.bound_to(strand_num, i) != '?'):
         defect += 1
+  
   return defect
   
 def domain_defect(complex, strand_num, domain_num, structure):
   """ Calculates the defect of the binding of the given domain in
   the complex against the domain's expected binding given in the
-  specified target structure. """
-  strandlist = structure.structure
+  specified target structure. If the domain is not completely bound
+  or unbound, the results are not very meaningful.
+  The defect is calculated as a fraction of the domain's length."""
+  strandlist = structure.structure[:]
   strands = structure.strands
   
-  for strand_n, strand_struct in enumerate(strandlist):
-    if strand_n != strand_num:
-      strandlist[strand_n] = ['?'] * len(strand_struct)
   domain_start = sum([d.length
                         for d
                         in strands[strand_num].domains[:domain_num]])
-  domain_end = domain_start + strands.domains[domain_num].length
-  strandlist[strand_num][:domain_start] = ['?'] * domain_start
-  strandlist[strand_num][domain_end:] = ['?'] * (strands[strand_num].length - domain_end)
-  
+  domain_end = domain_start + strands[strand_num].domains[domain_num].length
+  n = 0
+  for strand_n, strand_struct in enumerate(strandlist):
+    for i, bound in enumerate(strand_struct):
+      is_domain = (strand_n == strand_num and domain_start <= i < domain_end)
+      is_bound_to_domain = (bound != None and bound != '?'
+                           and bound[0] == strand_num
+                           and domain_start <= bound[1] < domain_end)
+      if not is_domain and not is_bound_to_domain:
+        strandlist[strand_n][i] = '?'
+      else:
+        n += 1
+        
   new_struct = Structure(structure = strandlist, strands = structure.strands)
-  return defect(complex, new_struct)
+  return defect(complex, new_struct) / float(n)
   
 def max_domain_defect(complex, structure):
   """ Returns the maximum domain defect among all domains in the given
@@ -72,7 +83,7 @@ def max_domain_defect(complex, structure):
   for strand_num, strand_domains in enumerate(domains):
     for domain_num, domain in enumerate(strand_domains):
       if domain.length > 0:
-        defect = domain_defect(complex, strand_num, domain_num, structure) / float(domain.length)
+        defect = domain_defect(complex, strand_num, domain_num, structure)
         max_defect = max(defect, max_defect)
   return max_defect
   
@@ -85,6 +96,54 @@ def get_dependent_complexes(macrostate):
     return list(set(sum([get_dependent_complexes(m) for m in macrostate.macrostates], [])))
   else:
     return [macrostate.complex]
+    
+## Complex -> Macrostate functions
+def exact_complex_macrostate(complex):
+  return Macrostate(name = "macrostate_" + complex.name,
+                    type = 'exact',
+                    complex = complex)
+def loose_domain_macrostate(complex, strand_num, domain_num, cutoff):
+  """ Creates a loose macrostate with the given domain as the region
+  of interest. The cutoff is a fractional defect within this domain. The
+  results are not meaningful if the domain is not completely bound or 
+  completely unbound."""
+  strandlist = complex.structure.to_strandlist()[:]
+  strands = complex.strands
+  
+  domain_start = sum([d.length
+                        for d
+                        in strands[strand_num].domains[:domain_num]])
+  domain_end = domain_start + strands[strand_num].domains[domain_num].length
+  n = 0
+  for strand_n, strand_struct in enumerate(strandlist):
+    for i, bound in enumerate(strand_struct):
+      is_domain = (strand_n == strand_num and domain_start <= i < domain_end)
+      is_bound_to_domain = (bound != None and bound != '?'
+                           and bound[0] == strand_num
+                           and domain_start <= bound[1] < domain_end)
+      if not is_domain and not is_bound_to_domain:
+        strandlist[strand_n][i] = '?'
+      else:
+        n += 1
+  new_struct = Structure(structure = strandlist, strands = structure.strands)
+  
+  ms_complex = Complex(name = complex.name + "_({0},{1})".format(strand_num, domain_num),
+                       strands = strands,
+                       structure = new_struct)
+  return Macrostate(name = "macrostate_" + ms_complex.name,
+                    type = 'loose',
+                    cutoff = int(cutoff * n))
+        
+def similar_complex_macrostate(complex, cutoff):
+  """ Returns a Macrostate that matches a complex such that every domain
+  matches the given complex's structure to within the cutoff fraction. """
+  macrostates = []
+  for strand_num, strand in enumerate(complex.strands):
+    for domain_num in range(len(strand.domains)):
+      macrostates.append(loose_domain_macrostate(complex, strand_num, domain_num, cutoff)
+  return Macrostate(name = complex.name + "_loose-domains",
+                    type = 'conjunction',
+                    macrostates = macrostates)
   
   
 ## Multistrand utilities

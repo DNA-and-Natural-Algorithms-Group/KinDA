@@ -162,8 +162,8 @@ class Structure(object):
     specified nucleotide, or None if it is unbound. """
     real_strand_num = self._strand_order[strand_num]
     real_bound_info = self._bond_dict[(real_strand_num, index)]
-    if real_bound_info == None:
-      return None
+    if real_bound_info == None or real_bound_info == '?':
+      return real_bound_info
     else:
       return (self._strand_order.index(real_bound_info[0]), real_bound_info[1])
     
@@ -178,6 +178,8 @@ class Structure(object):
         bound = self.bound_to(strand_num, i)
         if bound == None:
           dotparen += '.'
+        elif bound == '?':
+          dotparen += '*'
         elif (strand_num, i) < bound:
           dotparen += '('
         else:
