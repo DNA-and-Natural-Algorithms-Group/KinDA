@@ -8,6 +8,3 @@ from structure import Structure
 import utils
 import input_PIL
 import output_Multistrand, output_Peppercorn
-
-import os, sys
-sys.path.append(os.path.realpath('..'))
