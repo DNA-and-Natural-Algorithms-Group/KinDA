@@ -1,3 +1,5 @@
+### TODO: Add functionality to output DNAObjects in a PIL file.
+
 ## IMPORTS
 import re
 

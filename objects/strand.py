@@ -98,8 +98,9 @@ class Strand(object):
   ## Complementarity and equivalence
   @property
   def is_complement(self):
-    """ Returns False. """
-    return False
+    """This returns True if the Strand name ends in an asterisk (*).
+    False otherwise. ComplementaryStrands negate this."""
+    return self.name[-1] == '*'
   @property
   def complement(self):
     """ Returns a ComplementaryStrand object defined by this Strand. """
@@ -130,11 +131,8 @@ class Strand(object):
 
   ## (In)equality
   def __eq__(self, other):
-    """ Two strands are equal if they have the same id and are
-    not complements of each other."""
-    return (self._object_type == other._object_type and
-            self.id == other.id and
-            self.is_complement == other.is_complement)
+    """ Two strands are equal if they have the same name. """
+    return self._object_type == other._object_type and self.name == other.name
   def __ne__(self, other):
     """ Returns True iff the two strands are not equal."""
     return not self.__eq__(other)

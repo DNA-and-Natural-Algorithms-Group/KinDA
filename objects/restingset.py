@@ -40,7 +40,7 @@ class RestingSet(object):
     else: self.name = 'resting_set{0}'.format(self.id)
     
     # Assign complexes
-    self._complexes = list(set(kargs['complexes']))
+    self._complexes = frozenset(kargs['complexes'])
     
   @property
   def complexes(self):
@@ -50,3 +50,11 @@ class RestingSet(object):
   def contains(self, complex):
     """ Returns True if the given complex is in this resting set. """
     return complex in self._complexes
+    
+  def __eq__(self, other):
+    return self._complexes == other._complexes
+  def __ne__(self, other):
+    return not self.__eq__(other)
+    
+  def __hash__(self):
+    return hash(self._complexes)

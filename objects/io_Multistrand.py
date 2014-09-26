@@ -1,5 +1,7 @@
 from imports import multistrandhome
 
+### TODO: Add conversion from Multistrand objects to DNAObjects objects
+
 import utils
 ##################
 ## Use to_Multistrand() to convert a system of domains, strands, complexes, resting sets, and

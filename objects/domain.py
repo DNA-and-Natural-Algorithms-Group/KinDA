@@ -94,9 +94,9 @@ class Domain(object):
   ## Equivalence and complementarity
   @property
   def is_complement(self):
-    """This is always False for a Domain object.
-    ComplementaryDomains negate this."""
-    return False
+    """This returns True if the Domain name ends in an asterisk (*).
+    False otherwise. ComplementaryDomains negate this."""
+    return self.name[-1] == '*'
   @property
   def complement(self):
     """
@@ -147,11 +147,8 @@ class Domain(object):
 
   ## (In)equality
   def __eq__(self, other):
-    """Returns True iff the two objects are domains, have the same id, and are
-    not complements of each other."""
-    return (self._object_type == other._object_type and
-            self.id == other.id and
-            self.is_complement == other.is_complement)
+    """Returns True iff the two objects are domains and have the same name."""
+    return self._object_type == other._object_type and self.name == other.name
   def __ne__(self, other):
     """Returns True iff the two objects are not equal."""
     return not self.__eq__(other)

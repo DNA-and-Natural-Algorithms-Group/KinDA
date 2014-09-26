@@ -6,5 +6,4 @@ from macrostate import Macrostate
 from constraints import Constraints
 from structure import Structure
 import utils
-import input_PIL
-import output_Multistrand, output_Peppercorn
+import io_PIL, io_Multistrand, io_Peppercorn
