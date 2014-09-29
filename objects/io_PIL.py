@@ -1,4 +1,5 @@
-### TODO: Add functionality to output DNAObjects in a PIL file.
+### TODO: Add functionality to output DNAObjects in a PIL file
+###       in a to_PIL() function.
 
 ## IMPORTS
 import re
@@ -26,7 +27,7 @@ d_paren = r"[().+]+"
 num     = r"\d+"
 
 ## FUNCTIONS
-def read_PIL(filename):
+def from_PIL(filename):
   """Parses the specified PIL file and returns the circuit design objects."""
 
   spec_file = open(filename)

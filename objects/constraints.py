@@ -1,4 +1,14 @@
-from utils import base_group, base_complement
+# Global DNA nucelotide groups
+base_group =      {"A": "A",   "T": "T",   "C": "C",   "G": "G",
+                   "R": "AG",  "Y": "CT",  "W": "AT",  "S": "CG",  "M": "AC",  "K": "GT", 
+                   "B": "CGT", "V": "ACG", "D": "AGT", "H": "ACT",
+                   "N": "ACGT", "x": ""
+                  }
+base_complement = {"A": "T",   "T": "A",   "C": "G",   "G": "C",
+                   "R": "Y",   "Y": "R",   "W": "W",   "S": "S",   "M": "K",   "K": "M",
+                   "B": "V",   "V": "B",   "D": "H",   "H": "D",
+                   "N": "N",   "x": "x"
+                  }
                   
 def base_group_intersect(g1, g2):
   bases1 = set(base_group[g1])

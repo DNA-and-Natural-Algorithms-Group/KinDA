@@ -45,6 +45,9 @@ class Reaction(object):
     ## Assign reactants and products
     self._reactants = frozenset(kargs['reactants'])
     self._products = frozenset(kargs['products'])
+    
+    ## Optional modifiers
+    self.modifiers = {}
   
   # Basic properties
   @property

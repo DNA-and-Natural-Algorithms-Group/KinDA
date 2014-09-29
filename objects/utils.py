@@ -1,19 +1,9 @@
 
 ## Sequence utilities
-# Global DNA nucelotide groups
-base_group =      {"A": "A",   "T": "T",   "C": "C",   "G": "G",
-                   "R": "AG",  "Y": "CT",  "W": "AT",  "S": "CG",  "M": "AC",  "K": "GT", 
-                   "B": "CGT", "V": "ACG", "D": "AGT", "H": "ACT",
-                   "N": "ACGT", "x": ""
-                  }
-base_complement = {"A": "T",   "T": "A",   "C": "G",   "G": "C",
-                   "R": "Y",   "Y": "R",   "W": "W",   "S": "S",   "M": "K",   "K": "M",
-                   "B": "V",   "V": "B",   "D": "H",   "H": "D",
-                   "N": "N",   "x": "x"
-                  }
                   
 def random_sequence(constraint, base_probs = None):
   import random
+  from constraints import base_group
   def choose_base(bases, base_probs):
     prob_sum = sum([base_probs[b] for b in bases])
     assert prob_sum > 0, "Cannot obtain sequence with constraint " + constraint

@@ -1,1 +1,1 @@
-__all__ = ['multistrand_path', 'peppercorn_path']
+__all__ = ['multistrandhome', 'peppercornhome']
