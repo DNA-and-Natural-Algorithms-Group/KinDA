@@ -213,6 +213,13 @@ def similar_complex_macrostate(complex, cutoff):
                     type = 'conjunction',
                     macrostates = macrostates)
                     
+## Functions on RestingSets
+def get_containing_set(restingsets, complex):
+  for rs in restingsets:
+    if complex in rs:
+      return rs
+  return None
+                    
 ## Functions on Structures
 def num_wildcards(structure):
   s = sum(structure.to_strandlist(), [])

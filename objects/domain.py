@@ -154,7 +154,9 @@ class Domain(object):
     return not self.__eq__(other)
   def __hash__(self):
     """ Hash function for Domains. """
-    return self.id
+    return sum([ord(c) * pow(2,i)
+      for i, c
+      in enumerate(self._object_type + self.name)])
     
   ## Output
   def __str__( self ):

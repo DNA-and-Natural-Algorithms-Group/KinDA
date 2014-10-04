@@ -40,11 +40,11 @@ class Reaction(object):
     
     ## Assign object name if supplied, or create an automatic one
     if 'name' in kargs: self.name = kargs['name']
-    else: self.name = 'reaction_' + self.id
+    else: self.name = 'reaction_' + str(self.id)
     
     ## Assign reactants and products
-    self._reactants = frozenset(kargs['reactants'])
-    self._products = frozenset(kargs['products'])
+    self._reactants = tuple(sorted(kargs['reactants'], key = hash))
+    self._products = tuple(sorted(kargs['products'], key = hash))
     
     ## Optional modifiers
     self.modifiers = {}
@@ -70,8 +70,16 @@ class Reaction(object):
   def __ne__(self, other):
     return not self.__eq__(other)
 
-  def __hash__(self, other):
+  def __hash__(self):
     return hash((self._reactants, self._products))
+    
+  # Output
+  def __str__(self):
+    return self.__repr__()
+  def __repr__(self):
+    reactant_str = ' + '.join([repr(r) for r in self._reactants])
+    product_str = ' + '.join([repr(p) for p in self._products])
+    return reactant_str + " -> " + product_str
     
     
   

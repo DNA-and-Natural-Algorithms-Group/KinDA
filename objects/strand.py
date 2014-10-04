@@ -138,7 +138,9 @@ class Strand(object):
     return not self.__eq__(other)
   def __hash__(self):
     """ Returns a hash value on Strands."""
-    return self.id
+    return sum([ord(c) * pow(2,i)
+      for i, c
+      in enumerate(self._object_type + self.name)])
   
   ## Output
   def __str__(self):

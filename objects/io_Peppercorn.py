@@ -31,7 +31,7 @@ def to_Peppercorn_domain(domain):
     name = domain.name
     comp = False
   # Return Peppercorn domain
-  return enum.Domain(name, domain.length, comp)
+  return enum.Domain(name, domain.length, comp, domain.constraints)
   
 def to_Peppercorn_strand(strand, domains):
   """ Converts a DNAObjects.Strand object to the equivalent Peppercorn
@@ -112,8 +112,8 @@ def to_Peppercorn(*args, **kargs):
                   + kargs.get('complexes', []))
   strands = set(sum([c.strands for c in complexes], [])
                 + kargs.get('strands', []))
-  domains = set(sum([s.domains for s in strands], [])
-                + sum([d.base_domains() for d in kargs.get('domains', [])]))
+  domains = set(sum([s.base_domains() for s in strands], [])
+                + sum([d.base_domains() for d in kargs.get('domains', [])], []))
                 
   ## Convert domains, strands, complexes, and reactions
   enum_domains = {}
@@ -127,6 +127,10 @@ def to_Peppercorn(*args, **kargs):
   enum_complexes = {}
   for complex in set(complexes):
     enum_complexes[complex] = to_Peppercorn_complex(complex, enum_strands)
+    
+  enum_reactions = {}
+  for reaction in set(reactions):
+    enum_reactions[reaction] = to_Peppercorn_reaction(reaction, enum_complexes)
   
   ## Return in a dict
   results = dict()
@@ -177,7 +181,7 @@ def from_Peppercorn_complex(complex, strands):
 def from_Peppercorn_reaction(reaction, complexes):
   """ Converts a Peppercorn ReactionPathway object to an equivalent DNAObjects
   Reaction object. This function requires as an argument a dict mapping
-  Peppercorn ReactionPathways to their equivalent DNAObject Reactions. """
+  Peppercorn Complexes to their equivalent DNAObject Complexes. """
   import dnaobjects as dna
   
   reactants = [complexes[r] for r in reaction.reactants]
@@ -185,6 +189,15 @@ def from_Peppercorn_reaction(reaction, complexes):
   return dna.Reaction(name = reaction.name,
                       reactants = reactants,
                       products = products)
+                      
+def from_Peppercorn_restingset(restingset, complexes):
+  """ Converts a Peppercorn RestingSet object to an equivalent DNAObjects
+  RestingSet object. This function requires as an argument a dict mapping
+  Peppercorn Complexes to their equivalent DNAObjects complexes. """
+  import dnaobjects as dna
+  
+  rs_complexes = [complexes[c] for c in restingset.complexes]
+  return dna.RestingSet(name = restingset.name, complexes = rs_complexes)
                      
 def from_Peppercorn(*args, **kargs):
   """ Converts a system of Peppercorn objects to the equivalent DNAObject
@@ -194,16 +207,19 @@ def from_Peppercorn(*args, **kargs):
     - strands
     - complexes
     - reactions
+    - restingsets
   Other arguments are ignored. """
   import enumerator.utils as enum
   
   ## Extract all objects to be converted
+  restingsets = set(kargs.get('restingsets', []))
   reactions = set(kargs.get('reactions', []))
   complexes = set(sum([r.reactants + r.products for r in reactions], [])
+                  + sum([rs.complexes for rs in restingsets], [])
                   + kargs.get('complexes', []))
   strands = set(sum([c.strands for c in complexes], [])
                 + kargs.get('strands', []))
-  domains = set(sum([s.domains for d in domains], [])
+  domains = set(sum([s.domains for s in strands], [])
                 + kargs.get('domains', []))
                 
   ## Convert objects
@@ -223,10 +239,15 @@ def from_Peppercorn(*args, **kargs):
   for r in reactions:
     dna_reactions[r] = from_Peppercorn_reaction(r, dna_complexes)
     
+  dna_restingsets = {}
+  for rs in restingsets:
+    dna_restingsets[rs] = from_Peppercorn_restingset(rs, dna_complexes)
+    
   ## Make return value
   result = dict()
   result['domains'] = dna_domains.items()
   result['strands'] = dna_strands.items()
   result['complexes'] = dna_complexes.items()
   result['reactions'] = dna_reactions.items()
+  result['restingsets'] = dna_restingsets.items()
   return result

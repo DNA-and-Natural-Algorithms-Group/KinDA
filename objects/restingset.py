@@ -47,7 +47,7 @@ class RestingSet(object):
     """ Returns the set of Complex objects that define this RestingSet. """
     return self._complexes
     
-  def contains(self, complex):
+  def __contains__(self, complex):
     """ Returns True if the given complex is in this resting set. """
     return complex in self._complexes
     
@@ -58,3 +58,8 @@ class RestingSet(object):
     
   def __hash__(self):
     return hash(self._complexes)
+    
+  def __str__(self):
+    return self.__repr__()
+  def __repr__(self):
+    return "[" + ", ".join([repr(c) for c in self._complexes]) + "]"
