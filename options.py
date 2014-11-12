@@ -1,3 +1,12 @@
+flags = {
+  'no-cleanup': False,
+  'loose_complexes': False
+}
+
+general_params = {
+  'loose_complex_similarity': 0.8
+}
+
 multistrand_params = {
   'dangles': 'Some',
   'sim_time': 0.001,
@@ -15,4 +24,3 @@ nupack_params = {
   'temp': 25
 }
 
-flags = {'no-cleanup': False}

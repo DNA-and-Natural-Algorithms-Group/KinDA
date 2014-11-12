@@ -15,7 +15,10 @@ def cleanup_all():
 def default_mean_func(datablock):
   """Default mean function"""
   data = datablock.get_data()
-  return sum(data) / len(data)  
+  if len(data) == 0:
+    return float('nan')
+  else:
+    return sum(data) / len(data)  
 def default_std_func(datablock):
   """Default standard deviation function"""
   data = datablock.get_data()

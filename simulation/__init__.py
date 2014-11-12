@@ -1,20 +1,14 @@
 import os, sys
-if os.environ['DNAOBJECTSHOME'] not in sys.path:
-  sys.path.append(os.environ['DNAOBJECTSHOME'])
-if os.environ['MULTISTRANDHOME'] not in sys.path:
-  sys.path.append(os.environ['MULTISTRANDHOME'])
-if os.environ['NUPACKHOME'] not in sys.path:
-  sys.path.append(os.environ['NUPACKHOME'])
-if os.environ['PYNUPACKHOME'] not in sys.path:
-  sys.path.append(os.environ['PYNUPACKHOME'])
+
+if os.path.realpath('..') not in sys.path:
+  sys.path.append(os.path.realpath('..'))
 
 
-from multistrandjob import MultistrandJob, FirstPassageTimeModeJob, FirstStepModeJob, TransitionModeJob
-from nupackjob import NupackSampleJob
-import options
+#from multistrandjob import MultistrandJob, FirstPassageTimeModeJob, FirstStepModeJob, TransitionModeJob
+#from nupackjob import NupackSampleJob
+#import options
 
 __all__ = ['multistrandjob',
            'nupackjob',
-           'datablock',
-           'options']
+           'datablock']
           

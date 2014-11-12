@@ -1,3 +1,5 @@
+from imports import multistrandhome, dnaobjectshome
+
 import math
 
 # Import Multistrand
@@ -5,7 +7,7 @@ import multistrand.objects as MSObjects
 from multistrand.options import Options as MSOptions
 from multistrand.system import SimSystem as MSSimSystem
 
-from dnaobjects import utils
+from dnaobjects import utils, io_Multistrand, Macrostate, RestingSet, Complex
 
 import options
 from datablock import Datablock
@@ -30,7 +32,7 @@ def rate_mean_func(datablock):
   If no data has been collected, returns NaN."""
   data = datablock.get_data()
   if len(data) > 0:
-    times = [1.0 / r for r in data]
+    times = [1.0 / r for r in data if r != 0]
     return len(times) / sum(times)
   else:
     return float('nan')
@@ -43,7 +45,7 @@ def rate_error_func(datablock):
   data = datablock.get_data()
   n = len(data)
   if n > 1:
-    times = [1.0 / r for r in data]
+    times = [1.0 / r for r in data if r != 0]
     time_mean = sum(times) / n
     time_std = math.sqrt(sum([(t - time_mean)**2 for t in times]) / (n - 1))
     time_error = time_std / math.sqrt(n)
@@ -73,9 +75,10 @@ class MultistrandJob(object):
   
   ms_options = None
   
-  def __init__(self, start_complexes, stop_conditions, sim_mode):
-    self.ms_options = self.setup_options(start_state = start_complexes,
-                                         stop_conditions = stop_conditions,
+  def __init__(self, start_state, stop_states, stop_tags, sim_mode):
+    self.ms_options = self.setup_options(start_state = start_state,
+                                         stop_states = stop_states,
+                                         stop_tags = stop_tags,
                                          mode = sim_mode)
     
     self.datablocks["overall_time"] = Datablock()
@@ -83,24 +86,69 @@ class MultistrandJob(object):
                                                 error_func = rate_error_func)
                                                 
   def setup_options(self, *args, **kargs):
+    """ Inelegant. Consider revising. """
+    def make_stop_macrostates(stop_states, stop_tags):
+      """stop_complexes is a list of lists of Complexes or RestingSets
+      that define the stop conditions for this job. We convert each list of
+      complexes to a macrostate conjunction of loose or exact macrostates
+      corresponding to each complex in the list."""
+      loose_complexes = options.flags['loose_complexes']
+      loose_cutoff = options.general_params['loose_complex_similarity']
+      
+      obj_to_mstate = {}
+      for obj in set(sum(stop_states, [])):
+        if obj._object_type == 'resting-set':
+          obj_to_mstate[obj] = Macrostate(type = 'disassoc', complex = next(iter(obj.complexes)))
+        elif loose_complexes:
+          obj_to_mstate[obj] = utils.similar_complex_macrostate(obj, loose_cutoff)
+        else:
+          obj_to_mstate[obj] = utils.exact_complex_macrostate(obj)
+          
+      macrostates = [
+        Macrostate(name = tag, type = 'conjunction', macrostates = [
+          obj_to_mstate[o]
+            for o
+            in objs
+        ])
+          for objs, tag
+          in zip(stop_states, stop_tags)
+      ]
+      return macrostates
+      
     ## Create state_state with Multistrand Complexes
-    resting_sets = []
-    stop_conditions = kargs['stop_conditions']
-    start_complexes = kargs['start_state']
-    sc_complexes = sum([utils.get_dependent_complexes(m) for m in stop_conditions], [])
-    complexes = list(set(start_complexes + sc_complexes))
-    strands = list(set(sum([c.strands for c in complexes], [])))
-    domains = list(set(sum([s.base_domains() for s in strands], [])))
+    if all(map(lambda x: isinstance(x, RestingSet), kargs['start_state'])):
+      resting_sets = kargs['start_state']
+      start_complexes = []
+      boltzmann = True
+    elif all(map(lambda x: isinstance(x, Complex), kargs['start_state'])):
+      resting_sets = []
+      start_complexes = kargs['start_state']
+      boltzmann = False
+    else:
+      assert False, "Starting state must be all complexes or all resting sets"
+      
+    stop_conditions = make_stop_macrostates(kargs['stop_states'], kargs['stop_tags'])
+    complexes = start_complexes
+    #print [c.strands for c in complexes]
+    #print strands
+    #print domains
     
-    ms_data = utils.to_Multistrand(domains, strands, complexes, resting_sets, stop_conditions)
-    domains_dict = ms_data[0]
-    strands_dict = ms_data[1]
-    complexes_dict = ms_data[2]
-    resting_sets_dict = ms_data[3]
-    macrostates_dict = ms_data[4]
+    ms_data = io_Multistrand.to_Multistrand(
+        complexes = complexes,
+        resting_sets = resting_sets,
+        macrostates = stop_conditions
+    )
+    domains_dict = dict(ms_data['domains'])
+    strands_dict = dict(ms_data['strands'])
+    complexes_dict = dict(ms_data['complexes'])
+    resting_sets_dict = dict(ms_data['restingstates'])
+    macrostates_dict = dict(ms_data['macrostates'])
     
     ## Create Options object using options.multistrand_params
-    start_state = [complexes_dict[c] for c in start_complexes]
+    if boltzmann:
+      start_state = [resting_sets_dict[rs] for rs in resting_sets]
+    else:
+      start_state = [complexes_dict[c] for c in start_complexes]
     o = MSOptions(start_state = start_state,
                   dangles = options.multistrand_params['dangles'],
                   simulation_time = options.multistrand_params['sim_time'],
@@ -109,6 +157,7 @@ class MultistrandJob(object):
                   rate_method = options.multistrand_params['rate_method'])
     o.simulation_mode = kargs['mode']
     o.temperature = options.multistrand_params['temp']
+    o.boltzmann_sample = boltzmann
 #    o.output_interval = options.multistrand_params['output_interval']
     o.stop_conditions = [macrostates_dict[m] for m in stop_conditions]
     
@@ -138,19 +187,23 @@ class MultistrandJob(object):
     del self.ms_options.interface.results[:]
       
   
-  def reduce_error_to(self, rel_goal, abs_goal, reaction = 'overall', stat = 'rate'):
+  def reduce_error_to(self, rel_goal, abs_goal = 0.0, reaction = 'overall', stat = 'rate'):
     """Runs simulations to reduce the error to either rel_goal*mean or abs_goal."""
     tag = reaction + "_" + stat
     block = self.datablocks[tag]
     
     error = block.get_error()
     goal = max(abs_goal, rel_goal * block.get_mean())  
-    while error > goal:
+    while not error <= goal:
       # Estimate additional trials based on inverse square root relationship
       # between error and number of trials
-      reduction = error / goal
-      num_trials = int(block.get_num_points() * (reduction**2 - 1) + 1)
-      num_trials = min(num_trials, 50)
+      if error == float('inf'):
+        num_trials = 5
+      else:
+        reduction = error / goal
+        num_trials = int(block.get_num_points() * (reduction**2 - 1) + 1)
+        num_trials = min(num_trials, 50)
+        
       self.run_simulations(num_trials)
       error = block.get_error()
       goal = max(abs_goal, rel_goal * block.get_mean())
@@ -180,14 +233,14 @@ class FirstPassageTimeModeJob(MultistrandJob):
     results = self.ms_options.interface.results
     
     times = [r.time for r in results]
-    rates = [1.0/t for t in times]
+    rates = [1.0/t for t in times if t != 0]
     self.datablocks["overall_time"].add_data(times)
     self.datablocks["overall_rate"].add_data(rates)
     
     for tag in self.tags:
       relevant_sims = filter(lambda x: x.tag == tag, results)
       times = [r.time for r in relevant_sims]
-      rates = [1.0 / t for t in times]
+      rates = [1.0 / t for t in times if t != 0]
       self.datablocks[tag + "_time"].add_data(times)
       self.datablocks[tag + "_rate"].add_data(rates)
       
@@ -225,7 +278,7 @@ class TransitionModeJob(MultistrandJob):
     transition_paths = self.ms_options.interface.transition_lists
     
     times = [r.time for r in results]
-    rates = [1.0/t for t in times]
+    rates = [1.0/t for t in times if t != 0]
     self.datablocks["overall_time"].add_data(times)
     self.datablocks["overall_rate"].add_data(rates)
     
@@ -248,7 +301,7 @@ class TransitionModeJob(MultistrandJob):
         self.datablocks[key + "_rate"] = Datablock(mean_func = rate_mean_func,
                                                    error_func = rate_error_func)
       self.datablocks[key + "_time"].add_data(times)
-      self.datablocks[key + "_rate"].add_data([1.0/t for t in times])
+      self.datablocks[key + "_rate"].add_data([1.0/t for t in times if t != 0])
     
     del self.ms_options.interface.results[:]
     del self.ms_options.interface.transition_lists[:]
@@ -261,8 +314,7 @@ class TransitionModeJob(MultistrandJob):
     return filter(lambda x: sum(x[1])>0, transition_path)
     
   
-  def reduce_error_to(self, rel_goal, abs_goal,
-                      start_states, end_states, stat = 'rate'):
+  def reduce_error_to(self, rel_goal, abs_goal, start_states, end_states, stat = 'rate'):
     super(TransitionModeJob, self).reduce_error_to(rel_goal, abs_goal,
         self.get_tag(start_states, end_states), stat)
     
@@ -285,9 +337,9 @@ class FirstStepModeJob(MultistrandJob):
   
   ms_options = None
   
-  def __init__(self, start_complexes, stop_conditions):
+  def __init__(self, start_state, stop_states, stop_tags = None):
   
-    super(FirstStepModeJob, self).__init__(start_complexes, stop_conditions, FIRST_STEP_MODE)
+    super(FirstStepModeJob, self).__init__(start_state, stop_states, stop_tags, FIRST_STEP_MODE)
       
     self.tags = [sc.tag for sc in self.ms_options.stop_conditions]
     self.tags.append("None")
@@ -304,16 +356,19 @@ class FirstStepModeJob(MultistrandJob):
     results = self.ms_options.interface.results
     
     times = [r.time for r in results]
-    rates = [1.0/t for t in times]
+    rates = [1.0/t for t in times if t != 0]
     self.datablocks["overall_time"].add_data(times)
     self.datablocks["overall_rate"].add_data(rates)
+    
+    for r in [r for r in results if r.tag == None]:
+      r.tag = "None"
     
     for tag in self.tags:
       relevant_sims = filter(lambda x: x.tag == tag, results)
       successes = map(lambda x: int(x.tag == tag), results)
       kcolls = [r.collision_rate for r in relevant_sims]
       k1s = map(lambda x: int(x.tag == tag) * x.collision_rate, results)
-      k2s = [1.0 / r.time for r in relevant_sims]
+      k2s = [1.0 / r.time for r in relevant_sims if r.time != 0]
       self.datablocks[tag + "_prob"].add_data(successes)
       self.datablocks[tag + "_kcoll"].add_data(kcolls)
       self.datablocks[tag + "_k1"].add_data(k1s)
