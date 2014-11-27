@@ -34,19 +34,17 @@ class NupackSampleJob(object):
       return -1
         
   def get_complex_prob(self, complex_name = "_spurious"):
-    if self.total_count > 0:
-      index = self.get_complex_index(complex_name)
-      return float(self.complexes_count[index]) / self.total_count
-    else:
-      return float('nan')
+    index = self.get_complex_index(complex_name);
+    N = self.total_count;
+    Nc = self.complexes_count[index];
+    return (Nc + 1.0)/(N + 2);
+    
         
   def get_complex_prob_error(self, complex_name = "_spurious"):
     index = self.get_complex_index(complex_name)
-    prob = self.get_complex_prob(complex_name)
-    if self.total_count > 0:# and prob != 0.0 and prob != 1.0:
-      return math.sqrt(prob * (1 - prob) / self.total_count)
-    else:
-      return float('inf')
+    Nc = self.complexes_count[index]
+    N = self.total_count;
+    return math.sqrt((Nc+1.0)*(N-Nc+1)/((N+3)*(N+2)*(N+2)));
   
   def complex_is_similar(self, complex, sampled):
     return 1 - utils.max_domain_defect(sampled, complex.structure) >= self.similarity_threshold
@@ -88,10 +86,10 @@ class NupackSampleJob(object):
       # between error and number of trials
       print "Error should be reduced from %s to %s" % (error, goal)
       if error == float('inf'):
-        num_trials = 250
+        num_trials = 500
       else:
         reduction = error / goal
-        num_trials = min(250, int(self.total_count * (reduction**2 - 1) + 1))
+        num_trials = min(500, int(self.total_count * (reduction**2 - 1) + 1))
         
       self.sample(num_trials)
       error = self.get_complex_prob_error(complex_name)

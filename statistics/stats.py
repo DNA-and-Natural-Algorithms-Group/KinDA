@@ -6,7 +6,7 @@
 from simulation.multistrandjob import FirstPassageTimeModeJob, \
     TransitionModeJob, FirstStepModeJob
 from simulation.nupackjob import NupackSampleJob
-from simulation import options
+import options
   
 from dnaobjects import utils, Macrostate
 
@@ -145,7 +145,7 @@ class RestingSetStats(object):
     self.inter_rxns = []
     self.spurious_rxns = []
     
-  def get_conformation_prob(self, complex_name, allowed_error = 0.50, abs_error = 0.0):
+  def get_conformation_prob(self, complex_name, allowed_error = 0.50, abs_error = 1e-5):
     """ Returns the probability and probability error
     of the given conformation based on the current number of samples.
     Use '_spurious' as a complex name to get the probability of
@@ -155,7 +155,7 @@ class RestingSetStats(object):
     prob = self.sampler.get_complex_prob(complex_name)
     error = self.sampler.get_complex_prob_error(complex_name)
     return (prob, error)
-  def get_conformation_probs(self, allowed_error = 0.50, abs_error = 0.0):
+  def get_conformation_probs(self, allowed_error = 0.50, abs_error = 1e-5):
     """ Returns the probability and probability error for all
     conformations in the resting set as a dictionary. """
     names = [c.name for c in self.restingset.complexes] + ["_spurious"]
