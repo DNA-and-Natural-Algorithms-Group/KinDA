@@ -15,25 +15,36 @@ from stats import RestingSetRxnStats, RestingSetStats
 ####        make_ComplexStats
 
 ## GLOBALS
-def make_RestingSetRxnStats(reactions):
+def listminuslist(minuend, subtrahend):
+  difference = minuend[:]
+  for elem in subtrahend:
+    if elem in difference: difference.remove(elem)
+  return difference
+  
+
+def make_RestingSetRxnStats(enum_job):
   """ A convenience function, creating a dict mapping
   reactions to stats objects such that all stats objects
   with the same reactants share a Multistrand job object
   for improved efficiency. """
+  # Pull out important items from enumeration job
+  detailed_rxns = enum_job.get_reactions()
+  condensed_rxns = enum_job.get_restingset_reactions()
+  
   # Determine all unique reactant groups
-  reactants = set([r.reactants for r in reactions])
+  reactants = set([r.reactants for r in condensed_rxns])
   
   # Make a Multistrand simulation job for each reactant group
   reactants_to_mjob = {}
   for r in reactants:
     # Group all products coming from these reactants together
-    valid_prods = [list(rxn.products) for rxn in reactions if rxn.reactants == r]
+    valid_prods = [list(rxn.products) for rxn in condensed_rxns if rxn.reactants == r]
     
     # Get spurious products from these reactants
-    spurious_prods = get_spurious_products(r, valid_prods)
+    spurious_prods = get_spurious_products(r, detailed_rxns)
     
     # Make product tags for each product group so data can be pulled out later
-    tags = [str(rxn) for rxn in reactions if rxn.reactants == r]
+    tags = [str(rxn) for rxn in condensed_rxns if rxn.reactants == r]
     tags = tags + ['spurious']*len(spurious_prods)
     
     # Make Multistrand job
@@ -42,7 +53,7 @@ def make_RestingSetRxnStats(reactions):
     
   # Create RestingSetRxnStats object for each reaction
   rxn_to_stats = {}
-  for rxn in reactions:
+  for rxn in condensed_rxns:
     stats = RestingSetRxnStats(
         reactants = rxn.reactants,
         products = rxn.products,
@@ -53,72 +64,88 @@ def make_RestingSetRxnStats(reactions):
     
   return rxn_to_stats
   
-  
-def get_spurious_products(reactants, valid_products):
+def get_spurious_products(reactants, reactions):
   """ It is desirable to have Multistrand simulations end
   when interacting complexes have deviated so much from expected
   trajectories that any calculated reaction times actually
   include undesired interactions. Theoretically, a set of products
   has reached this point when they must undergo one or more slow
   reactions in order to end at one of the valid product states.
-  This is done here by producing all partitions of the ordered
-  strand list that do not correspond to valid product states. 
-  Note that this does not consider other types of slow reactions
-  such as 4-way branch migration. This function also does not
-  support more than 2 reactants. """
-  def strand_rotations(strands):
-    strands = tuple(strands)
-    rotations = set()
-    for i in range(len(strands)):
-      rotations.add(strands[:i] + strands[i:])
-    return rotations
-  def strand_combinations(strands1, strands2):
-    rotations1 = strand_rotations(strands1)
-    rotations2 = strand_rotations(strands2)
-    combos = map(lambda x: x[0] + x[1], it.product(rotations1, rotations2))
-    return set(combos)
-  def strand_partitions(strands):
-    strands = tuple(strands)
-    partitions = set()
-    for i in range(len(strands)):
-      for j in range(i + 1, len(strands)):
-        partitions.add((strands[i:j], strands[j:] + strands[:i]))
-    return partitions
-  def equal_under_rotation(list1, list2):
-    rotations = strand_rotations(list1)
-    return any(map(lambda x: x==list2, rotations))
-  def equal_under_permutation(list1, list2):
-    permutations = list(it.permutations(list1))
-    return any(map(lambda x: all(map(lambda y: equal_under_rotation(*y), zip(x, list2))), permutations))
-  def is_spurious(strand_lists):
-    # INCORRECT, talk to winfree about this
-    for valid in valid_products:
-      valid_strands = [rs.strands for rs in valid]
-      if equal_under_permutation(valid_strands, strand_lists):
-        return False
-    return True
+  This is done here by calculating all ways of combining the
+  (at most 2) reactants and removing ones that are expected.
+  Complexes along expected reaction trajectories are split up
+  in all possible ways, and expected complexes are disregarded.
+  This produces all unexpected complexes produced 'one step' away
+  from the expected reaction trajectories."""
+  def hashable_strand_rotation(strands):
+    index = 0
+    poss_starts = range(len(strands))
+    while len(poss_starts) > 1 and index < len(strands):
+      to_compare = [strands[i + index] for i in poss_starts]
+      min_strand = min(to_compare, key=lambda strand: strand.name)
+      poss_starts = filter(lambda i: to_compare[i] == min_strand, poss_starts)
+      index += 1      
+    start = poss_starts[0]
+    return tuple(strands[start:] + strands[:start])
+  def hashable_state(state):
+    filtered = filter(lambda x: x != (), state)
+    return tuple(sorted([hashable_strand_rotation(f) for f in filtered]))
+  def get_valid_states(init_state, reactions, valid_states):
+    valid_states.add(init_state)
+    for rxn in reactions:
+      unreacting = listminuslist(list(init_state), rxn[0])
+      if len(unreacting) == len(init_state) - len(rxn[0]):
+        new_state = hashable_state(unreacting + rxn[1])
+        if new_state not in valid_states:
+          get_valid_states(new_state, reactions, valid_states)
+    return valid_states
+  def one_step_spurious_states(init_state, valid_states):
+    # Return spurious states one step away from given reactants
+    one_step_states = set([])
     
-  if len(reactants) == 2:
-    strand_lists = strand_combinations(reactants[0].strands, reactants[1].strands)
-  elif len(reactants) == 1:
-    strand_lists = set([tuple(reactants[0].strands)])
-  else:
-    raise NotImplementedError("Cannot determine spurious products of a set of more than 2 reactants.")
+    # states produced through disassociation
+    for r in init_state:
+      unreacting = listminuslist(list(init_state), [r])
+      for i in range(len(r)):
+        for j in range(i, len(r)):
+          new_state = hashable_state(unreacting + [r[i:j], r[j:]+r[:i]])
+          one_step_states.add(new_state)
+         
+    # states produced through binding
+    for r1 in init_state:
+      for r2 in listminuslist(list(init_state), [r1]):
+        rot1 = [r1[i:] + r1[:i] for i in range(len(r1))]
+        rot2 = [r2[i:] + r2[:i] for i in range(len(r2))]
+        unreacting = listminuslist(list(init_state), [r1, r2])
+        one_step_states |= set([hashable_state(unreacting + [a+b]) for a,b in it.product(rot1, rot2)])
+    
+    spurious_states = set([s for s in one_step_states if s not in valid_states])
+    return spurious_states
     
     
-  partitions = set(sum(map(lambda x: list(strand_partitions(x)), strand_lists), []))
-  spurious_partitions = filter(is_spurious, partitions)
+  ## Convert to strandlist-level objects
+  strandlist_reactants = hashable_state([tuple(r.strands) for r in reactants])
+  strandlist_reactions = [[[hashable_strand_rotation(r.strands) for r in rxn.reactants],
+                           [hashable_strand_rotation(p.strands) for p in rxn.products]]
+                          for rxn in reactions]
+    
+  valid_states = get_valid_states(strandlist_reactants, strandlist_reactions, set([]))
   
-  spurious_products = []
-  for partition in spurious_partitions:
-    restingsets = []
-    for strandlist in partition:
-      c = dna.Complex(strands = strandlist)
-      rs = dna.RestingSet(complexes = [c])
-      rs.name = 'spurious_' + rs.name
-      restingsets.append(rs)
-    spurious_products.append(restingsets)
-  return spurious_products
+  print valid_states
+  # Get all spurious states one step away from any valid state
+  spurious_states = set([])
+  for s in valid_states:
+    spurious_states |= one_step_spurious_states(s, valid_states)
+    
+  # Convert back to RestingSet objects
+  spurious_restingsets = []
+  for state in spurious_states:
+    complexes = [dna.Complex(strands = list(s)) for s in state]
+    restingsets = [dna.RestingSet(complexes = [c]) for c in complexes]
+    spurious_restingsets.append(restingsets)
+    
+  return spurious_restingsets
+
 
 def make_RestingSetStats(restingsets):
   """ A convenience function to make RestingSetStats objects for
