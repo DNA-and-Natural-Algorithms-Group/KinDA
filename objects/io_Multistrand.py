@@ -49,7 +49,7 @@ def to_Multistrand_restingstates(resting_sets, ms_complexes):
   ms_restingstates = {}
   for rs in resting_sets:
     cpxs = [ms_complexes[c] for c in rs.complexes]
-    ms_restingstates[rs] = MS.RestingState(name = rs.name, complex_set = cpxs)
+    ms_restingstates[rs] = MS.RestingState(rs.name, cpxs)
   return ms_restingstates
   
 def to_Multistrand_macrostates(macrostates, ms_complexes):
@@ -95,9 +95,34 @@ def to_Multistrand_macrostates(macrostates, ms_complexes):
       ms_macrostates[m] = MS.Macrostate(m.name, states)
   return ms_macrostates
   
-def to_Multistrand(domains, strands = [], complexes = [], resting_sets = [], macrostates = []):
+def to_Multistrand(*args, **kargs):
+  """Converts DNAObjects objects to Peppercorn objects.
+  The following objects will be recognized in the key list and converted:
+    - domains
+    - strands
+    - complexes
+    - resting_sets
+    - macrostates
+  Other supplied objects are ignored.
+  The output is in the form of a dictionary mapping the keys
+  'domains', 'strands', 'complexes', 'resting_sets', and macrostates
+  to a list of tuples of the form (object, converted_object). This may be
+  iterated through directly or converted into a dict for object lookup.
+  """
   import multistrand.objects as MS
   from macrostate import Macrostate
+  from utils import get_dependent_complexes
+  
+  ## Extract all objects to be converted
+  macrostates = set(kargs.get('macrostates', []))
+  resting_sets = set(kargs.get('resting_sets', []))
+  complexes = set(sum([get_dependent_complexes(m) for m in macrostates], [])
+                  + sum([list(rs.complexes) for rs in resting_sets], [])
+                  + kargs.get('complexes', []))
+  strands = set(sum([c.strands for c in complexes], [])
+                + kargs.get('strands', []))
+  domains = set(sum([s.base_domains() for s in strands], [])
+                + sum([d.base_domains() for d in kargs.get('domains', [])], []))
   
   ## Create dict of Multistrand Domain objects
   ms_domains = to_Multistrand_domains(domains)
@@ -114,6 +139,11 @@ def to_Multistrand(domains, strands = [], complexes = [], resting_sets = [], mac
   ## Create dict of Multistrand Macrostate objects
   ms_macrostates = to_Multistrand_macrostates(macrostates, ms_complexes)
     
-  return (ms_domains, ms_strands, ms_complexes, ms_restingstates, ms_macrostates)
+  results = {'domains': ms_domains.items(),
+             'strands': ms_strands.items(),
+             'complexes': ms_complexes.items(),
+             'restingstates': ms_restingstates.items(),
+             'macrostates': ms_macrostates.items()}
+  return results
     
   

@@ -1,5 +1,5 @@
-from domain import Domain
-from strand import Strand
+from domain import Domain, ComplementaryDomain
+from strand import Strand, ComplementaryStrand
 from complex import Complex
 from restingset import RestingSet
 from macrostate import Macrostate

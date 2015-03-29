@@ -2,7 +2,7 @@
 ###       in a to_PIL() function.
 
 ## IMPORTS
-import re
+import re, sys
 
 import dnaobjects as dna
 

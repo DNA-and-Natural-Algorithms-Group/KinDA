@@ -166,6 +166,8 @@ class Domain(object):
     else:
       info = self._constraints
     return "Domain {0}: {1} ({2})".format(self.name, info, self._length)
+  def __repr__(self):
+    return str(self)
 
 
 class ComplementaryDomain( Domain):
@@ -282,3 +284,5 @@ class ComplementaryDomain( Domain):
   def __str__( self ):
     """ Human-readable output formatting for this ComplementaryDomain."""
     return "ComplementaryDomain {0}: ~[{1}]".format(self.name, str(self._complement))
+  def __repr__(self):
+    return str(self)

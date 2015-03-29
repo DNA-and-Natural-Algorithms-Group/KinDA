@@ -27,9 +27,11 @@ def to_Peppercorn_domain(domain):
   if domain.name[-1] == "*":
     name = domain.name[:-1]
     comp = True
+    constraints = domain.constraints.complement # Input constraints for non-complement
   else:
     name = domain.name
     comp = False
+    constraints = domain.constraints
   # Return Peppercorn domain
   return enum.Domain(name, domain.length, comp, domain.constraints)
   
@@ -92,9 +94,7 @@ def to_Peppercorn_reaction(reaction, complexes):
   return enum.ReactionPathway(name, reactants, products)
   
 def to_Peppercorn(*args, **kargs):
-  """Prepares the domain-level information for this system.  To be called 
-  once all the sequences, structures, etc. have been added to the spec. 
-  Raises an exception if Enumerator is not successfully created.
+  """Converts DNAObjects objects to Peppercorn objects.
   The following objects will be recognized in the key list and converted:
     - domains
     - strands
@@ -102,7 +102,7 @@ def to_Peppercorn(*args, **kargs):
     - reactions
   Other supplied objects are ignored.
   The output is in the form of a dictionary mapping the keys
-  'domain', 'strand', 'complex', and 'reaction' to a list of tuples
+  'domains', 'strands', 'complexes', and 'reactions' to a list of tuples
   of the form (object, converted_object). This may be iterated through
   directly or converted into a dict for object lookup.
   """
@@ -154,9 +154,13 @@ def from_Peppercorn_domain(domain):
   are supplied, the 'N' constraint is applied to all bases in the domain. """
   import dnaobjects as dna
   
-  if domain.sequence == None: constraints = "N" * domain.length
-  else: constraints = domain.sequence
-  return dna.Domain(name = domain.name, constraints = constraints)
+  if domain.sequence == None: constraints = dna.Constraints("N" * domain.length)
+  else: constraints = dna.Constraints(domain.sequence)
+  
+  if domain.is_complement:
+    return dna.Domain(name = domain.identity, constraints = constraints.complement).complement
+  else:
+    return dna.Domain(name = domain.name, constraints = constraints)
   
 def from_Peppercorn_strand(strand, domains):
   """ Converts a Peppercorn Strand object to an equivalent DNAObjects Strand.

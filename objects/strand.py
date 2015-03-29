@@ -147,6 +147,8 @@ class Strand(object):
     """ Human-readable output formatting for this Strand object."""
     info = "[" + ", ".join([str(d) for d in self._domains]) + "]"
     return "Strand {0}: {1} ({2})".format(self.name, info, self._length)
+  def __repr__(self):
+    return str(self)
 
 class ComplementaryStrand( Strand ):
   """
@@ -240,5 +242,8 @@ class ComplementaryStrand( Strand ):
     return -self._complement.__hash__()
     
   ## Output
+  def __str__(self):
     """ Human-readable output formatting for this ComplementaryStrand."""
     return "ComplementaryStrand {0}: ~[{1}]".format(self.name, str(self._complement))
+  def __repr__(self):
+    return str(self)

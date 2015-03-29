@@ -48,7 +48,7 @@ class Complex(object):
     else: self.name = "complex_{0}".format(self.id)
     
     # Assign strands
-    if 'strands' in kargs: self._strands = kargs['strands'][:]
+    if 'strands' in kargs: self._strands = list(kargs['strands'])
     else: raise ValueError("'strands' key argument required for complex.")
     
     # Calculate length (the total number of nucleotides in the complex)
@@ -56,7 +56,7 @@ class Complex(object):
     
     # Assign structure
     if 'structure' in kargs: self.structure = kargs['structure']
-    else: self.structure = ''
+    else: self.structure = '+'.join(['*'*s.length for s in self.strands])
   
   
   ## Basic properties

@@ -46,6 +46,9 @@ class RestingSet(object):
   def complexes(self):
     """ Returns the set of Complex objects that define this RestingSet. """
     return self._complexes
+  @property
+  def strands(self):
+    return list(self._complexes)[0].strands
     
   def __contains__(self, complex):
     """ Returns True if the given complex is in this resting set. """
