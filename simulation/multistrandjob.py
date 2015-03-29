@@ -53,15 +53,34 @@ def rate_error_func(datablock):
     return time_error / time_mean**2
   else:
     return float('inf')
+def k1_mean_func(datablock):
+  data = datablock.get_data()
+  n = len(data)
+  n_s = len([x for x in data if x != 0])
+  if n_s >= 1:
+    mean = sum(data) / n_s
+    return mean * (n_s + 1.0)/(n + 2.0)
+  else:
+    return (n_s + 1.0)/(n + 2.0)
+#def k1_error_func(datablock):
+def bernoulli_mean_func(datablock):
+  # Expectation of the probability based on Bayesian analysis
+  data = datablock.get_data()
+  n = len(data)
+  n_s = sum(data)
+  return (n_s + 1.0) / (n + 2.0)
 def bernoulli_std_func(datablock):
   return math.sqrt(datablock.get_mean() * (1 - datablock.get_mean()))
 def bernoulli_error_func(datablock):
   data = datablock.get_data()
   n = len(data)
-  if n > 0:
-    return datablock.get_std() / math.sqrt(n)
-  else:
-    return float('inf')
+#  if n > 0:
+#    return datablock.get_std() / math.sqrt(n)
+#  else:
+#    return float('inf')
+  # Expectation of the standard error based on Bayesian analysis
+  n_s = sum(data)
+  return math.sqrt((n_s+1.0)*(n-n_s+1)/((n+3)*(n+2)*(n+2)));
     
 # MultistrandJob class definition
 class MultistrandJob(object):
@@ -75,10 +94,9 @@ class MultistrandJob(object):
   
   ms_options = None
   
-  def __init__(self, start_state, stop_states, stop_tags, sim_mode):
+  def __init__(self, start_state, stop_conditions, sim_mode):
     self.ms_options = self.setup_options(start_state = start_state,
-                                         stop_states = stop_states,
-                                         stop_tags = stop_tags,
+                                         stop_conditions = stop_conditions,
                                          mode = sim_mode)
     
     self.datablocks["overall_time"] = Datablock()
@@ -87,33 +105,6 @@ class MultistrandJob(object):
                                                 
   def setup_options(self, *args, **kargs):
     """ Inelegant. Consider revising. """
-    def make_stop_macrostates(stop_states, stop_tags):
-      """stop_complexes is a list of lists of Complexes or RestingSets
-      that define the stop conditions for this job. We convert each list of
-      complexes to a macrostate conjunction of loose or exact macrostates
-      corresponding to each complex in the list."""
-      loose_complexes = options.flags['loose_complexes']
-      loose_cutoff = options.general_params['loose_complex_similarity']
-      
-      obj_to_mstate = {}
-      for obj in set(sum(stop_states, [])):
-        if obj._object_type == 'resting-set':
-          obj_to_mstate[obj] = Macrostate(type = 'disassoc', complex = next(iter(obj.complexes)))
-        elif loose_complexes:
-          obj_to_mstate[obj] = utils.similar_complex_macrostate(obj, loose_cutoff)
-        else:
-          obj_to_mstate[obj] = utils.exact_complex_macrostate(obj)
-          
-      macrostates = [
-        Macrostate(name = tag, type = 'conjunction', macrostates = [
-          obj_to_mstate[o]
-            for o
-            in objs
-        ])
-          for objs, tag
-          in zip(stop_states, stop_tags)
-      ]
-      return macrostates
       
     ## Create state_state with Multistrand Complexes
     if all(map(lambda x: isinstance(x, RestingSet), kargs['start_state'])):
@@ -127,7 +118,8 @@ class MultistrandJob(object):
     else:
       assert False, "Starting state must be all complexes or all resting sets"
       
-    stop_conditions = make_stop_macrostates(kargs['stop_states'], kargs['stop_tags'])
+#    stop_conditions = make_stop_macrostates(kargs['stop_states'], kargs['stop_tags'])
+    stop_conditions = kargs['stop_conditions']
     complexes = start_complexes
     #print [c.strands for c in complexes]
     #print strands
@@ -155,9 +147,11 @@ class MultistrandJob(object):
                   parameter_type = options.multistrand_params['param_type'],
                   substrate_type = options.multistrand_params['substrate_type'],
                   rate_method = options.multistrand_params['rate_method'])
+#                  biscale = options.multistrand_params['bimolecular_scaling'])
     o.simulation_mode = kargs['mode']
     o.temperature = options.multistrand_params['temp']
     o.boltzmann_sample = boltzmann
+    o.bimolecular_scaling = options.multistrand_params['bimolecular_scaling']
 #    o.output_interval = options.multistrand_params['output_interval']
     o.stop_conditions = [macrostates_dict[m] for m in stop_conditions]
     
@@ -195,6 +189,8 @@ class MultistrandJob(object):
     error = block.get_error()
     goal = max(abs_goal, rel_goal * block.get_mean())  
     while not error <= goal:
+      # Print current estimate/error
+      print "Current estimate: {0} +/- {1} (Goal: +/- {2})".format(block.get_mean(), error, goal)
       # Estimate additional trials based on inverse square root relationship
       # between error and number of trials
       if error == float('inf'):
@@ -337,18 +333,19 @@ class FirstStepModeJob(MultistrandJob):
   
   ms_options = None
   
-  def __init__(self, start_state, stop_states, stop_tags = None):
+  def __init__(self, start_state, stop_conditions):
   
-    super(FirstStepModeJob, self).__init__(start_state, stop_states, stop_tags, FIRST_STEP_MODE)
+    super(FirstStepModeJob, self).__init__(start_state, stop_conditions, FIRST_STEP_MODE)
       
     self.tags = [sc.tag for sc in self.ms_options.stop_conditions]
     self.tags.append("None")
     for tag in self.tags:
-      self.datablocks[tag + "_prob"] = Datablock(std_func = bernoulli_std_func,
+      self.datablocks[tag + "_prob"] = Datablock(mean_func = bernoulli_mean_func,
+                                                  std_func = bernoulli_std_func,
                                                   error_func = bernoulli_error_func)
       self.datablocks[tag + "_kcoll"] = Datablock(mean_func = rate_mean_func,
                                                   error_func = rate_error_func)
-      self.datablocks[tag + "_k1"] = Datablock()
+      self.datablocks[tag + "_k1"] = Datablock(mean_func = k1_mean_func)
       self.datablocks[tag + "_k2"] = Datablock(mean_func = rate_mean_func,
                                                   error_func = rate_error_func)
 

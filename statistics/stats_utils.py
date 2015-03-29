@@ -4,6 +4,7 @@ import itertools as it
 
 from imports import dnaobjectshome
 import dnaobjects as dna
+import options
 
 from simulation.multistrandjob import FirstPassageTimeModeJob, FirstStepModeJob
 
@@ -47,8 +48,15 @@ def make_RestingSetRxnStats(enum_job):
     tags = [str(rxn) for rxn in condensed_rxns if rxn.reactants == r]
     tags = tags + ['spurious']*len(spurious_prods)
     
+    # Make Macrostates for Multistrand stop conditions
+    stop_conditions = [
+      create_macrostate(state, tag)
+        for state, tag
+        in zip(valid_prods + spurious_prods, tags)
+      ]
+    
     # Make Multistrand job
-    job = FirstStepModeJob(r, valid_prods + spurious_prods, tags)
+    job = FirstStepModeJob(r, stop_conditions)
     reactants_to_mjob[r] = job
     
   # Create RestingSetRxnStats object for each reaction
@@ -68,9 +76,7 @@ def get_spurious_products(reactants, reactions):
   """ It is desirable to have Multistrand simulations end
   when interacting complexes have deviated so much from expected
   trajectories that any calculated reaction times actually
-  include undesired interactions. Theoretically, a set of products
-  has reached this point when they must undergo one or more slow
-  reactions in order to end at one of the valid product states.
+  include undesired interactions.
   This is done here by calculating all ways of combining the
   (at most 2) reactants and removing ones that are expected.
   Complexes along expected reaction trajectories are split up
@@ -80,10 +86,11 @@ def get_spurious_products(reactants, reactions):
   def hashable_strand_rotation(strands):
     index = 0
     poss_starts = range(len(strands))
+    strands_ext = strands + strands
     while len(poss_starts) > 1 and index < len(strands):
-      to_compare = [strands[i + index] for i in poss_starts]
+      to_compare = [strands_ext[i + index] for i in poss_starts]
       min_strand = min(to_compare, key=lambda strand: strand.name)
-      poss_starts = filter(lambda i: to_compare[i] == min_strand, poss_starts)
+      poss_starts = filter(lambda i: strands_ext[i + index] == min_strand, poss_starts)
       index += 1      
     start = poss_starts[0]
     return tuple(strands[start:] + strands[:start])
@@ -145,6 +152,48 @@ def get_spurious_products(reactants, reactions):
     spurious_restingsets.append(restingsets)
     
   return spurious_restingsets
+  
+def create_macrostate(state, tag):
+  """ For most simulations, there is a specific way to produce a macrostate
+  from a given system state consisting of a list of complexes/resting sets.
+  This procedure is as follows:
+    1. For each resting set, create a DISASSOC Macrostate corresponding to the
+       strands of the resting set. This is in line with our assumption that
+       no two resting sets share the same list of ordered strands.
+    2. For each complex, create a LOOSE or EXACT macrostate corresonding to the
+       given complex.
+       If the 'loose_complex' flag is set, then a LOOSE Macrostate
+       is used corresponding to a p-approximation of the domain-level complex.
+       For an exact definition of p-approximation, see the paper.
+       If the 'loose_complex' flag is not set, then an EXACT macrostate
+       is used corresponding to the exact domain-level conformation.
+    3. Create a CONJUNCTION macrostate corresponding to the conjunction
+       of the Macrostate for each complex/resting set in the system state.
+  One way to optimize this procedure would be to allow the creation of many
+  macrostates from a list of system states, where each CONJUNCTION Macrostate
+  could share the underlying DISASSOC/LOOSE/EXACT Macrostates. It's not clear
+  if this would have a significant performance increase.
+  Note that there is no way to represent a macrostate consisting of states with
+  at least 2 (or more) of a certain complex. This is a shortcoming of Multistrand
+  as well as the DNAObjects package.
+  """
+  loose_complexes = options.flags['loose_complexes']
+  loose_cutoff = options.general_params['loose_complex_similarity']
+      
+  obj_to_mstate = {}
+  for obj in set(state):
+    if obj._object_type == 'resting-set':
+      obj_to_mstate[obj] = dna.Macrostate(type = 'disassoc', complex = next(iter(obj.complexes)))
+    elif loose_complexes:
+      obj_to_mstate[obj] = utils.similar_complex_macrostate(obj, loose_cutoff)
+    else:
+      obj_to_mstate[obj] = utils.exact_complex_macrostate(obj)
+          
+  macrostates = dna.Macrostate(
+    name        = tag,
+    type        = 'conjunction',
+    macrostates = [obj_to_mstate[o] for o in state])
+  return macrostates
 
 
 def make_RestingSetStats(restingsets):
