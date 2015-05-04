@@ -4,7 +4,7 @@ flags = {
 }
 
 general_params = {
-  'loose_complex_similarity': 0.8
+  'loose_complex_similarity': 0.66
 }
 
 multistrand_params = {

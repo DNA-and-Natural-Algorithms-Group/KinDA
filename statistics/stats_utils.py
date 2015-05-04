@@ -46,7 +46,7 @@ def make_RestingSetRxnStats(enum_job):
     
     # Make product tags for each product group so data can be pulled out later
     tags = [str(rxn) for rxn in condensed_rxns if rxn.reactants == r]
-    tags = tags + ['spurious']*len(spurious_prods)
+    tags = tags + ['_spurious']*len(spurious_prods)
     
     # Make Macrostates for Multistrand stop conditions
     stop_conditions = [
@@ -69,6 +69,25 @@ def make_RestingSetRxnStats(enum_job):
         tag = str(rxn)
     )
     rxn_to_stats[rxn] = stats
+
+  # Create a RestingSetRxnStats object for each spurious reaction between a set of reactants
+  for r in reactants:
+    rxn = dna.RestingSetReaction(
+        reactants = r,
+        products = (),
+        name = "_spurious"
+    )
+    stats = RestingSetRxnStats(
+        reactants = r,
+        products = (), # inelegant, but no single set of products corresponds to a spurious reaction
+        multistrand_job = reactants_to_mjob[r],
+        tag = "_spurious"
+    )
+    rxn_to_stats[rxn] = stats
+
+  # Create a RestingSetRxnStats object for each unproductive reaction between a set of reactants
+  # [NOT IMPLEMENTED] TODO
+
     
   return rxn_to_stats
   
