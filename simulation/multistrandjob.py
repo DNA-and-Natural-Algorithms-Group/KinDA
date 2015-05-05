@@ -204,6 +204,7 @@ class MultistrandJob(object):
       p = multiprocessing.Pool( processes = k )
       print "[MULTITHREADING ON] Running %d batches of %d simulations each over %d cores" % (num_batches, sims_per_batch, k)
       results = p.map(run_sims_global, [(self, sims_per_batch)] * num_batches)
+      p.close()
     else:
       print "[MULTITHREADING OFF] Running %d simulations " % (num_batches*sims_per_batch)
       results = [run_sims_global((self, num_batches*sims_per_batch))]
@@ -244,7 +245,7 @@ class MultistrandJob(object):
         num_trials = int(block.get_num_points() * (reduction**2 - 1) + 1)
         num_trials = min(num_trials, 50)
         
-      self.run_simulations(num_trials)
+      self.run_simulations(int(math.ceil(num_trials/10.0)), 10)
       error = block.get_error()
       goal = max(abs_goal, rel_goal * block.get_mean())
     
