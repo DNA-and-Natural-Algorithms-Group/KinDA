@@ -1,3 +1,9 @@
+try:
+  import multiprocessing
+except ImportError:
+  print "Could not import multiprocessing package. Try turning multiprocessing off in options.py"
+  raise
+
 from imports import multistrandhome, dnaobjectshome
 
 import math
@@ -82,6 +88,18 @@ def bernoulli_error_func(datablock):
   n_s = sum(data)
   return math.sqrt((n_s+1.0)*(n-n_s+1)/((n+3)*(n+2)*(n+2)));
     
+
+
+# Global function for performing a single simulation, used for multithreading
+def run_sims_global(params):
+  multijob = params[0]
+  num_sims = params[1]
+
+  ms_options = multijob.create_ms_options(num_sims)
+  MSSimSystem(ms_options).start()
+  return ms_options
+
+
 # MultistrandJob class definition
 class MultistrandJob(object):
   """Represents a simulation job to be sent to Multistrand. Allows the
@@ -93,6 +111,8 @@ class MultistrandJob(object):
   datablocks = {}
   
   ms_params = {}
+
+  total_sims = 0
   
   def __init__(self, start_state, stop_conditions, sim_mode):
     self.ms_params = self.setup_ms_params(start_state = start_state,
@@ -177,12 +197,21 @@ class MultistrandJob(object):
     
     return o
 
-  def run_simulations(self, num_sims):
-    ms_options = self.create_ms_options(num_sims)
-    print "Running %d simulations..." % num_sims
-    MSSimSystem(ms_options).start()
-    print "Processing %d simulations..." % num_sims
-    self.process_results(ms_options)
+  def run_simulations(self, num_batches, sims_per_batch = 1):
+    ## Run simulations using multithreading if specified
+    if options.multistrand_params['multithreading']:
+      k = multiprocessing.cpu_count()
+      p = multiprocessing.Pool( processes = k )
+      print "[MULTITHREADING ON] Running %d batches of %d simulations each over %d cores" % (num_batches, sims_per_batch, k)
+      results = p.map(run_sims_global, [(self, sims_per_batch)] * num_batches)
+    else:
+      print "[MULTITHREADING OFF] Running %d simulations " % (num_batches*sims_per_batch)
+      results = [run_sims_global((self, num_batches*sims_per_batch))]
+
+    ## Process results of all simulations
+    print "Processing results of %d total simulations" % (num_batches*sims_per_batch)
+    for r in results:
+      self.process_results(r)
     
   def process_results(self, ms_options):
     results = ms_options.interface.results
@@ -191,6 +220,8 @@ class MultistrandJob(object):
     
     self.datablocks["overall_time"].add_data(times)
     self.datablocks["overall_rate"].add_data(rates)
+
+    self.total_sims = self.total_sims + len(results)
 
       
   
@@ -252,6 +283,8 @@ class FirstPassageTimeModeJob(MultistrandJob):
       rates = [1.0 / t for t in times if t != 0]
       self.datablocks[tag + "_time"].add_data(times)
       self.datablocks[tag + "_rate"].add_data(rates)
+
+    self.total_sims = self.total_sims + len(results)
       
       
       
@@ -310,6 +343,8 @@ class TransitionModeJob(MultistrandJob):
                                                    error_func = rate_error_func)
       self.datablocks[key + "_time"].add_data(times)
       self.datablocks[key + "_rate"].add_data([1.0/t for t in times if t != 0])
+
+    self.total_sims = self.total_sims + len(results)
     
     
   def collapse_transition_path(transition_path):
@@ -380,5 +415,7 @@ class FirstStepModeJob(MultistrandJob):
       self.datablocks[tag + "_kcoll"].add_data(kcolls)
       self.datablocks[tag + "_k1"].add_data(k1s)
       self.datablocks[tag + "_k2"].add_data(k2s)
+
+    self.total_sims = self.total_sims + len(results)
       
     
