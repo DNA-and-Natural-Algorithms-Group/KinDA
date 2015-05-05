@@ -92,21 +92,20 @@ class MultistrandJob(object):
   specific information for each job mode type."""
   datablocks = {}
   
-  ms_options = None
+  ms_params = {}
   
   def __init__(self, start_state, stop_conditions, sim_mode):
-    self.ms_options = self.setup_options(start_state = start_state,
-                                         stop_conditions = stop_conditions,
-                                         mode = sim_mode)
+    self.ms_params = self.setup_ms_params(start_state = start_state,
+                                          stop_conditions = stop_conditions,
+                                          mode = sim_mode)
     
     self.datablocks["overall_time"] = Datablock()
     self.datablocks["overall_rate"] = Datablock(mean_func = rate_mean_func,
                                                 error_func = rate_error_func)
                                                 
-  def setup_options(self, *args, **kargs):
-    """ Inelegant. Consider revising. """
-      
-    ## Create state_state with Multistrand Complexes
+  def setup_ms_params(self, *args, **kargs):
+
+    ## Convert DNAObjects to Multistrand objects
     if all(map(lambda x: isinstance(x, RestingSet), kargs['start_state'])):
       resting_sets = kargs['start_state']
       start_complexes = []
@@ -117,14 +116,9 @@ class MultistrandJob(object):
       boltzmann = False
     else:
       assert False, "Starting state must be all complexes or all resting sets"
-      
-#    stop_conditions = make_stop_macrostates(kargs['stop_states'], kargs['stop_tags'])
     stop_conditions = kargs['stop_conditions']
     complexes = start_complexes
-    #print [c.strands for c in complexes]
-    #print strands
-    #print domains
-    
+
     ms_data = io_Multistrand.to_Multistrand(
         complexes = complexes,
         resting_sets = resting_sets,
@@ -135,50 +129,69 @@ class MultistrandJob(object):
     complexes_dict = dict(ms_data['complexes'])
     resting_sets_dict = dict(ms_data['restingstates'])
     macrostates_dict = dict(ms_data['macrostates'])
-    
-    ## Create Options object using options.multistrand_params
+
+    ## Set ms_params with all parameters needed to create an MS Options object on the fly
     if boltzmann:
       start_state = [resting_sets_dict[rs] for rs in resting_sets]
     else:
       start_state = [complexes_dict[c] for c in start_complexes]
-    o = MSOptions(start_state = start_state,
-                  dangles = options.multistrand_params['dangles'],
-                  simulation_time = options.multistrand_params['sim_time'],
-                  parameter_type = options.multistrand_params['param_type'],
-                  substrate_type = options.multistrand_params['substrate_type'],
-                  rate_method = options.multistrand_params['rate_method'])
-#                  biscale = options.multistrand_params['bimolecular_scaling'])
-    o.simulation_mode = kargs['mode']
-    o.temperature = options.multistrand_params['temp']
-    o.boltzmann_sample = boltzmann
-    o.bimolecular_scaling = options.multistrand_params['bimolecular_scaling']
-#    o.output_interval = options.multistrand_params['output_interval']
-    o.stop_conditions = [macrostates_dict[m] for m in stop_conditions]
-    
-    return o
+
+    params = {
+        'start_state':      start_state,
+        'dangles':          options.multistrand_params['dangles'],
+        'simulation_time':  options.multistrand_params['sim_time'],
+        'parameter_type':   options.multistrand_params['param_type'],
+        'substrate_type':   options.multistrand_params['substrate_type'],
+        'rate_method':      options.multistrand_params['rate_method'],
+        'simulation_mode':  kargs['mode'],
+        'temperature':      options.multistrand_params['temp'],
+        'boltzmann_sample': boltzmann,
+        'stop_conditions':  [macrostates_dict[m] for m in stop_conditions]
+    }
+
+    return params
     
   def get_statistic(self, reaction, stat = 'rate'):
     return self.datablocks[reaction + "_" + stat].get_mean()
   def get_statistic_error(self, reaction, stat = 'rate'):
     return self.datablocks[reaction + "_" + stat].get_error()
   
-  def run_simulations(self, num_sims):
-    self.ms_options.num_simulations = num_sims
-    print "Running %d simulations..." % num_sims
-    MSSimSystem(self.ms_options).start()
-    print "Processing %d simulations..." % num_sims
-    results = self.ms_options.interface.results
-    self.process_results()
+
+  def create_ms_options(self, num_sims):
+    """ Creates a fresh MS Options object using the arguments in self.ms_params. """
+      
+    o = MSOptions(
+        start_state     = self.ms_params['start_state'],
+        dangles         = self.ms_params['dangles'],
+        simulation_time = self.ms_params['simulation_time'],
+        parameter_type  = self.ms_params['parameter_type'],
+        substrate_type  = self.ms_params['substrate_type'],
+        rate_method     = self.ms_params['rate_method']
+    )
+    o.simulation_mode  = self.ms_params['simulation_mode']
+    o.temperature      = self.ms_params['temperature']
+    o.boltzmann_sample = self.ms_params['boltzmann_sample']
+    o.stop_conditions  = self.ms_params['stop_conditions']
+
+    o.num_simulations = num_sims
     
-  def process_results(self):
-    results = self.ms_options.interface.results
+    return o
+
+  def run_simulations(self, num_sims):
+    ms_options = self.create_ms_options(num_sims)
+    print "Running %d simulations..." % num_sims
+    MSSimSystem(ms_options).start()
+    print "Processing %d simulations..." % num_sims
+    self.process_results(ms_options)
+    
+  def process_results(self, ms_options):
+    results = ms_options.interface.results
     times = [r.time for r in results]
     rates = [1.0/t for t in times if t != 0]
     
     self.datablocks["overall_time"].add_data(times)
     self.datablocks["overall_rate"].add_data(rates)
-    
-    del self.ms_options.interface.results[:]
+
       
   
   def reduce_error_to(self, rel_goal, abs_goal = 0.0, reaction = 'overall', stat = 'rate'):
@@ -211,7 +224,7 @@ class FirstPassageTimeModeJob(MultistrandJob):
   datablocks = {}
   tags = None
   
-  ms_options = None
+  ms_params = {}
   
   def __init__(self, start_complexes, stop_conditions):
       
@@ -219,14 +232,14 @@ class FirstPassageTimeModeJob(MultistrandJob):
                                                   stop_conditions,
                                                   FIRST_PASSAGE_MODE)
       
-    self.tags = [sc.tag for sc in self.ms_options.stop_conditions]
-    for sc in self.ms_options.stop_conditions:
+    self.tags = [sc.tag for sc in self.ms_params['stop_conditions']]
+    for sc in self.ms_params['stop_conditions']:
       self.datablocks[sc.tag + "_time"] = Datablock()
       self.datablocks[sc.tag + "_rate"] = Datablock(mean_func = rate_mean_func,
                                                     error_func = rate_error_func)
   
-  def process_results(self):
-    results = self.ms_options.interface.results
+  def process_results(self, ms_options):
+    results = ms_options.interface.results
     
     times = [r.time for r in results]
     rates = [1.0/t for t in times if t != 0]
@@ -240,7 +253,6 @@ class FirstPassageTimeModeJob(MultistrandJob):
       self.datablocks[tag + "_time"].add_data(times)
       self.datablocks[tag + "_rate"].add_data(rates)
       
-    del self.ms_options.interface.results[:]
       
       
 class TransitionModeJob(MultistrandJob):
@@ -248,7 +260,7 @@ class TransitionModeJob(MultistrandJob):
   datablocks = {}
   states = None
   
-  ms_options = None
+  ms_params = {}
   
   def __init__(self, start_complexes, macrostates, stop_states):
     stop_conditions = macrostates[:]
@@ -260,7 +272,7 @@ class TransitionModeJob(MultistrandJob):
       
     super(TransitionModeJob, self).__init__(start_complex, stop_conditions, TRANSITION_MODE)
       
-    self.states = [sc.tag for sc in self.ms_options.stop_conditions]
+    self.states = [sc.tag for sc in self.ms_params['stop_conditions']]
   
   def get_statistic(self, start_states, end_states, stat = 'rate'):
     tag = self.get_tag(start_states, end_states)
@@ -269,9 +281,9 @@ class TransitionModeJob(MultistrandJob):
     tag = self.get_tag(start_states, end_states)
     return self.datablocks[tag + "_" + stat].get_error()
   
-  def process_results(self):
-    results = self.ms_options.interface.results
-    transition_paths = self.ms_options.interface.transition_lists
+  def process_results(self, ms_options):
+    results = ms_options.interface.results
+    transition_paths = ms_options.interface.transition_lists
     
     times = [r.time for r in results]
     rates = [1.0/t for t in times if t != 0]
@@ -299,8 +311,6 @@ class TransitionModeJob(MultistrandJob):
       self.datablocks[key + "_time"].add_data(times)
       self.datablocks[key + "_rate"].add_data([1.0/t for t in times if t != 0])
     
-    del self.ms_options.interface.results[:]
-    del self.ms_options.interface.transition_lists[:]
     
   def collapse_transition_path(transition_path):
     """transition path is a list of the form
@@ -331,13 +341,13 @@ class FirstStepModeJob(MultistrandJob):
   datablocks = {}
   tags = None
   
-  ms_options = None
+  ms_params = {}
   
   def __init__(self, start_state, stop_conditions):
   
     super(FirstStepModeJob, self).__init__(start_state, stop_conditions, FIRST_STEP_MODE)
       
-    self.tags = [sc.tag for sc in self.ms_options.stop_conditions]
+    self.tags = [sc.tag for sc in self.ms_params['stop_conditions']]
     self.tags.append("None")
     for tag in self.tags:
       self.datablocks[tag + "_prob"] = Datablock(mean_func = bernoulli_mean_func,
@@ -349,8 +359,8 @@ class FirstStepModeJob(MultistrandJob):
       self.datablocks[tag + "_k2"] = Datablock(mean_func = rate_mean_func,
                                                   error_func = rate_error_func)
 
-  def process_results(self):
-    results = self.ms_options.interface.results
+  def process_results(self, ms_options):
+    results = ms_options.interface.results
     
     times = [r.time for r in results]
     rates = [1.0/t for t in times if t != 0]
@@ -371,5 +381,4 @@ class FirstStepModeJob(MultistrandJob):
       self.datablocks[tag + "_k1"].add_data(k1s)
       self.datablocks[tag + "_k2"].add_data(k2s)
       
-    del self.ms_options.interface.results[:]
     
