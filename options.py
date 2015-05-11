@@ -9,14 +9,14 @@ general_params = {
 
 multistrand_params = {
   'dangles': 'Some',
-  'sim_time': 20.0,
+  'sim_time': 1.0,
   'output_interval': 100,
   'param_type': 'Nupack',
   'substrate_type': 'DNA',
   'rate_method': 'Metropolis',
   'temp': 25,
   'bimolecular_scaling': 0.5e5,
-  'multithreading': True
+  'multithreading': False
 }
 
 nupack_params = {

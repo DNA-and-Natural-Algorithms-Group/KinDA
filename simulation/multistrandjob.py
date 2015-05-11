@@ -258,9 +258,9 @@ class FirstPassageTimeModeJob(MultistrandJob):
   
   ms_params = {}
   
-  def __init__(self, start_complexes, stop_conditions):
+  def __init__(self, start_state, stop_conditions):
       
-    super(FirstPassageTimeModeJob, self).__init__(start_complexes,
+    super(FirstPassageTimeModeJob, self).__init__(start_state,
                                                   stop_conditions,
                                                   FIRST_PASSAGE_MODE)
       
@@ -296,7 +296,7 @@ class TransitionModeJob(MultistrandJob):
   
   ms_params = {}
   
-  def __init__(self, start_complexes, macrostates, stop_states):
+  def __init__(self, start_state, macrostates, stop_conditions):
     stop_conditions = macrostates[:]
     
     # This actually modifies the stop macrostates in place, so this could be bad
