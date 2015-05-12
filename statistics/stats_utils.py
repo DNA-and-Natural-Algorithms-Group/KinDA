@@ -125,28 +125,40 @@ def get_spurious_products(reactants, reactions):
         if new_state not in valid_states:
           get_valid_states(new_state, reactions, valid_states)
     return valid_states
-  def one_step_spurious_states(init_state, valid_states):
-    # Return spurious states one step away from given reactants
-    one_step_states = set([])
-    
-    # states produced through disassociation
-    for r in init_state:
-      unreacting = listminuslist(list(init_state), [r])
-      for i in range(len(r)):
-        for j in range(i, len(r)):
-          new_state = hashable_state(unreacting + [r[i:j], r[j:]+r[:i]])
-          one_step_states.add(new_state)
-         
+
+  def binding_spurious_states(init_state, valid_states):
+    # Return spurious states one step away from given reactants,
+    # produced by a binding reaction between two reactants
+    spurious_states = set([])
+
     # states produced through binding
     for r1 in init_state:
       for r2 in listminuslist(list(init_state), [r1]):
         rot1 = [r1[i:] + r1[:i] for i in range(len(r1))]
         rot2 = [r2[i:] + r2[:i] for i in range(len(r2))]
         unreacting = listminuslist(list(init_state), [r1, r2])
-        one_step_states |= set([hashable_state(unreacting + [a+b]) for a,b in it.product(rot1, rot2)])
-    
-    spurious_states = set([s for s in one_step_states if s not in valid_states])
+        spurious_states |= set([hashable_state(unreacting + [a+b]) for a,b in it.product(rot1, rot2)])
+
+    spurious_states = set([s for s in spurious_states if s not in valid_states])
     return spurious_states
+  def dissociation_spurious_states(init_state, valid_states):
+    # Return spurious states one step away from given reactants,
+    # produced by a dissocation reaction
+    spurious_states = set([])
+
+    # states produced through disassociation
+    for r in init_state:
+      unreacting = listminuslist(list(init_state), [r])
+      for i in range(len(r)):
+        for j in range(i, len(r)):
+          new_state = hashable_state(unreacting + [r[i:j], r[j:]+r[:i]])
+          spurious_states.add(new_state)
+
+    spurious_states = set([s for s in spurious_states if s not in valid_states])
+    return spurious_states
+  def one_step_spurious_states(init_state, valid_states):
+    return (binding_spurious_states(init_state, valid_states)
+        | dissociation_spurious_states(init_state, valid_states))
     
     
   ## Convert to strandlist-level objects
@@ -157,7 +169,6 @@ def get_spurious_products(reactants, reactions):
     
   valid_states = get_valid_states(strandlist_reactants, strandlist_reactions, set([]))
   
-  print valid_states
   # Get all spurious states one step away from any valid state
   spurious_states = set([])
   for s in valid_states:
