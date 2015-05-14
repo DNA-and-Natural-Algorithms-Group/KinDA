@@ -121,7 +121,7 @@ class RestingSetStats(object):
       using the add_XXX_rxn() functions:
         - intra-RS reactions (ComplexRxnStats)
         - inter-RS reactions (RestingSetRxnStats)
-        - spurious reactions
+        - spurious reactions (RestingSetRxnStats)
   """
   
   

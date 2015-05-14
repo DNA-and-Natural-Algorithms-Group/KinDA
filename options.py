@@ -9,14 +9,15 @@ general_params = {
 
 multistrand_params = {
   'dangles': 'Some',
-  'sim_time': 1.0,
+  'sim_time': 1e-2,
   'output_interval': 100,
   'param_type': 'Nupack',
   'substrate_type': 'DNA',
   'rate_method': 'Metropolis',
   'temp': 25,
   'bimolecular_scaling': 0.5e5,
-  'multithreading': False
+  'multithreading': False,
+  'join_concentration': 1e-15 # setting this to 0 makes any non-single-stranded complexes have "inf" energy, which could be problematic...
 }
 
 nupack_params = {

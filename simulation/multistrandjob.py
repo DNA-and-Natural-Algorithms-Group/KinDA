@@ -157,16 +157,17 @@ class MultistrandJob(object):
       start_state = [complexes_dict[c] for c in start_complexes]
 
     params = {
-        'start_state':      start_state,
-        'dangles':          options.multistrand_params['dangles'],
-        'simulation_time':  options.multistrand_params['sim_time'],
-        'parameter_type':   options.multistrand_params['param_type'],
-        'substrate_type':   options.multistrand_params['substrate_type'],
-        'rate_method':      options.multistrand_params['rate_method'],
-        'simulation_mode':  kargs['mode'],
-        'temperature':      options.multistrand_params['temp'],
-        'boltzmann_sample': boltzmann,
-        'stop_conditions':  [macrostates_dict[m] for m in stop_conditions]
+        'start_state':        start_state,
+        'dangles':            options.multistrand_params['dangles'],
+        'simulation_time':    options.multistrand_params['sim_time'],
+        'parameter_type':     options.multistrand_params['param_type'],
+        'substrate_type':     options.multistrand_params['substrate_type'],
+        'rate_method':        options.multistrand_params['rate_method'],
+        'simulation_mode':    kargs['mode'],
+        'temperature':        options.multistrand_params['temp'],
+        'boltzmann_sample':   boltzmann,
+        'stop_conditions':    [macrostates_dict[m] for m in stop_conditions],
+        'join_concentration': options.multistrand_params['join_concentration']
     }
 
     return params
@@ -188,10 +189,11 @@ class MultistrandJob(object):
         substrate_type  = self.ms_params['substrate_type'],
         rate_method     = self.ms_params['rate_method']
     )
-    o.simulation_mode  = self.ms_params['simulation_mode']
-    o.temperature      = self.ms_params['temperature']
-    o.boltzmann_sample = self.ms_params['boltzmann_sample']
-    o.stop_conditions  = self.ms_params['stop_conditions']
+    o.simulation_mode    = self.ms_params['simulation_mode']
+    o.temperature        = self.ms_params['temperature']
+    o.boltzmann_sample   = self.ms_params['boltzmann_sample']
+    o.stop_conditions    = self.ms_params['stop_conditions']
+    o.join_concentration = self.ms_params['join_concentration']
 
     o.num_simulations = num_sims
     
@@ -405,6 +407,9 @@ class FirstStepModeJob(MultistrandJob):
     
     for r in [r for r in results if r.tag == None]:
       r.tag = "None"
+
+    for r in results:
+      print r.tag
     
     for tag in self.tags:
       relevant_sims = filter(lambda x: x.tag == tag, results)

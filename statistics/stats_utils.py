@@ -31,22 +31,36 @@ def make_RestingSetRxnStats(enum_job):
   # Pull out important items from enumeration job
   detailed_rxns = enum_job.get_reactions()
   condensed_rxns = enum_job.get_restingset_reactions()
+  spurious_rxns = set([]); # a list of all spurious reactions possible between any reactant pair
   
-  # Determine all unique reactant groups
-  reactants = set([r.reactants for r in condensed_rxns])
+  # Retrieve all resting sets
+  restingsets = enum_job.get_restingsets()
+
+  # Determine all possible pairs of reactants
+  reactants = set([
+      tuple(sorted([r1, r2], key = lambda rs: rs.id))
+      for r1, r2
+      in it.product(restingsets, restingsets)
+  ])
   
   # Make a Multistrand simulation job for each reactant group
   reactants_to_mjob = {}
   for r in reactants:
     # Group all products coming from these reactants together
-    valid_prods = [list(rxn.products) for rxn in condensed_rxns if rxn.reactants == r]
+    valid_prods = [list(rxn.products) for rxn in condensed_rxns if rxn.reactants_equal(r)]
     
     # Get spurious products from these reactants
     spurious_prods = get_spurious_products(r, detailed_rxns)
+    new_spurious_rxns = [
+        dna.RestingSetReaction(
+            reactants = r,
+            products  = p)
+        for p in spurious_prods]
+    spurious_rxns |= set(new_spurious_rxns)
     
     # Make product tags for each product group so data can be pulled out later
-    tags = [str(rxn) for rxn in condensed_rxns if rxn.reactants == r]
-    tags = tags + ['_spurious']*len(spurious_prods)
+    tags = [str(rxn) for rxn in condensed_rxns if rxn.reactants_equal(r)]
+    tags = tags + ['_spurious({0})'.format(str(rxn)) for rxn in new_spurious_rxns]
     
     # Make Macrostates for Multistrand stop conditions
     stop_conditions = [
@@ -65,30 +79,22 @@ def make_RestingSetRxnStats(enum_job):
     stats = RestingSetRxnStats(
         reactants = rxn.reactants,
         products = rxn.products,
-        multistrand_job = reactants_to_mjob[rxn.reactants],
+        multistrand_job = reactants_to_mjob[tuple(sorted(rxn.reactants, key = lambda rs: rs.id))],
         tag = str(rxn)
     )
     rxn_to_stats[rxn] = stats
 
   # Create a RestingSetRxnStats object for each spurious reaction between a set of reactants
-  for r in reactants:
-    rxn = dna.RestingSetReaction(
-        reactants = r,
-        products = (),
-        name = "_spurious"
-    )
+  # The "unproductive" reaction will be included either as a valid reaction (if it was enumerated) or spurious if not
+  for rxn in spurious_rxns:
     stats = RestingSetRxnStats(
-        reactants = r,
-        products = (), # inelegant, but no single set of products corresponds to a spurious reaction
-        multistrand_job = reactants_to_mjob[r],
-        tag = "_spurious"
+        reactants = rxn.reactants,
+        products = rxn.products,
+        multistrand_job = reactants_to_mjob[tuple(sorted(rxn.reactants, key = lambda rs: rs.id))],
+        tag = '_spurious({0})'.format(str(rxn))
     )
     rxn_to_stats[rxn] = stats
 
-  # Create a RestingSetRxnStats object for each unproductive reaction between a set of reactants
-  # [NOT IMPLEMENTED] TODO
-
-    
   return rxn_to_stats
   
 def get_spurious_products(reactants, reactions):
@@ -159,6 +165,21 @@ def get_spurious_products(reactants, reactions):
   def one_step_spurious_states(init_state, valid_states):
     return (binding_spurious_states(init_state, valid_states)
         | dissociation_spurious_states(init_state, valid_states))
+  def create_restingsets(valid_objects, spurious_strands):
+    strands_to_restingsets = {}
+
+    for strands in spurious_strands:
+      name = ":".join(s.name for s in strands)
+      c = dna.Complex(name = "cpx_" + name, strands = strands)
+      strands_to_restingsets[strands] = dna.RestingSet(name = "rs_" + name, complexes = [c])
+
+    for obj in valid_objects:
+      if obj._object_type == "complex":
+        strands_to_restingsets[tuple(obj.strands)] = dna.RestingSet(complexes = [obj])
+      else:
+        strands_to_restingsets[tuple(c.strands)] = obj
+
+    return strands_to_restingsets
     
     
   ## Convert to strandlist-level objects
@@ -171,15 +192,19 @@ def get_spurious_products(reactants, reactions):
   
   # Get all spurious states one step away from any valid state
   spurious_states = set([])
-  for s in valid_states:
-    spurious_states |= one_step_spurious_states(s, valid_states)
+  for state in (valid_states - set([strandlist_reactants])):
+    spurious_states |= dissociation_spurious_states(state, valid_states)
     
+  # Create RestingSet objects given the strands
+  valid_objects = set(sum([list(rxn.reactants + rxn.products) for rxn in reactions], []))
+  spurious_strandlists = set(sum([list(state) for state in spurious_states], []))
+  strands_to_restingsets = create_restingsets(valid_objects, spurious_strandlists)
+
   # Convert back to RestingSet objects
-  spurious_restingsets = []
-  for state in spurious_states:
-    complexes = [dna.Complex(strands = list(s)) for s in state]
-    restingsets = [dna.RestingSet(complexes = [c]) for c in complexes]
-    spurious_restingsets.append(restingsets)
+  spurious_restingsets = [
+      [strands_to_restingsets[strands] for strands in state]
+      for state in spurious_states
+  ]
     
   return spurious_restingsets
   

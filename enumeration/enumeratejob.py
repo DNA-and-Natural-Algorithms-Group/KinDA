@@ -119,6 +119,10 @@ class EnumerateJob(object):
         condensed_rxns.add(rs_rxn)
     self.condensed_reactions = condensed_rxns
     
+  def get_restingsets(self):
+    if not self.enumerated: self.enumerate()
+    return self.enumerated_restingsets[:]
+    
   def get_reactions(self):
     if not self.enumerated:  self.enumerate()
     return list(self.enumerated_fast_rxns) + list(self.enumerated_slow_rxns)
