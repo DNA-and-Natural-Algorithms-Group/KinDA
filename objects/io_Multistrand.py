@@ -11,13 +11,17 @@ import utils
 def to_Multistrand_domains(domains):
   import multistrand.objects as MS
   
+  ## Pull out just the base domains, which are the ones included in the dict
+  base_domains = set(sum([d.base_domains() for d in domains], []))
+  ## Remove redundant complementary pairs of complexes (we only need one or the other)
+  base_domains -= set([d.complement for d in base_domains if not d.is_complement])
+
   ## Create dict of Multistrand Domain objects
   ms_domains = {}
-  for d in domains:
-    if not d.is_composite and not d.is_complement:
-      seq = utils.random_sequence(d.constraints)
-      ms_domains[d] = MS.Domain(name = d.name, sequence = seq, length = d.length)
-      ms_domains[d.complement] = ms_domains[d].C
+  for d in base_domains:
+    seq = utils.random_sequence(d.constraints)
+    ms_domains[d] = MS.Domain(name = d.name, sequence = seq, length = d.length)
+    ms_domains[d.complement] = ms_domains[d].C
   return ms_domains
   
 def to_Multistrand_strands(strands, ms_domains):
@@ -123,7 +127,7 @@ def to_Multistrand(*args, **kargs):
                 + kargs.get('strands', []))
   domains = set(sum([s.base_domains() for s in strands], [])
                 + sum([d.base_domains() for d in kargs.get('domains', [])], []))
-  
+
   ## Create dict of Multistrand Domain objects
   ms_domains = to_Multistrand_domains(domains)
     

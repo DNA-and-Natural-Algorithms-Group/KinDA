@@ -28,8 +28,8 @@ class Reaction(object):
   
     Keyword Arguments:
     name [type=str]
-    reactants [type=Complex,required]
-    products [type=Complex,required]
+    reactants [type=iterable of Complex,required]
+    products [type=iterable of Complex,required]
     """
     ## Assign unique id and increment global id counter
     self.id = Reaction.id_counter
@@ -43,8 +43,8 @@ class Reaction(object):
     else: self.name = 'reaction_' + str(self.id)
     
     ## Assign reactants and products
-    self._reactants = tuple(sorted(kargs['reactants'], key = hash))
-    self._products = tuple(sorted(kargs['products'], key = hash))
+    self._reactants = tuple(sorted(kargs['reactants'], key = lambda c: c.id))
+    self._products = tuple(sorted(kargs['products'], key = lambda c: c.id))
     
     ## Optional modifiers
     self.modifiers = {}
@@ -60,8 +60,17 @@ class Reaction(object):
   # Basic queries
   def is_reactant(self, c):
     return c in self._reactants
+  def has_reactants(self, complexes):
+    return all([self._reactants.count(c) >= complexes.count(c) for c in complexes])
+  def reactants_equal(self, complexes):
+    return tuple(sorted(complexes, key = lambda c: c.id)) == self._reactants
+
   def is_product(self, c):
     return c in self._products
+  def has_products(self, complexes):
+    return all([self._products.count(c) >= complexes.count(c) for c in complexes]) # kinda inefficient...
+  def products_equal(self, complexes):
+    return tuple(sorted(complexes, key = lambda c: c.id)) == self._products
     
   # Equality definition
   def __eq__(self, other):
