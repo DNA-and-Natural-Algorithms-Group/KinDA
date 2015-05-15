@@ -247,7 +247,7 @@ class MultistrandJob(object):
         num_trials = int(block.get_num_points() * (reduction**2 - 1) + 1)
         num_trials = min(num_trials, 200)
         
-      self.run_simulations(int(math.ceil(num_trials/20.0)), 20)
+      self.run_simulations(num_trials, 1)
       error = block.get_error()
       goal = max(abs_goal, rel_goal * block.get_mean())
     
