@@ -70,7 +70,7 @@ class Datablock(object):
   ## Data management
   def add_data(self, vals):
     """Appends the given values to data already stored with this block."""
-    self.data.append(vals)
+    self.data.extend(vals)
     
   def get_data(self):
     """Returns all data stored with this block. This may be a lot..."""
