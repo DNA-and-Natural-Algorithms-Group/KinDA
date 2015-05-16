@@ -417,6 +417,7 @@ class FirstStepModeJob(MultistrandJob):
       kcolls = [r.collision_rate for r in relevant_sims]
       k1s = map(lambda x: int(x.tag == tag) * x.collision_rate, results)
       k2s = [1.0 / r.time for r in relevant_sims if r.time != 0]
+
       self.datablocks[tag + "_prob"].add_data(successes)
       self.datablocks[tag + "_kcoll"].add_data(kcolls)
       self.datablocks[tag + "_k1"].add_data(k1s)

@@ -40,7 +40,7 @@ class Datablock(object):
   id = None
   datatype = None
   
-  data = []
+  data = None
   
   mean_func = None
   std_func = None
@@ -54,6 +54,10 @@ class Datablock(object):
     # Assign unique id and increment global id counter
     self.id = Datablock.id_counter
     Datablock.id_counter += 1
+
+    # Clear data
+    # This sets all Datablocks to an independent empty list so future modifications don't affect different blocks
+    self.data = []
       
     # Set datatype
     if datatype != 'float' and datatype != 'int' and datatype != 'string':
