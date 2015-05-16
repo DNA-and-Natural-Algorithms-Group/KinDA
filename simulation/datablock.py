@@ -70,7 +70,7 @@ class Datablock(object):
   ## Data management
   def add_data(self, vals):
     """Appends the given values to data already stored with this block."""
-    data.append(vals)
+    self.data.append(vals)
     
   def get_data(self):
     """Returns all data stored with this block. This may be a lot..."""
@@ -82,7 +82,7 @@ class Datablock(object):
   def export_data(self, path):
     f = open(path, 'w')
     print "Exporting data in datablock {0}".format(self.id)
-    for d in data:
+    for d in self.data:
       f.write("{0}\n".format(d))
     f.close()
     print "Data export complete!"
