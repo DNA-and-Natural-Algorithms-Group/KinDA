@@ -199,23 +199,40 @@ class MultistrandJob(object):
     
     return o
 
-  def run_simulations(self, num_batches, sims_per_batch = 1):
+  def run_simulations(self, num_sims, sims_per_update = 1, status_func = None):
     ## Run simulations using multithreading if specified
     if options.multistrand_params['multithreading']:
-      k = multiprocessing.cpu_count()
-      p = multiprocessing.Pool( processes = k )
-      print "[MULTITHREADING ON] Running %d batches of %d simulations each over %d cores" % (num_batches, sims_per_batch, k)
-      results = p.map(run_sims_global, [(self, sims_per_batch)] * num_batches)
-      p.close()
+      self.run_sims_multithreaded(num_sims, sims_per_update, status_func)
     else:
-      print "[MULTITHREADING OFF] Running %d simulations " % (num_batches*sims_per_batch)
-      results = [run_sims_global((self, num_batches*sims_per_batch))]
+      self.run_sims_singlethreaded(num_sims, sims_per_update, status_func)
 
-    ## Process results of all simulations
-    print "Processing results of %d total simulations" % (num_batches*sims_per_batch)
-    for r in results:
-      self.process_results(r)
+  def run_sims_multithreaded(self, num_sims, sims_per_update = 1, status_func = None):
+    k = multiprocessing.cpu_count()
+    p = multiprocessing.Pool( processes = k )
+
+    print "[MULTITHREADING ON] Running %d simulations over %d cores" % (num_sims, k)
+    it = p.imap_unordered(run_sims_global, [(self, 1)] * num_sims)
     
+    sims_since_update = 0
+    for res in it:
+      self.process_results(res)
+
+      sims_since_update += 1
+      if sims_since_update >= sims_per_update and status_func != None:
+        status_func()
+
+    p.close()
+
+  def run_sims_singlethreaded(self, num_sims, sims_per_update = 1, status_func = None):
+    print "[MULTITHREADING OFF] Running %d simulations with updates every %d simulations" % (num_sims, sims_per_update)
+    while num_sims > 0:
+      results = run_sims_global((self, min(sims_per_update, num_sims)))
+      self.process_results(results)
+      num_sims -= sims_per_update
+
+      if status_func != None:
+        status_func()
+
   def process_results(self, ms_options):
     results = ms_options.interface.results
     times = [r.time for r in results]
@@ -230,14 +247,21 @@ class MultistrandJob(object):
   
   def reduce_error_to(self, rel_goal, abs_goal = 0.0, reaction = 'overall', stat = 'rate'):
     """Runs simulations to reduce the error to either rel_goal*mean or abs_goal."""
+    def get_status_func(block):
+      def status_func():
+        print "Current estimate: {0} +/- {1} (Goal: +/- {2})".format(block.get_mean(), error, goal)
+      return status_func
+
     tag = reaction + "_" + stat
     block = self.datablocks[tag]
+    status_func = get_status_func(block)
     
     error = block.get_error()
     goal = max(abs_goal, rel_goal * block.get_mean())  
     while not error <= goal:
       # Print current estimate/error
-      print "Current estimate: {0} +/- {1} (Goal: +/- {2})".format(block.get_mean(), error, goal)
+      status_func()
+
       # Estimate additional trials based on inverse square root relationship
       # between error and number of trials
       if error == float('inf'):
@@ -245,9 +269,9 @@ class MultistrandJob(object):
       else:
         reduction = error / goal
         num_trials = int(block.get_num_points() * (reduction**2 - 1) + 1)
-        num_trials = min(num_trials, total_sims + 1)
+        num_trials = min(num_trials, self.total_sims + 1)
         
-      self.run_simulations(num_trials, 1)
+      self.run_simulations(num_trials, sims_per_update = 10, status_func = status_func)
       error = block.get_error()
       goal = max(abs_goal, rel_goal * block.get_mean())
     
