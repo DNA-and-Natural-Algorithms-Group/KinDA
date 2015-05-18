@@ -199,40 +199,44 @@ class MultistrandJob(object):
     
     return o
 
-  def run_simulations(self, num_sims, sims_per_update = 1, status_func = None):
+  def run_simulations(self, num_sims, sims_per_update = 1, status_func = lambda:None):
     ## Run simulations using multithreading if specified
     if options.multistrand_params['multithreading']:
       self.run_sims_multithreaded(num_sims, sims_per_update, status_func)
     else:
       self.run_sims_singlethreaded(num_sims, sims_per_update, status_func)
 
-  def run_sims_multithreaded(self, num_sims, sims_per_update = 1, status_func = None):
+  def run_sims_multithreaded(self, num_sims, sims_per_update = 1, status_func = lambda:None):
     k = multiprocessing.cpu_count()
     p = multiprocessing.Pool( processes = k )
 
     print "[MULTITHREADING ON] Running %d simulations over %d cores" % (num_sims, k)
     it = p.imap_unordered(run_sims_global, [(self, 1)] * num_sims)
     
-    sims_since_update = 0
+    sims_completed = 0
     for res in it:
       self.process_results(res)
 
-      sims_since_update += 1
-      if sims_since_update >= sims_per_update and status_func != None:
+      sims_completed += 1
+      if sims_since_update % sims_per_update == 0:
         status_func()
-        sims_since_update = 0
+        print "*** Completed {0} of {1} simulations ***".format(sims_completed, num_sims)
 
     p.close()
 
   def run_sims_singlethreaded(self, num_sims, sims_per_update = 1, status_func = None):
     print "[MULTITHREADING OFF] Running %d simulations with updates every %d simulations" % (num_sims, sims_per_update)
-    while num_sims > 0:
-      results = run_sims_global((self, min(sims_per_update, num_sims)))
-      self.process_results(results)
-      num_sims -= sims_per_update
+    sims_completed = 0
+    while sims_completed < num_sims:
+      sims_to_run = min(sims_per_update, num_sims - sims_completed)
 
-      if status_func != None:
-        status_func()
+      results = run_sims_global((self, sims_to_run))
+      self.process_results(results)
+
+      sims_completed += sims_to_run
+
+      status_func()
+      print "*** Completed {0} of {1} simulations ***".format(sims_completed, num_sims)
 
   def process_results(self, ms_options):
     results = ms_options.interface.results
@@ -250,7 +254,7 @@ class MultistrandJob(object):
     """Runs simulations to reduce the error to either rel_goal*mean or abs_goal."""
     def get_status_func(block):
       def status_func():
-        print "Current estimate: {0} +/- {1} (Goal: +/- {2})".format(block.get_mean(), block.get_error(), goal)
+        print "*** Current estimate: {0} +/- {1} (Goal: +/- {2}) ***".format(block.get_mean(), block.get_error(), goal)
       return status_func
 
     tag = reaction + "_" + stat
