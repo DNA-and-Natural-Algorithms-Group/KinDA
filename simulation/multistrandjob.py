@@ -220,6 +220,7 @@ class MultistrandJob(object):
       sims_since_update += 1
       if sims_since_update >= sims_per_update and status_func != None:
         status_func()
+        sims_since_update = 0
 
     p.close()
 
@@ -249,7 +250,7 @@ class MultistrandJob(object):
     """Runs simulations to reduce the error to either rel_goal*mean or abs_goal."""
     def get_status_func(block):
       def status_func():
-        print "Current estimate: {0} +/- {1} (Goal: +/- {2})".format(block.get_mean(), error, goal)
+        print "Current estimate: {0} +/- {1} (Goal: +/- {2})".format(block.get_mean(), block.get_error(), goal)
       return status_func
 
     tag = reaction + "_" + stat
