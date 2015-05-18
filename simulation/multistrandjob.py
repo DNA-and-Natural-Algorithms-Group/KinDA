@@ -218,7 +218,7 @@ class MultistrandJob(object):
       self.process_results(res)
 
       sims_completed += 1
-      if sims_since_update % sims_per_update == 0:
+      if sims_completed % sims_per_update == 0:
         status_func()
         print "*** Completed {0} of {1} simulations ***".format(sims_completed, num_sims)
 
