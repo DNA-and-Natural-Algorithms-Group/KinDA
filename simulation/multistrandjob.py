@@ -220,7 +220,7 @@ class MultistrandJob(object):
       sims_completed += 1
       if sims_completed % sims_per_update == 0:
         status_func()
-        print "*** Completed {0} of {1} simulations ***".format(sims_completed, num_sims)
+        print "*** Completed {0} of {1} simulations [{2} total simulations] ***".format(sims_completed, num_sims, self.total_sims)
 
     p.close()
 
@@ -236,7 +236,7 @@ class MultistrandJob(object):
       sims_completed += sims_to_run
 
       status_func()
-      print "*** Completed {0} of {1} simulations ***".format(sims_completed, num_sims)
+      print "*** Completed {0} of {1} simulations [{2} total simulations] ***".format(sims_completed, num_sims, self.total_sims)
 
   def process_results(self, ms_options):
     results = ms_options.interface.results
