@@ -112,11 +112,19 @@ class EnumerateJob(object):
       reactants = [dna.utils.get_containing_set(self.enumerated_restingsets, c)
             for c
             in rxn.reactants]
-      products.append(reactants) # The reverse reaction is always possible
       
       for p in products:
         rs_rxn = dna.RestingSetReaction(reactants = reactants, products = p)
         condensed_rxns.add(rs_rxn)
+
+    # Make sure the reverse reaction between every pair of reactants is included
+    # This is an important difference between our enumeration and Peppercorn enumeration,
+    # which may not include the reverse reaction
+    reactant_pairs = it.product(restingsets, restingsets)
+    for reactants in reactant_pairs:
+      rs_rxn = dna.RestingSetReaction(reactants = reactants, products = reactants)
+      condensed_rxns.add(rs_rxn)
+
     self.condensed_reactions = condensed_rxns
     
   def get_restingsets(self):

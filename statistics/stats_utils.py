@@ -10,10 +10,12 @@ from simulation.multistrandjob import FirstPassageTimeModeJob, FirstStepModeJob
 
 from stats import RestingSetRxnStats, RestingSetStats
 
-####  TODO: get_spurious_products is not correct. should be fixed.
-####        make_RestingSetStats
+####  TODO: make_RestingSetStats (Is this done yet?)
 ####        make_ComplexRxnStats
 ####        make_ComplexStats
+####        calc_spurious_rxn_score
+####        calc_unproductive_rxn_score
+####        calc_intended_rxn_score
 
 ## GLOBALS
 def listminuslist(minuend, subtrahend):
@@ -22,6 +24,10 @@ def listminuslist(minuend, subtrahend):
     if elem in difference: difference.remove(elem)
   return difference
   
+
+######################################
+# Utilities for making Stats objects #
+######################################
 
 def make_RestingSetRxnStats(enum_job):
   """ A convenience function, creating a dict mapping
@@ -47,10 +53,10 @@ def make_RestingSetRxnStats(enum_job):
   reactants_to_mjob = {}
   for r in reactants:
     # Group all products coming from these reactants together
-    valid_prods = [list(rxn.products) for rxn in condensed_rxns if rxn.reactants_equal(r)]
-    
+    enum_prods = [list(rxn.products) for rxn in condensed_rxns if rxn.reactants_equal(r)]
+
     # Get spurious products from these reactants
-    spurious_prods = get_spurious_products(r, detailed_rxns)
+    spurious_prods = get_spurious_products(r, detailed_rxns, enum_prods)
     new_spurious_rxns = [
         dna.RestingSetReaction(
             reactants = r,
@@ -66,7 +72,7 @@ def make_RestingSetRxnStats(enum_job):
     stop_conditions = [
       create_macrostate(state, tag)
         for state, tag
-        in zip(valid_prods + spurious_prods, tags)
+        in zip(enum_prods + spurious_prods, tags)
       ]
     
     # Make Multistrand job
@@ -97,7 +103,7 @@ def make_RestingSetRxnStats(enum_job):
 
   return rxn_to_stats
   
-def get_spurious_products(reactants, reactions):
+def get_spurious_products(reactants, reactions, stop_states):
   """ It is desirable to have Multistrand simulations end
   when interacting complexes have deviated so much from expected
   trajectories that any calculated reaction times actually
@@ -122,15 +128,20 @@ def get_spurious_products(reactants, reactions):
   def hashable_state(state):
     filtered = filter(lambda x: x != (), state)
     return tuple(sorted([hashable_strand_rotation(f) for f in filtered]))
-  def get_valid_states(init_state, reactions, valid_states):
-    valid_states.add(init_state)
+  def enumerate_states(init_state, reactions, enumerated):
+    """ Enumerates all states reachable from init_state by following any of the
+    strand-list reactions given. The results are stored in <enumerated>.
+    To prevent enumerating past the expected stop conditions,
+    include the stop conditions as the initial value of <enumerated>.
+    Note that <enumerated> is modified in place. """
+    enumerated.add(init_state)
     for rxn in reactions:
       unreacting = listminuslist(list(init_state), rxn[0])
       if len(unreacting) == len(init_state) - len(rxn[0]):
         new_state = hashable_state(unreacting + rxn[1])
-        if new_state not in valid_states:
-          get_valid_states(new_state, reactions, valid_states)
-    return valid_states
+        if new_state not in enumerated:
+          enumerate_states(new_state, reactions, enumerated)
+    return enumerated
 
   def binding_spurious_states(init_state, valid_states):
     # Return spurious states one step away from given reactants,
@@ -187,12 +198,28 @@ def get_spurious_products(reactants, reactions):
   strandlist_reactions = [[[hashable_strand_rotation(r.strands) for r in rxn.reactants],
                            [hashable_strand_rotation(p.strands) for p in rxn.products]]
                           for rxn in reactions]
+  strandlist_stop_states = set([hashable_state([tuple(rs.strands) for rs in state])
+                            for state
+                            in stop_states])
     
-  valid_states = get_valid_states(strandlist_reactants, strandlist_reactions, set([]))
+  ## Valid states consist of all states that we explicitly do NOT wish Multistrand to halt on,
+  ## plus the given expected stop states.
+  ## This consists of those states those that can be enumerated from the initial state by following
+  ## the given reactions and all states that can be formed from a binding reaction between
+  ## two reactants in the initial state.
+  valid_states = enumerate_states(strandlist_reactants, strandlist_reactions, strandlist_stop_states.copy()) \
+                 | binding_spurious_states(strandlist_reactants, set([]))
+
+  ## The spurious states are determined as those one step away from
+  ## intermediate states only.
+  ## Stop states are not included because once a stop state is reached,
+  ## the simulation should halt.
+  valid_intermediates = valid_states - strandlist_stop_states
   
-  # Get all spurious states one step away from any valid state
+  ## Get all spurious states that can be formed by dissociation
+  ## within any valid intermediate state
   spurious_states = set([])
-  for state in (valid_states - set([strandlist_reactants])):
+  for state in valid_intermediates:
     spurious_states |= dissociation_spurious_states(state, valid_states)
     
   # Create RestingSet objects given the strands
@@ -229,7 +256,7 @@ def create_macrostate(state, tag):
   could share the underlying DISASSOC/LOOSE/EXACT Macrostates. It's not clear
   if this would have a significant performance increase.
   Note that there is no way to represent a macrostate consisting of states with
-  at least 2 (or more) of a certain complex. This is a shortcoming of Multistrand
+  2 or more of a certain complex. This is a shortcoming of Multistrand
   as well as the DNAObjects package.
   """
   loose_complexes = options.flags['loose_complexes']
@@ -271,3 +298,26 @@ def make_stats(*args, **kargs):
       rs_stats = rs_to_stats[reactant]
       rxn_stats.set_rs_stats(reactant, rs_stats)
       rs_stats.add_inter_rxn(rxn_stats)
+
+
+
+######################################
+#          Score calculation         #
+######################################
+
+def calc_spurious_rxn_score(system_stats, t_max, allowed_error = 0.5):
+  max_depletion = 0.0
+  for rs in system_stats.get_restingsets():
+    stats = system_stats.get_stats(rs)
+    max_depletion = max(max_depletion, min(stats.get_perm_depletion(allowed_error)*t_max, 1))
+  return max_depletion
+
+def calc_unproductive_rxn_score(system_stats, allowed_error = 0.5):
+  max_depletion = 0.0
+  for rs in system_stats.get_restingsets():
+    stats = system_stats.get_stats(rs)
+    max_depletion = max(max_depletion, stats.get_temp_depletion(allowed_error))
+  return max_depletion
+
+def calc_intended_rxn_score(system_stats):
+  pass
