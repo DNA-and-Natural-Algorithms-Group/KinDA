@@ -55,7 +55,7 @@ class RestingSet(object):
     return complex in self._complexes
     
   def __eq__(self, other):
-    return self._complexes == other._complexes
+    return type(self) == type(other) and self._complexes == other._complexes
   def __ne__(self, other):
     return not self.__eq__(other)
     

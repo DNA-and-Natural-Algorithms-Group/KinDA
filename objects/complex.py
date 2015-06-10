@@ -111,7 +111,7 @@ class Complex(object):
   ## (In)equality
   def __eq__(self, other): 
     """ Returns True if the two complexes have the same name. """
-    return self._object_type == other._object_type and self.name == other.name
+    return type(self)==type(other) and self.name == other.name
   def __ne__(self, other):
     """ Returns True if the complexes are not equal. """
     return not self.__eq__(other)
