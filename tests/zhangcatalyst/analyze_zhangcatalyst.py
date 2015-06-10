@@ -40,4 +40,4 @@ sstats = stats.SystemStats(complexes = c, c_max = 1e-7)
 
 # Try:
 #  stats_utils.calc_unproductive_rxn_score(sstats)
-#  stats_utils.calc_spurious_rxn_score(sstats)
+#  stats_utils.calc_spurious_rxn_score(sstats, 1.0)
