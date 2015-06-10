@@ -35,19 +35,9 @@ for i, rxn in enumerate(rxns):
 print "Resting Sets: "
 for i, rs in enumerate(restingsets):
   print "{0}: {1}".format(i, rs)
-  
-
-
-#print rs_to_stats[rs[0]].get_conformation_probs()
-#rxn1 = i[5][0]
-#rxn2 = i[6][0]
-#stats1 = rxn_to_stats[rxn1]
-#stats2 = rxn_to_stats[rxn2]
-#stats1.get_k1(0.05)
-#stats1.get_k2(0.05)
-#stats2.get_k1(0.05)
-#stats2.get_k2(0.05)
-#print stats1.get_k1(), stats1.get_k2()
-#print stats2.get_k1(), stats2.get_k2()
 
 sstats = stats.SystemStats(complexes = c, c_max = 1e-7)
+
+# Try:
+#  stats_utils.calc_unproductive_rxn_score(sstats)
+#  stats_utils.calc_spurious_rxn_score(sstats)
