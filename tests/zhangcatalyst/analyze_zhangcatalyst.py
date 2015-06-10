@@ -11,7 +11,7 @@ from simulation import multistrandjob
 from enumeration.enumeratejob import EnumerateJob
 from statistics import stats_utils, stats
 
-d, s, c = dna.io_PIL.from_PIL('./dna21_zhangcatalyst.pil')
+d, s, c = dna.io_PIL.from_PIL('./zhangcatalyst.pil')
 
 enum_job = EnumerateJob(domains = d, strands = s, complexes = c)
 rxns = enum_job.get_restingset_reactions()
