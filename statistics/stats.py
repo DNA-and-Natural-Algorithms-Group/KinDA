@@ -166,7 +166,7 @@ class RestingSetRxnStats(object):
     reactant depletion that reduces the effective rate of this reaction. 
     Additional simulations are run until the fractional error is
     below the given allowed_error threshold. """
-    fractions = [1 - rs.get_temp_depletion for rs in self.rs_stats.values() if rs != None]
+    fractions = [1 - rs.get_temp_depletion(allowed_error) for rs in self.rs_stats.values() if rs != None]
     rate_fraction = reduce(lambda x,y: x*y, fractions, 1.0)
     raw_k1 = self.get_k1(allowed_error / rate_fraction)
     k1 = (raw_k1[0]*rate_fraction, raw_k1[1]*rate_fraction)
@@ -288,7 +288,7 @@ class RestingSetStats(object):
     return struct_list
     
   def get_temp_depletion_due_to(self, rxn, allowed_error):
-    t_unbound = 1.0 / rxn.get_k1(allowed_error)[0]
+    t_unbound = self.c_max / rxn.get_k1(allowed_error)[0]
     for reactant in rxn.reactants:
       c_max = rxn.get_rs_stats(reactant).c_max
       if c_max == None or c_max == 0:
