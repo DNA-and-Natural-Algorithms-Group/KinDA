@@ -162,10 +162,10 @@ class Domain(object):
   def __str__( self ):
     """Human-readable output formatting for a domain."""
     if self.is_composite:
-      info = "[" + ", ".join([str(d) for d in self._subdomains]) + "]"
+      info = "[" + ", ".join([str(d.name) for d in self._subdomains]) + "]"
     else:
       info = self._constraints
-    return "Domain {0}: {1} ({2})".format(self.name, info, self._length)
+    return "Domain {0}: {1}".format(self.name, info)
   def __repr__(self):
     return str(self)
 
@@ -283,6 +283,10 @@ class ComplementaryDomain( Domain):
   ## Output
   def __str__( self ):
     """ Human-readable output formatting for this ComplementaryDomain."""
-    return "ComplementaryDomain {0}: ~[{1}]".format(self.name, str(self._complement))
+    if self.is_composite:
+      info = "[" + ",".join([d.name for d in self.subdomains]) + "]"
+    else:
+      info = self.constraints
+    return "ComplementaryDomain {0}: {1}".format(self.name, info)
   def __repr__(self):
     return str(self)

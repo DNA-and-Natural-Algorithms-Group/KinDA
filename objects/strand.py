@@ -13,6 +13,7 @@ This module defines a simple dna `strand` object.
 
 
 from domain import Domain
+from constraints import Constraints
 
 class Strand(object):
   """
@@ -70,7 +71,7 @@ class Strand(object):
     The sequence constraints associated with this strand, computing it as
     necessary from the domains.
     """
-    return "".join([d._constraints for d in self.base_domains()])
+    return Constraints("".join([d.constraints for d in self.base_domains()]))
   @constraints.setter
   def constraints( self, new_constraints ):
     """
@@ -145,8 +146,8 @@ class Strand(object):
   ## Output
   def __str__(self):
     """ Human-readable output formatting for this Strand object."""
-    info = "[" + ", ".join([str(d) for d in self._domains]) + "]"
-    return "Strand {0}: {1} ({2})".format(self.name, info, self._length)
+    info = "{" + ", ".join([d.name for d in self._domains]) + "}"
+    return "Strand {0}: {1}".format(self.name, info)
   def __repr__(self):
     return str(self)
 
@@ -244,6 +245,7 @@ class ComplementaryStrand( Strand ):
   ## Output
   def __str__(self):
     """ Human-readable output formatting for this ComplementaryStrand."""
-    return "ComplementaryStrand {0}: ~[{1}]".format(self.name, str(self._complement))
+    info = "{" + ", ".join([d.name for d in self.domains]) + "}"
+    return "ComplementaryStrand {0}: {1}".format(self.name, info)
   def __repr__(self):
     return str(self)

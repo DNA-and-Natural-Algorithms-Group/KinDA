@@ -61,6 +61,9 @@ class Complex(object):
   
   ## Basic properties
   @property
+  def constraints(self):
+    """ Returns the nucleotide constraints for each strand in the complex. """
+    return [s.constraints for s in self._strands]
   def length(self):
     """ Returns the total number of nucleotides in the complex. """
     return self._length
