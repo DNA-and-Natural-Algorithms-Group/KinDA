@@ -47,8 +47,8 @@ rxn = rxns[0] # Select the first reaction (you can choose a different one if you
 ##   5) Get the associated RestingSetRxnStats object
 rxn_stats = sstats.get_stats(rxn)
 ##   6) Use the Stats object to get data!
-k1 = rxn_stats.get_k1(0.25) # Get an estimate for k1 with 25% error
-k2 = rxn_stats.get_k2(0.25) # Get an estimate for k2 with 25% error
+k1 = rxn_stats.get_k1(0.5) # Get an estimate for k1 with 50% error
+k2 = rxn_stats.get_k2(0.5) # Get an estimate for k2 with 50% error
 # prob = rxn_stats.get_prob(0.25) # Estimate the probability that a random Multistrand trajectory will follow this reaction (not necessarily physically significant)
 # k_coll = rxn_stats.get_kcoll(0.25) # Estimate k_coll with 25% error
 ##     Note that get_prob() and get_kcoll() will have to have some successful trajectories in order to have reasonable errors,
@@ -81,9 +81,9 @@ print "Top 10 MFE structures for resting set {0}".format(restingset)
 for i,s in enumerate(mfe_structs):
   print "\t{0}: {1} ({2})".format(i, s[0], s[1])
 ## Getting the (fractional) reactant depletion due to unproductive reactions
-unproductive_depletion = rs_stats.get_temp_depletion(0.5) # Get depletion with 25% error on any relevant reaction rate
+# unproductive_depletion = rs_stats.get_temp_depletion(0.5) # Get depletion with 50% error on any relevant reaction rate
 ## Getting the rate constant of reactant depletion due to spurious reactions (units: /s)
-spurious_depletion = rs_stats.get_perm_depletion(0.5) # Get depletion with 25% error on any relevant reaction rate
+# spurious_depletion = rs_stats.get_perm_depletion(0.5) # Get depletion with 50% error on any relevant reaction rate
 
 #### To get a system-level score, use the convenience functions in stats_utils.py
 # stats_utils.calc_unproductive_rxn_score(sstats)
