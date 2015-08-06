@@ -8,10 +8,6 @@ import options
 
 
 class NupackSampleJob(object):
-
-  restingset = None
-  complexes_count = []
-  total_count = 0
   
   similarity_threshold = 0.9
   
@@ -23,6 +19,8 @@ class NupackSampleJob(object):
       self.similarity_threshold = options.general_params['loose_complex_similarity']
     else:
       self.similarity_threshold = similarity_threshold
+
+    self.total_sims = 0
   
   def get_complex_index(self, complex_name):
     matches = [i for i, c
@@ -34,16 +32,16 @@ class NupackSampleJob(object):
       return -1
         
   def get_complex_prob(self, complex_name = "_spurious"):
-    index = self.get_complex_index(complex_name);
-    N = self.total_count;
-    Nc = self.complexes_count[index];
-    return (Nc + 1.0)/(N + 2);
+    index = self.get_complex_index(complex_name)
+    N = self.total_sims
+    Nc = self.complexes_count[index]
+    return (Nc + 1.0)/(N + 2)
     
         
   def get_complex_prob_error(self, complex_name = "_spurious"):
     index = self.get_complex_index(complex_name)
     Nc = self.complexes_count[index]
-    N = self.total_count;
+    N = self.total_sims;
     return math.sqrt((Nc+1.0)*(N-Nc+1)/((N+3)*(N+2)*(N+2)));
   
   def complex_is_similar(self, complex, sampled):
@@ -74,7 +72,7 @@ class NupackSampleJob(object):
       if len(matches) == 0:
         self.complexes_count[-1] += 1
         
-      self.total_count += 1
+      self.total_sims += 1
         
     
   def reduce_error_to(self, rel_goal, complex_name = "_spurious", max_sims = 500):
@@ -86,10 +84,11 @@ class NupackSampleJob(object):
       # between error and number of trials
       print "Error should be reduced from %s to %s" % (error, goal)
       if error == float('inf'):
-        num_trials = 500
+        num_trials = 10
       else:
         reduction = error / goal
-        num_trials = min(500, int(self.total_count * (reduction**2 - 1) + 1))
+        num_trials = int(self.total_sims * (reduction**2 - 1) + 1)
+        num_trials = min(num_trials, max_sims - num_sims, self.total_sims + 1)
         
       self.sample(num_trials)
 

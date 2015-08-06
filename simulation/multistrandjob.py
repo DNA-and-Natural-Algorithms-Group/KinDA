@@ -108,11 +108,6 @@ class MultistrandJob(object):
   the trajectory results.
   This is the parent class to the more useful job classes that compile
   specific information for each job mode type."""
-  datablocks = {}
-  
-  ms_params = {}
-
-  total_sims = 0
   
   def __init__(self, start_state, stop_conditions, sim_mode):
     self.ms_params = self.setup_ms_params(start_state = start_state,
@@ -122,6 +117,12 @@ class MultistrandJob(object):
     self.datablocks["overall_time"] = Datablock()
     self.datablocks["overall_rate"] = Datablock(mean_func = rate_mean_func,
                                                 error_func = rate_error_func)
+    self.datablocks = {}
+  
+    self.ms_params = {}
+
+    self.total_sims = 0
+
                                                 
   def setup_ms_params(self, *args, **kargs):
 
@@ -275,7 +276,7 @@ class MultistrandJob(object):
       else:
         reduction = error / goal
         num_trials = int(block.get_num_points() * (reduction**2 - 1) + 1)
-        num_trials = min(num_trials, self.total_sims + 1)
+        num_trials = min(num_trials, max_sims - num_sims, self.total_sims + 1)
         
       self.run_simulations(num_trials, sims_per_update = 10, status_func = status_func)
 
