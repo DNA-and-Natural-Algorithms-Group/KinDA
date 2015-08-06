@@ -161,49 +161,49 @@ class RestingSetRxnStats(object):
     self.k2_rxn_stats = []
     
   
-  def get_reduced_k1(self, allowed_error = 0.50):
+  def get_reduced_k1(self, allowed_error = 0.50, max_sims = 500):
     """ Returns the net k1 value, calculated by taking into account temporary
     reactant depletion that reduces the effective rate of this reaction. 
     Additional simulations are run until the fractional error is
     below the given allowed_error threshold. """
     fractions = [1 - rs.get_temp_depletion(allowed_error) for rs in self.rs_stats.values() if rs != None]
     rate_fraction = reduce(lambda x,y: x*y, fractions, 1.0)
-    raw_k1 = self.get_k1(allowed_error / rate_fraction)
+    raw_k1 = self.get_k1(allowed_error / rate_fraction, max_sims)
     k1 = (raw_k1[0]*rate_fraction, raw_k1[1]*rate_fraction)
     return k1
-  def get_k1(self, allowed_error = 0.50):
+  def get_k1(self, allowed_error = 0.50, max_sims = 500):
     """ Returns the raw k1 value calculated from Multistrand trajectory
     simulations. The allowed_error is the fractional error allowed in
     the return value. Additional trials are simulated until this error
     threshold is achieved. """
-    return self.get_raw_stat('k1', allowed_error)
-  def get_k2(self, allowed_error = 0.50):
+    return self.get_raw_stat('k1', allowed_error, max_sims)
+  def get_k2(self, allowed_error = 0.50, max_sims = 500):
     """ Returns the k2 folding rate on successful Multistrand trajectories. 
     Additional simulations are run until the fractional error is
     below the given allowed_error threshold. """
-    return self.get_raw_stat('k2', allowed_error)
+    return self.get_raw_stat('k2', allowed_error, max_sims)
     
-  def get_raw_stat(self, stat, allowed_error = 0.50, max_sims = 500):
+  def get_raw_stat(self, stat, allowed_error, max_sims):
     """ General function to reduce the error on the given statistic
     to below the given threshold and return the value and standard
     error of the statistic. """
     # Reduce error to threshold
-    self.multijob.reduce_error_to(allowed_error, self.multijob_tag, stat, max_sims)
+    self.multijob.reduce_error_to(allowed_error, max_sims, self.multijob_tag, stat)
     # Calculate and return statistic
     val = self.multijob.get_statistic(self.multijob_tag, stat)
     error = self.multijob.get_statistic_error(self.multijob_tag, stat)
     return (val, error)
-  def get_kcoll(self, allowed_error = 0.50):
+  def get_kcoll(self, allowed_error = 0.50, max_sims = 500):
     """ Returns the average kcoll value calculated over successful Multistrand
     trajectories. Additional simulations are run until the fractional error is
     below the given allowed_error threshold. """
-    return self.get_raw_stat('kcoll', allowed_error)
-  def get_prob(self, allowed_error = 0.50):
+    return self.get_raw_stat('kcoll', allowed_error, max_sims)
+  def get_prob(self, allowed_error = 0.50, max_sims = 500):
     """ Returns the fraction of Multistrand trajectories that ended
     in the product states given to this Stats object. This may not be
     a meaningful value. Additional simulations are run until the fractional
     error is below the given allowed_error threshold. """
-    return self.get_raw_stat('prob', allowed_error)
+    return self.get_raw_stat('prob', allowed_error, max_sims)
   
   def set_rs_stats(self, reactant, stats):
     self.rs_stats[reactant] = stats
@@ -255,22 +255,22 @@ class RestingSetStats(object):
     self.inter_rxns = []
     self.spurious_rxns = []
     
-  def get_conformation_prob(self, complex_name, allowed_error = 0.50, max_sims = 500):
+  def get_conformation_prob(self, complex_name, allowed_error = 0.50, max_sims = 5000):
     """ Returns the probability and probability error
     of the given conformation based on the current number of samples.
     Use '_spurious' as a complex name to get the probability of
     conformations that do not match up with any of the expected
     conformations. """
-    self.sampler.reduce_error_to(allowed_error, complex_name, max_sims)
+    self.sampler.reduce_error_to(allowed_error, max_sims, complex_name)
     prob = self.sampler.get_complex_prob(complex_name)
     error = self.sampler.get_complex_prob_error(complex_name)
     return (prob, error)
-  def get_conformation_probs(self, allowed_error = 0.50, max_sims = 500):
+  def get_conformation_probs(self, allowed_error = 0.50, max_sims = 5000):
     """ Returns the probability and probability error for all
     conformations in the resting set as a dictionary. """
     names = [c.name for c in self.restingset.complexes] + ["_spurious"]
     for n in names:
-      self.sampler.reduce_error_to(allowed_error, n, max_sims)
+      self.sampler.reduce_error_to(allowed_error, max_sims, n)
     return {name: self.get_conformation_prob(name, max_sims = 0) for name in names}
     
   def get_top_MFE_structs(self, num):
@@ -287,37 +287,37 @@ class RestingSetStats(object):
       energy_gap += 0.5
     return struct_list
     
-  def get_temp_depletion_due_to(self, rxn, allowed_error):
+  def get_temp_depletion_due_to(self, rxn, allowed_error, max_sims):
     t_unbound = self.c_max / rxn.get_k1(allowed_error)[0]
     for reactant in rxn.reactants:
       c_max = rxn.get_rs_stats(reactant).c_max
       if c_max == None or c_max == 0:
         return 0.0
       t_unbound /= c_max
-    t_bound = 1.0 / rxn.get_k2(allowed_error)[0]
+    t_bound = 1.0 / rxn.get_k2(allowed_error, max_sims = max_sims)[0]
     return t_bound / (t_bound + t_unbound)
-  def get_temp_depletion(self, allowed_error = 0.5):
+  def get_temp_depletion(self, allowed_error = 0.5, max_sims = 500):
     if self.c_max == None or self.c_max == 0:
       return 0.0
       
     rxns = list(filter(lambda r: r.reactants == r.products, self.inter_rxns))
-    depletions = [self.get_temp_depletion_due_to(rxn, allowed_error) for rxn in rxns]
+    depletions = [self.get_temp_depletion_due_to(rxn, allowed_error, max_sims) for rxn in rxns]
     return min(1, sum(depletions)) # The sum is a crude estimate of worst-case depletion
 
-  def get_perm_depletion_due_to(self, rxn, allowed_error):
+  def get_perm_depletion_due_to(self, rxn, allowed_error, max_sims):
     conc = 1.0
     for reactant in rxn.reactants:
       c_max = rxn.get_rs_stats(reactant).c_max
       if c_max == None:
         return 0.0
       conc *= c_max
-    return conc * rxn.get_k1(allowed_error)[0] / self.c_max
-  def get_perm_depletion(self, allowed_error = 0.5):
+    return conc * rxn.get_k1(allowed_error, max_sims = max_sims)[0] / self.c_max
+  def get_perm_depletion(self, allowed_error = 0.5, max_sims = 500):
     """ Returns the rate in /s at which the given resting set is depleted due to spurious reactions """
     if self.c_max == None or self.c_max == 0:
       return 0.0
 
-    depletions = [self.get_perm_depletion_due_to(rxn, allowed_error) for rxn in self.spurious_rxns]
+    depletions = [self.get_perm_depletion_due_to(rxn, allowed_error, max_sims) for rxn in self.spurious_rxns]
     return sum(depletions)
   
   def add_intra_rxn(self, rxn):
@@ -363,7 +363,7 @@ class ComplexRxnStats(object):
     self.complex_stats = dict([(c.id, None) for c in reactants])
     
   def get_rate(self, allowed_error = 0.50, max_sims = 500):
-    self.rxnjob.reduce_error_to(allowed_error, 'success', 'rate', max_sims)
+    self.rxnjob.reduce_error_to(allowed_error, max_sims, 'success', 'rate')
     rate = self.rxnjob.get_statistic('success', 'rate')
     error = self.rxnjob.get_statistic_error('success', 'rate')
     return (rate, error)

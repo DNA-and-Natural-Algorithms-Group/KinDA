@@ -75,23 +75,26 @@ class NupackSampleJob(object):
       self.total_sims += 1
         
     
-  def reduce_error_to(self, rel_goal, complex_name = "_spurious", max_sims = 500):
+  def reduce_error_to(self, rel_goal, max_sims, complex_name = "_spurious"):
     num_sims = 0
+    prob = self.get_complex_prob(complex_name)
     error = self.get_complex_prob_error(complex_name)
     goal = rel_goal * self.get_complex_prob(complex_name)
     while not error <= goal and num_sims < max_sims:
       # Estimate additional trials based on inverse square root relationship
       # between error and number of trials
-      print "Error should be reduced from %s to %s" % (error, goal)
+      print "*** Conformation probability for '{0}':".format(complex_name),
+      print "{0} +/- {1} (Goal: +/- {2}) [max additional sims: {3}] ***".format(prob, error, goal, max_sims - num_sims)
       if error == float('inf'):
         num_trials = 10
       else:
         reduction = error / goal
         num_trials = int(self.total_sims * (reduction**2 - 1) + 1)
-        num_trials = min(num_trials, max_sims - num_sims, self.total_sims + 1)
+        num_trials = min(500, num_trials, max_sims - num_sims, self.total_sims + 1)
         
       self.sample(num_trials)
 
       num_sims += num_trials
+      prob = self.get_complex_prob(complex_name)
       error = self.get_complex_prob_error(complex_name)
       goal = rel_goal * self.get_complex_prob(complex_name)

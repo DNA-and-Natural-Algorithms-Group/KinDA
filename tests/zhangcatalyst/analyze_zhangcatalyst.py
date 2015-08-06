@@ -48,7 +48,7 @@ rxn = rxns[0] # Select the first reaction (you can choose a different one if you
 rxn_stats = sstats.get_stats(rxn)
 ##   6) Use the Stats object to get data!
 k1 = rxn_stats.get_k1(0.5) # Get an estimate for k1 with 50% error
-k2 = rxn_stats.get_k2(0.5) # Get an estimate for k2 with 50% error
+k2 = rxn_stats.get_k2(0.5, max_sims = 500) # Get an estimate for k2 with 50% error
 # prob = rxn_stats.get_prob(0.25) # Estimate the probability that a random Multistrand trajectory will follow this reaction (not necessarily physically significant)
 # k_coll = rxn_stats.get_kcoll(0.25) # Estimate k_coll with 25% error
 ##     Note that get_prob() and get_kcoll() will have to have some successful trajectories in order to have reasonable errors,
@@ -73,7 +73,7 @@ confs = [c.name for c in restingset.complexes] # Get all conformation names in t
 confs.append("_spurious") # Name for catch-all conformation for all spurious conformations
 print "Conformation probabilities for resting set {0}".format(restingset)
 for c in confs:
-  p = rs_stats.get_conformation_prob(c, .025)[0]
+  p = rs_stats.get_conformation_prob(c, .025, max_sims = 1000)[0]
   print "\t{0}: {1}%".format(c, p*100)
 ## Getting the top 10 MFE structures
 mfe_structs = rs_stats.get_top_MFE_structs(10)

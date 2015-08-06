@@ -248,11 +248,11 @@ class MultistrandJob(object):
 
       
   
-  def reduce_error_to(self, rel_goal, reaction = 'overall', stat = 'rate', max_sims = 500):
+  def reduce_error_to(self, rel_goal, max_sims, reaction = 'overall', stat = 'rate'):
     """Runs simulations to reduce the error to rel_goal*mean or until max_sims is reached."""
     def get_status_func(block):
       def status_func():
-        print "*** Current estimate: {0} +/- {1} (Goal: +/- {2}) ***".format(block.get_mean(), block.get_error(), goal)
+        print "*** Current estimate: {0} +/- {1} (Goal: +/- {2}) [max additional sims: {3}] ***".format(block.get_mean(), block.get_error(), goal, max_sims - num_sims)
       return status_func
 
     tag = reaction + "_" + stat
@@ -388,9 +388,9 @@ class TransitionModeJob(MultistrandJob):
     return filter(lambda x: sum(x[1])>0, transition_path)
     
   
-  def reduce_error_to(self, rel_goal, start_states, end_states, stat = 'rate', max_sims = 500):
-    super(TransitionModeJob, self).reduce_error_to(rel_goal,
-        self.get_tag(start_states, end_states), stat, max_sims)
+  def reduce_error_to(self, rel_goal, max_sims, start_states, end_states, stat = 'rate'):
+    super(TransitionModeJob, self).reduce_error_to(rel_goal, max_sims,
+        self.get_tag(start_states, end_states), stat)
     
   def get_tag(self, start_states, end_states):
     assert all([s in self.states for s in start_states]), "Unknown start state given in %s" % start_states
