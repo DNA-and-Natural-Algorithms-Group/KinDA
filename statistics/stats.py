@@ -183,12 +183,12 @@ class RestingSetRxnStats(object):
     below the given allowed_error threshold. """
     return self.get_raw_stat('k2', allowed_error)
     
-  def get_raw_stat(self, stat, allowed_error = 0.50, abs_error = 0.0):
+  def get_raw_stat(self, stat, allowed_error = 0.50, max_sims = 500):
     """ General function to reduce the error on the given statistic
     to below the given threshold and return the value and standard
     error of the statistic. """
     # Reduce error to threshold
-    self.multijob.reduce_error_to(allowed_error, abs_error, self.multijob_tag, stat)
+    self.multijob.reduce_error_to(allowed_error, self.multijob_tag, stat, max_sims)
     # Calculate and return statistic
     val = self.multijob.get_statistic(self.multijob_tag, stat)
     error = self.multijob.get_statistic_error(self.multijob_tag, stat)
@@ -255,23 +255,23 @@ class RestingSetStats(object):
     self.inter_rxns = []
     self.spurious_rxns = []
     
-  def get_conformation_prob(self, complex_name, allowed_error = 0.50, abs_error = 1e-3):
+  def get_conformation_prob(self, complex_name, allowed_error = 0.50, max_sims = 500):
     """ Returns the probability and probability error
     of the given conformation based on the current number of samples.
     Use '_spurious' as a complex name to get the probability of
     conformations that do not match up with any of the expected
     conformations. """
-    self.sampler.reduce_error_to(allowed_error, abs_error, complex_name)
+    self.sampler.reduce_error_to(allowed_error, complex_name, max_sims)
     prob = self.sampler.get_complex_prob(complex_name)
     error = self.sampler.get_complex_prob_error(complex_name)
     return (prob, error)
-  def get_conformation_probs(self, allowed_error = 0.50, abs_error = 1e-3):
+  def get_conformation_probs(self, allowed_error = 0.50, max_sims = 500):
     """ Returns the probability and probability error for all
     conformations in the resting set as a dictionary. """
     names = [c.name for c in self.restingset.complexes] + ["_spurious"]
     for n in names:
-      self.sampler.reduce_error_to(allowed_error, abs_error, n)
-    return {name: self.get_conformation_prob(name, abs_error) for name in names}
+      self.sampler.reduce_error_to(allowed_error, n, max_sims)
+    return {name: self.get_conformation_prob(name, max_sims = 0) for name in names}
     
   def get_top_MFE_structs(self, num):
     """ Attempts to obtain the top <num> MFE structures by calling
@@ -362,8 +362,8 @@ class ComplexRxnStats(object):
     ## Initialize ComplexStats list for reactants
     self.complex_stats = dict([(c.id, None) for c in reactants])
     
-  def get_rate(self, allowed_error = 0.50, abs_error = 0.0):
-    self.rxnjob.reduce_error_to(allowed_error, abs_error, 'success', 'rate')
+  def get_rate(self, allowed_error = 0.50, max_sims = 500):
+    self.rxnjob.reduce_error_to(allowed_error, 'success', 'rate', max_sims)
     rate = self.rxnjob.get_statistic('success', 'rate')
     error = self.rxnjob.get_statistic_error('success', 'rate')
     return (rate, error)

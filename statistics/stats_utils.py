@@ -305,14 +305,14 @@ def make_stats(*args, **kargs):
 #          Score calculation         #
 ######################################
 
-def calc_spurious_rxn_score(system_stats, t_max, allowed_error = 0.5):
+def calc_spurious_rxn_score(system_stats, t_max, allowed_error = 0.5, max_sims = 500):
   max_depletion = 0.0
   for rs in system_stats.get_restingsets():
     stats = system_stats.get_stats(rs)
     max_depletion = max(max_depletion, min(stats.get_perm_depletion(allowed_error)*t_max, 1))
   return max_depletion
 
-def calc_unproductive_rxn_score(system_stats, allowed_error = 0.5):
+def calc_unproductive_rxn_score(system_stats, allowed_error = 0.5, max_sims = 500):
   max_depletion = 0.0
   for rs in system_stats.get_restingsets():
     stats = system_stats.get_stats(rs)

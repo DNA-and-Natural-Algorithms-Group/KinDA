@@ -263,7 +263,7 @@ class MultistrandJob(object):
     
     num_sims = 0
     error = block.get_error()
-    goal = max(abs_goal, rel_goal * block.get_mean())  
+    goal = rel_goal * block.get_mean()
     while not error <= goal and num_sims < max_sims:
       # Print current estimate/error
       status_func()
@@ -281,7 +281,7 @@ class MultistrandJob(object):
 
       num_sims += num_trials
       error = block.get_error()
-      goal = max(abs_goal, rel_goal * block.get_mean())
+      goal = rel_goal * block.get_mean()
     
     
 

@@ -77,11 +77,11 @@ class NupackSampleJob(object):
       self.total_count += 1
         
     
-  def reduce_error_to(self, rel_goal, abs_goal, complex_name = "_spurious"):
+  def reduce_error_to(self, rel_goal, complex_name = "_spurious", max_sims = 500):
+    num_sims = 0
     error = self.get_complex_prob_error(complex_name)
-    goal = max(rel_goal * self.get_complex_prob(complex_name), abs_goal)
-      
-    while not error <= goal:
+    goal = rel_goal * self.get_complex_prob(complex_name)
+    while not error <= goal and num_sims < max_sims:
       # Estimate additional trials based on inverse square root relationship
       # between error and number of trials
       print "Error should be reduced from %s to %s" % (error, goal)
@@ -92,5 +92,7 @@ class NupackSampleJob(object):
         num_trials = min(500, int(self.total_count * (reduction**2 - 1) + 1))
         
       self.sample(num_trials)
+
+      num_sims += num_trials
       error = self.get_complex_prob_error(complex_name)
-      goal = max(rel_goal * self.get_complex_prob(complex_name), abs_goal)
+      goal = rel_goal * self.get_complex_prob(complex_name)
