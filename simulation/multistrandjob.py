@@ -117,9 +117,6 @@ class MultistrandJob(object):
     self.datablocks["overall_time"] = Datablock()
     self.datablocks["overall_rate"] = Datablock(mean_func = rate_mean_func,
                                                 error_func = rate_error_func)
-    self.datablocks = {}
-  
-    self.ms_params = {}
 
     self.total_sims = 0
 
