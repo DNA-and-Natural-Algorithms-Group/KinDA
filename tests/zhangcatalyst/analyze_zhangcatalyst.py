@@ -33,9 +33,9 @@ sstats = stats.SystemStats(complexes = complexes, c_max = 1e-7)
 ##   1) Get the resting sets in the system (if you don't have them already)
 restingsets = sstats.get_restingsets() # Get all resting sets
 ##   2) Get reactions in the system that you're interested in
-rxns = sstats.get_reactions(reactants = [restingsets[0], restingsets[1]], spurious = True) # Get all reactions involving restingsets[0] and restingsets[1]
+rxns = sstats.get_reactions(reactants = [restingsets[0], restingsets[1]], spurious = False) # Get all non-spurious reactions involving restingsets[0] and restingsets[1]
 ## Try:
-# rxns = sstats.get_reactions(reactants = [restingsets[0], restingsets[1]], spurious = False) # Get all enumerated reactions involving restingsets[0] and restingsets[1]
+# rxns = sstats.get_reactions(reactants = [restingsets[0], restingsets[1]], spurious = True) # Get all spurious reactions involving restingsets[0] and restingsets[1]
 # rxns = sstats.get_reactions() # Get all reactions
 # rxns = sstats.get_reactions(spurious = True) # Get only spurious reactions
 ##   3) Print the reactions out so you can see what's going on...
