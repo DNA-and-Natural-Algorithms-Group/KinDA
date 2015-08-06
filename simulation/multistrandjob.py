@@ -250,8 +250,8 @@ class MultistrandJob(object):
 
       
   
-  def reduce_error_to(self, rel_goal, abs_goal = 0.0, reaction = 'overall', stat = 'rate'):
-    """Runs simulations to reduce the error to either rel_goal*mean or abs_goal."""
+  def reduce_error_to(self, rel_goal, reaction = 'overall', stat = 'rate', max_sims = 500):
+    """Runs simulations to reduce the error to rel_goal*mean or until max_sims is reached."""
     def get_status_func(block):
       def status_func():
         print "*** Current estimate: {0} +/- {1} (Goal: +/- {2}) ***".format(block.get_mean(), block.get_error(), goal)
@@ -261,9 +261,10 @@ class MultistrandJob(object):
     block = self.datablocks[tag]
     status_func = get_status_func(block)
     
+    num_sims = 0
     error = block.get_error()
     goal = max(abs_goal, rel_goal * block.get_mean())  
-    while not error <= goal:
+    while not error <= goal and num_sims < max_sims:
       # Print current estimate/error
       status_func()
 
@@ -277,6 +278,8 @@ class MultistrandJob(object):
         num_trials = min(num_trials, self.total_sims + 1)
         
       self.run_simulations(num_trials, sims_per_update = 10, status_func = status_func)
+
+      num_sims += num_trials
       error = block.get_error()
       goal = max(abs_goal, rel_goal * block.get_mean())
     
@@ -387,9 +390,9 @@ class TransitionModeJob(MultistrandJob):
     return filter(lambda x: sum(x[1])>0, transition_path)
     
   
-  def reduce_error_to(self, rel_goal, abs_goal, start_states, end_states, stat = 'rate'):
-    super(TransitionModeJob, self).reduce_error_to(rel_goal, abs_goal,
-        self.get_tag(start_states, end_states), stat)
+  def reduce_error_to(self, rel_goal, start_states, end_states, stat = 'rate', max_sims = 500):
+    super(TransitionModeJob, self).reduce_error_to(rel_goal,
+        self.get_tag(start_states, end_states), stat, max_sims)
     
   def get_tag(self, start_states, end_states):
     assert all([s in self.states for s in start_states]), "Unknown start state given in %s" % start_states
