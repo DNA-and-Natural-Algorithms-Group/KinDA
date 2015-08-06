@@ -309,14 +309,14 @@ def calc_spurious_rxn_score(system_stats, t_max, allowed_error = 0.5, max_sims =
   max_depletion = 0.0
   for rs in system_stats.get_restingsets():
     stats = system_stats.get_stats(rs)
-    max_depletion = max(max_depletion, min(stats.get_perm_depletion(allowed_error)*t_max, 1))
+    max_depletion = max(max_depletion, min(stats.get_perm_depletion(allowed_error, max_sims = max_sims)*t_max, 1))
   return max_depletion
 
 def calc_unproductive_rxn_score(system_stats, allowed_error = 0.5, max_sims = 500):
   max_depletion = 0.0
   for rs in system_stats.get_restingsets():
     stats = system_stats.get_stats(rs)
-    max_depletion = max(max_depletion, stats.get_temp_depletion(allowed_error))
+    max_depletion = max(max_depletion, stats.get_temp_depletion(allowed_error, max_sims = max_sims))
   return max_depletion
 
 def calc_intended_rxn_score(system_stats):

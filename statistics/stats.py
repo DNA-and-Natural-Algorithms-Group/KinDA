@@ -288,7 +288,7 @@ class RestingSetStats(object):
     return struct_list
     
   def get_temp_depletion_due_to(self, rxn, allowed_error, max_sims):
-    t_unbound = self.c_max / rxn.get_k1(allowed_error)[0]
+    t_unbound = self.c_max / rxn.get_k1(allowed_error, max_sims = max_sims)[0]
     for reactant in rxn.reactants:
       c_max = rxn.get_rs_stats(reactant).c_max
       if c_max == None or c_max == 0:
