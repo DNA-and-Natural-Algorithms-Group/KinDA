@@ -13,7 +13,7 @@ from statistics import stats_utils, stats
 
 #### Read domains, strands, and complexes from old-style PIL file
 ## Ability to read kernel-style PIL notation to be implemented in the future.
-d, s, c = dna.io_PIL.from_PIL('./zhangcatalyst.pil')
+domains, strands, complexes = dna.io_PIL.from_PIL('./zhangcatalyst.pil')
 
 #### To use KinDA to analyze statistics, use the SystemStats object, which
 #### provides convenient ways to access the reactions and resting sets of a
@@ -27,13 +27,13 @@ d, s, c = dna.io_PIL.from_PIL('./zhangcatalyst.pil')
 ##   The c_max parameter is the default maximum concentration for any resting set, used
 ##   for calculating overall unproductive and spurious scores for the system.
 ##   c_max can be set manually for particular resting sets (see below) [TODO: Show example]
-sstats = stats.SystemStats(complexes = c, c_max = 1e-7)
+sstats = stats.SystemStats(complexes = complexes, c_max = 1e-7)
 
 #### To analyze a reaction in detail...
 ##   1) Get the resting sets in the system (if you don't have them already)
 restingsets = sstats.get_restingsets() # Get all resting sets
 ##   2) Get reactions in the system that you're interested in
-rxns = sstats.get_reactions(reactants = [restingsets[0], restingsets[1]]) # Get all reactions involving restingsets[0] and restingsets[1]
+rxns = sstats.get_reactions(reactants = [restingsets[0], restingsets[1]], spurious = True) # Get all reactions involving restingsets[0] and restingsets[1]
 ## Try:
 # rxns = sstats.get_reactions(reactants = [restingsets[0], restingsets[1]], spurious = False) # Get all enumerated reactions involving restingsets[0] and restingsets[1]
 # rxns = sstats.get_reactions() # Get all reactions
