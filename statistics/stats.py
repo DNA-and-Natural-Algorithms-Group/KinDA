@@ -12,7 +12,8 @@ import options
   
 from dnaobjects import utils, Macrostate
 
-import PyNupack as nupack
+#import PyNupack as nupack
+from imports import PyNupack as nupack
     
 
 ## GLOBALS

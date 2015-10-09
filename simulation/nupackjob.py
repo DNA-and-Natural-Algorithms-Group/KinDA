@@ -2,7 +2,8 @@ from imports import pynupackhome, dnaobjectshome
 
 import math
 
-import PyNupack as nupack
+#import PyNupack as nupack
+from imports import PyNupack as nupack
 from dnaobjects import utils, Complex
 import options
 
