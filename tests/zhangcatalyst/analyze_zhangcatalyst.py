@@ -1,9 +1,9 @@
 import os, sys
 
-if os.path.realpath('../..') not in sys.path:
-  sys.path.append(os.path.realpath('../..'))
+#if os.path.realpath('../..') not in sys.path:
+#  sys.path.append(os.path.realpath('../..'))
   
-from imports import dnaobjectshome
+from imports import dnaobjectshome, kindahome
 
 import dnaobjects as dna
 
@@ -13,7 +13,7 @@ from statistics import stats_utils, stats
 
 #### Read domains, strands, and complexes from old-style PIL file
 ## Ability to read kernel-style PIL notation to be implemented in the future.
-domains, strands, complexes = dna.io_PIL.from_PIL('./zhangcatalyst.pil')
+domains, strands, complexes = dna.io_PIL.from_PIL('./dna21_zhangcatalyst_rand.pil')
 
 #### To use KinDA to analyze statistics, use the SystemStats object, which
 #### provides convenient ways to access the reactions and resting sets of a
