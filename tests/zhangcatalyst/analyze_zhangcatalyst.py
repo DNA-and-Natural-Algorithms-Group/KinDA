@@ -13,7 +13,9 @@ from statistics import stats_utils, stats
 
 #### Read domains, strands, and complexes from old-style PIL file
 ## Ability to read kernel-style PIL notation to be implemented in the future.
-domains, strands, complexes = dna.io_PIL.from_PIL('./dna21_zhangcatalyst_rand.pil')
+pilpath=sys.argv[1]
+#domains, strands, complexes = dna.io_PIL.from_PIL('./dna21_zhangcatalyst_rand.pil')
+domains, strands, complexes = dna.io_PIL.from_PIL(pilpath)
 
 #### To use KinDA to analyze statistics, use the SystemStats object, which
 #### provides convenient ways to access the reactions and resting sets of a
