@@ -1,8 +1,9 @@
 import os, sys
 
-if os.path.realpath('../..') not in sys.path:
-  sys.path.append(os.path.realpath('../..'))
+#if os.path.realpath('../..') not in sys.path:
+#  sys.path.append(os.path.realpath('../..'))
   
+#from KinDA import imports
 from KinDA.imports import dnaobjectshome, kindahome
 
 import dnaobjects as dna
@@ -45,12 +46,12 @@ print "Reactions between", restingsets[0], "and", restingsets[1], ":"
 for i, rxn in enumerate(rxns):
   print "{0}: {1}".format(i, rxn)
 ##   4) Choose a reaction to analyze in more detail
-rxn = rxns[0] # Select the first reaction (you can choose a different one if you like, of course)
+#rxn = rxns[0] # Select the first reaction (you can choose a different one if you like, of course)
 ##   5) Get the associated RestingSetRxnStats object
-rxn_stats = sstats.get_stats(rxn)
+#rxn_stats = sstats.get_stats(rxn)
 ##   6) Use the Stats object to get data!
-k1 = rxn_stats.get_k1(0.5) # Get an estimate for k1 with 50% error
-k2 = rxn_stats.get_k2(0.5, max_sims = 500) # Get an estimate for k2 with 50% error
+#k1 = rxn_stats.get_k1(0.5) # Get an estimate for k1 with 50% error
+#k2 = rxn_stats.get_k2(0.5, max_sims = 500) # Get an estimate for k2 with 50% error
 # prob = rxn_stats.get_prob(0.25) # Estimate the probability that a random Multistrand trajectory will follow this reaction (not necessarily physically significant)
 # k_coll = rxn_stats.get_kcoll(0.25) # Estimate k_coll with 25% error
 
@@ -66,20 +67,20 @@ restingset = restingsets[0]
 ##      resting sets involving those strands (in ANY order, and including those with additional strands)
 ##      will be returned.
 ##   2) Get the associated RestingSetStats object
-rs_stats = sstats.get_stats(restingset)
+#rs_stats = sstats.get_stats(restingset)
 ##   3) Get data!
 ## Getting the conformation probabilities
-confs = [c.name for c in restingset.complexes] # Get all conformation names in the resting set (most of the time there are only 1 or 2)
-confs.append("_spurious") # Name for catch-all conformation for all spurious conformations
-print "Conformation probabilities for resting set {0}".format(restingset)
-for c in confs:
-  p = rs_stats.get_conformation_prob(c, .025, max_sims = 1000)[0]
-  print "\t{0}: {1}%".format(c, p*100)
+#confs = [c.name for c in restingset.complexes] # Get all conformation names in the resting set (most of the time there are only 1 or 2)
+#confs.append("_spurious") # Name for catch-all conformation for all spurious conformations
+#print "Conformation probabilities for resting set {0}".format(restingset)
+#for c in confs:
+#  p = rs_stats.get_conformation_prob(c, .025, max_sims = 1000)[0]
+#  print "\t{0}: {1}%".format(c, p*100)
 ## Getting the top 10 MFE structures
-mfe_structs = rs_stats.get_top_MFE_structs(10)
-print "Top 10 MFE structures for resting set {0}".format(restingset)
-for i,s in enumerate(mfe_structs):
-  print "\t{0}: {1} ({2})".format(i, s[0], s[1])
+#mfe_structs = rs_stats.get_top_MFE_structs(10)
+#print "Top 10 MFE structures for resting set {0}".format(restingset)
+#for i,s in enumerate(mfe_structs):
+#  print "\t{0}: {1} ({2})".format(i, s[0], s[1])
 ## Getting the (fractional) reactant depletion due to unproductive reactions
 # unproductive_depletion = rs_stats.get_temp_depletion(0.5) # Get depletion with 50% error on any relevant reaction rate
 ## Getting the rate constant of reactant depletion due to spurious reactions (units: /s)

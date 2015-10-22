@@ -1,9 +1,9 @@
-from imports import pynupackhome, dnaobjectshome
+from KinDA.imports import pynupackhome, dnaobjectshome
 
 import math
 
 #import PyNupack as nupack
-from imports import PyNupack as nupack
+from KinDA.imports import PyNupack as nupack
 from dnaobjects import utils, Complex
 import options
 

@@ -4,7 +4,7 @@ except ImportError:
   print "Could not import multiprocessing package. Try turning multiprocessing off in options.py"
   raise
 
-from imports import multistrandhome, dnaobjectshome
+from KinDA.imports import multistrandhome, dnaobjectshome
 
 import math
 

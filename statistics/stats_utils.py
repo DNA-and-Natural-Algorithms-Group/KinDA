@@ -2,7 +2,7 @@
 
 import itertools as it
 
-from imports import dnaobjectshome
+from KinDA.imports import dnaobjectshome
 import dnaobjects as dna
 import options
 

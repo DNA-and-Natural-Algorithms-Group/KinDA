@@ -5,15 +5,15 @@
 
 from simulation.multistrandjob import FirstPassageTimeModeJob, \
     TransitionModeJob, FirstStepModeJob
-from simulation.nupackjob import NupackSampleJob
-from enumeration.enumeratejob import EnumerateJob
+from KinDA.simulation.nupackjob import NupackSampleJob
+from KinDA.enumeration.enumeratejob import EnumerateJob
 import stats_utils
 import options
   
 from dnaobjects import utils, Macrostate
 
 #import PyNupack as nupack
-from imports import PyNupack as nupack
+from KinDA.imports import PyNupack as nupack
     
 
 ## GLOBALS
