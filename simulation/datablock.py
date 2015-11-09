@@ -1,6 +1,6 @@
 import os, atexit
 import random, math
-import options
+from .. import options
   
 # Define default statistics functions    
 def default_mean_func(datablock):

@@ -4,20 +4,20 @@ flags = {
 }
 
 general_params = {
-  'loose_complex_similarity': 0.66
+  'loose_complex_similarity': 0.7
 }
 
 multistrand_params = {
   'dangles': 'Some',
-  'sim_time': 1e-2,
+  'sim_time': 1.00, 
   'output_interval': 100,
   'param_type': 'Nupack',
   'substrate_type': 'DNA',
   'rate_method': 'Metropolis',
   'temp': 25,
   'bimolecular_scaling': 0.5e5,
-  'multithreading': False,
-  'join_concentration': 1e-15 # setting this to 0 makes any non-single-stranded complexes have "inf" energy, which could be problematic...
+  'multithreading': True,
+  'join_concentration': 1e-15
 }
 
 nupack_params = {

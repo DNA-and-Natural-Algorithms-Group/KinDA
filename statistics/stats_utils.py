@@ -2,13 +2,13 @@
 
 import itertools as it
 
-from KinDA.imports import dnaobjectshome
+from ..imports import dnaobjectshome
 import dnaobjects as dna
-import options
+from .. import options
 
-from simulation.multistrandjob import FirstPassageTimeModeJob, FirstStepModeJob
+from ..simulation.multistrandjob import FirstPassageTimeModeJob, FirstStepModeJob
 
-from stats import RestingSetRxnStats, RestingSetStats
+from .stats import RestingSetRxnStats, RestingSetStats
 
 ####  TODO: make_RestingSetStats (Is this done yet?)
 ####        make_ComplexRxnStats

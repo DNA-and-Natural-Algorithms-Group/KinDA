@@ -7,9 +7,9 @@ from KinDA.imports import dnaobjectshome, kindahome
 
 import dnaobjects as dna
 
-from simulation import multistrandjob
-from enumeration.enumeratejob import EnumerateJob
-from statistics import stats_utils, stats
+from KinDA.simulation import multistrandjob
+from KinDA.enumeration.enumeratejob import EnumerateJob
+from KinDA.statistics import stats_utils, stats
 
 #### Read domains, strands, and complexes from old-style PIL file
 ## Ability to read kernel-style PIL notation to be implemented in the future.

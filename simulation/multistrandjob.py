@@ -4,7 +4,7 @@ except ImportError:
   print "Could not import multiprocessing package. Try turning multiprocessing off in options.py"
   raise
 
-from KinDA.imports import multistrandhome, dnaobjectshome
+from ..imports import multistrandhome, dnaobjectshome
 
 import math
 
@@ -15,7 +15,7 @@ from multistrand.system import SimSystem as MSSimSystem
 
 from dnaobjects import utils, io_Multistrand, Macrostate, RestingSet, Complex
 
-import options
+from .. import options
 from datablock import Datablock
 
 # GLOBALS

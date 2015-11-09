@@ -42,6 +42,7 @@ def follow_fast_reactions(complexes, all_fast_reactions, restingsets, inprogress
     for rxn in fast_reactions:
       # Find the product sets of each of rxn's products
       rxn_results = follow_fast_reactions(rxn.products, all_fast_reactions, restingsets, inprogress, visited)
+      #rxn_results = follow_fast_reactions(rxn.products, all_fast_reactions, restingsets, inprogress, dict())
       
       # Add this reaction's product sets to the cumulative list
       prods.extend(rxn_results)
@@ -51,7 +52,8 @@ def follow_fast_reactions(complexes, all_fast_reactions, restingsets, inprogress
     
     # Memoize the enumerated products
     visited[cmplx] = prods
-    print len(visited)
+    print len(visited), len(inprogress)
+    if len(inprogress) % 25 == 0: print len(inprogress)
     
   # Calculate combinatorial fates
   complex_products = [visited[cmplx] for cmplx in complexes]
