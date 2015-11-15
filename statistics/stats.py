@@ -183,17 +183,6 @@ class RestingSetRxnStats(object):
     Additional simulations are run until the fractional error is
     below the given allowed_error threshold. """
     return self.get_raw_stat('k2', allowed_error, max_sims)
-    
-  def get_raw_stat(self, stat, allowed_error, max_sims):
-    """ General function to reduce the error on the given statistic
-    to below the given threshold and return the value and standard
-    error of the statistic. """
-    # Reduce error to threshold
-    self.multijob.reduce_error_to(allowed_error, max_sims, self.multijob_tag, stat)
-    # Calculate and return statistic
-    val = self.multijob.get_statistic(self.multijob_tag, stat)
-    error = self.multijob.get_statistic_error(self.multijob_tag, stat)
-    return (val, error)
   def get_kcoll(self, allowed_error = 0.50, max_sims = 500):
     """ Returns the average kcoll value calculated over successful Multistrand
     trajectories. Additional simulations are run until the fractional error is
@@ -205,6 +194,26 @@ class RestingSetRxnStats(object):
     a meaningful value. Additional simulations are run until the fractional
     error is below the given allowed_error threshold. """
     return self.get_raw_stat('prob', allowed_error, max_sims)
+
+  def get_k2_data(self):
+    return self.get_raw_stat_data('k2')
+  def get_kcoll_data(self):
+    return self.get_raw_stat_data('kcoll')
+  def get_prob_data(self):
+    return self.get_raw_stat_data('prob')
+    
+  def get_raw_stat(self, stat, allowed_error, max_sims):
+    """ General function to reduce the error on the given statistic
+    to below the given threshold and return the value and standard
+    error of the statistic. """
+    # Reduce error to threshold
+    self.multijob.reduce_error_to(allowed_error, max_sims, self.multijob_tag, stat)
+    # Calculate and return statistic
+    val = self.multijob.get_statistic(self.multijob_tag, stat)
+    error = self.multijob.get_statistic_error(self.multijob_tag, stat)
+    return (val, error)
+  def get_raw_stat_data(self, stat):
+    return self.multijob.get_statistic_data(self.multijob_tag, stat)
   
   def set_rs_stats(self, reactant, stats):
     self.rs_stats[reactant] = stats

@@ -24,6 +24,7 @@ class NupackSampleJob(object):
     self.total_sims = 0
   
   def get_complex_index(self, complex_name):
+    """Unreliable way of indexing each complex in the resting set. Should be fixed."""
     matches = [i for i, c
                  in enumerate(self.restingset.complexes)
                  if c.name == complex_name]
