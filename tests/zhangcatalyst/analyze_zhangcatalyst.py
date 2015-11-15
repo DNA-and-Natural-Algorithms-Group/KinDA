@@ -1,7 +1,7 @@
 import os, sys
 
-if os.path.realpath('../..') not in sys.path:
-  sys.path.append(os.path.realpath('../..'))
+#if os.path.realpath('../..') not in sys.path:
+#  sys.path.append(os.path.realpath('../..'))
   
 from KinDA.imports import dnaobjectshome, kindahome
 

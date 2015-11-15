@@ -10,11 +10,12 @@ import enumerator.enumerator as enum
 ## GLOBALS
 # The follow_fast_reactions function is copied shamelessly from KinD's
 # utilities.py.
-def follow_fast_reactions(complexes, all_fast_reactions, restingsets, inprogress, visited = dict()):
+def follow_fast_reactions(complexes, all_fast_reactions, restingsets, inprogress, visited):
   """Returns a list containing lists of resting states. Each of the inner lists
   represents a set of products that can result from fast reactions starting 
   from the given complex.
   An important optimization would be to add memoization. [NOTE: memoization added but untested]"""
+
   for i, cmplx in enumerate(complexes):
   
     # If the complex is currently being processed, you've entered a cycle, so stop enumerating
@@ -121,7 +122,8 @@ class EnumerateJob(object):
           rxn.products,
           fast_rxns,
           restingsets,
-          set()
+          set(),
+          dict()
       )
       reactants = [dna.utils.get_containing_set(self.enumerated_restingsets, c)
             for c
