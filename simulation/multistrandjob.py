@@ -174,7 +174,7 @@ class MultistrandJob(object):
     return self.datablocks[reaction + "_" + stat].get_mean()
   def get_statistic_error(self, reaction, stat = 'rate'):
     return self.datablocks[reaction + "_" + stat].get_error()
-  def get_stat_data(self, reaction = 'overall', stat = 'rate'):
+  def get_statistic_data(self, reaction = 'overall', stat = 'rate'):
     return self.datablocks[reaction + "_" + stat].get_data()
   
 
