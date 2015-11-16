@@ -2,7 +2,7 @@
 sequence t1 = GGAGCC : 6
 sequence d2 = GGCAAACAAG : 10
 sequence d3 = CGGCAGAATT : 10
-sequence t4 = GCGC : 4
+sequence t4 = GCATGC : 6
 sequence dA = CGCATTTGCC : 10
 sequence dB = TACCTTTTCC : 10
 sequence dC = CAAAGCCCTT : 10
