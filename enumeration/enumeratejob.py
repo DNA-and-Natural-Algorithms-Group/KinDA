@@ -6,6 +6,8 @@ from KinDA.imports import peppercornhome, dnaobjectshome
 import dnaobjects as dna
 import enumerator.enumerator as enum
 
+from KinDA import options
+
 
 ## GLOBALS
 # The follow_fast_reactions function is copied shamelessly from KinD's
@@ -73,6 +75,13 @@ class EnumerateJob(object):
     # Flag indicating if enumeration has occurred yet
     self.enumerated = False
     self.condensed = False
+
+    # Set peppercorn options
+    if '--release-cutoff-1-1' in options.peppercorn_params:
+      enum.reactions.RELEASE_CUTOFF_1_1 = options.peppercorn_params['--release-cutoff-1-1']
+    if '--release-cutoff-1-n' in options.peppercorn_params:
+      enum.reactions.RELEASE_CUTOFF_1_N = options.peppercorn_params['--release-cutoff-1-n']
+      
     
   def enumerate(self):
     ## Convert to Peppercorn objects

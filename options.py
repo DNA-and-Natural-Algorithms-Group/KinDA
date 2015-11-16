@@ -26,3 +26,7 @@ nupack_params = {
   'temp': 25
 }
 
+peppercorn_params = {
+  '--release-cutoff-1-1': 8,
+  '--release-cutoff-1-n': 6
+}
