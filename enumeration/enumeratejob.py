@@ -75,12 +75,6 @@ class EnumerateJob(object):
     # Flag indicating if enumeration has occurred yet
     self.enumerated = False
     self.condensed = False
-
-    # Set peppercorn options
-    if '--release-cutoff-1-1' in options.peppercorn_params:
-      enum.reactions.RELEASE_CUTOFF_1_1 = options.peppercorn_params['--release-cutoff-1-1']
-    if '--release-cutoff-1-n' in options.peppercorn_params:
-      enum.reactions.RELEASE_CUTOFF_1_N = options.peppercorn_params['--release-cutoff-1-n']
       
     
   def enumerate(self):
@@ -97,10 +91,17 @@ class EnumerateJob(object):
         [v for k, v in enum_objects['strands']],
         [v for k, v in enum_objects['complexes']]
     )
+    # Set peppercorn options
+    if '--release-cutoff-1-1' in options.peppercorn_params:
+      e.RELEASE_CUTOFF_1_1 = options.peppercorn_params['--release-cutoff-1-1']
+    if '--release-cutoff-1-n' in options.peppercorn_params:
+      e.RELEASE_CUTOFF_1_N = options.peppercorn_params['--release-cutoff-1-n']
+    # Perform enumeration
     e.enumerate()
     
     ## Convert enumerated results back to DNAObjects objects
     dna_objects = dna.io_Peppercorn.from_Peppercorn(
+        complexes = e.complexes,
         reactions = e.reactions,
         restingsets = e.resting_states
     )
@@ -152,6 +153,10 @@ class EnumerateJob(object):
 
     self.condensed_reactions = condensed_rxns
     
+  def get_complexes(self):
+    if not self.enumerated: self.enumerate()
+    return self.enumerated_complexes[:]
+
   def get_restingsets(self):
     if not self.enumerated: self.enumerate()
     return self.enumerated_restingsets[:]

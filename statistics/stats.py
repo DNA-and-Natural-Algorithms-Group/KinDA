@@ -43,7 +43,7 @@ class SystemStats(object):
     ## 
     self.enum_job = EnumerateJob(complexes = complexes)
 
-    self.complexes = complexes
+    self.complexes = self.enum_job.get_complexes()
     self.restingsets = self.enum_job.get_restingsets()
 
     self.reactions = self.enum_job.get_reactions()
@@ -115,9 +115,25 @@ class SystemStats(object):
       print "Statistics for object {0} not found.".format(obj)
 
   def export_data(self, filepath):
-    """ Exports all simulated data so that it can be imported in a later Python session.
+    """ Exports data of this SystemStats object so that it can be imported in a later Python session.
+    Does not export the entire SystemStats object (only the XXXStats data that has been collected).
+    Data is exported in JSON format.
+    The following constructs are exported:
+      - complexes
+      - resting sets
+      - reactions
+      - resting-set reactions
+      - resting-set statistics objects
+      - resting-set-reaction statistics objects
     NOT IMPLEMENTED """
-    pass
+    #domains = 
+    #cpx_to_id = {cpx: 'cpx_{0}'.format(cpx.id) for cpx in self.complexes} # id #s are guaranteed to be unique within a Python session
+    #rs_to_id = {rs: 'rs_{0}'.format(rs.id) for rs in self.restingsets}
+    #rxn_to_id = {rxn: 'rxn_{0}'.format(rxn.id) for rxn in self.reactions + self.spurious_reactions}
+    #rsrxn_to_id = {rsrxn: 'rsrxn_{0}'.format(rsrxn.id) for rsrxn in self.rs_reactions + self.spurious_rs_reactions}
+
+    # Prepare the overall dict object to be JSON-ed
+    #sstats_dict = {}
   def import_data(self, filepath):
     """ NOT IMPLEMENTED """
     pass
