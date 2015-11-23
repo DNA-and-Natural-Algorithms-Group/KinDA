@@ -298,6 +298,10 @@ class RestingSetStats(object):
     for n in names:
       self.sampler.reduce_error_to(allowed_error, max_sims, n)
     return {name: self.get_conformation_prob(name, max_sims = 0) for name in names}
+  def get_similarity_threshold(self):
+    return self.sampler.similarity_threshold
+  def set_similarity_threshold(self, threshold):
+    self.sampler.set_similarity_threshold(threshold)
     
   def get_top_MFE_structs(self, num):
     """ Attempts to obtain the top <num> MFE structures by calling
