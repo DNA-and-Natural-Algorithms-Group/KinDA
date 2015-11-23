@@ -36,15 +36,15 @@ sstats = stats.SystemStats(complexes = complexes, c_max = 1e-7)
 ##   1) Get the resting sets in the system (if you don't have them already)
 restingsets = sstats.get_restingsets() # Get all resting sets
 ##   2) Get reactions in the system that you're interested in
-rxns = sstats.get_reactions(reactants = [restingsets[0], restingsets[1]], spurious = False) # Get all non-spurious reactions involving restingsets[0] and restingsets[1]
+# rxns = sstats.get_reactions(reactants = [restingsets[0], restingsets[1]], spurious = False) # Get all non-spurious reactions involving restingsets[0] and restingsets[1]
 ## Try:
 # rxns = sstats.get_reactions(reactants = [restingsets[0], restingsets[1]], spurious = True) # Get all spurious reactions involving restingsets[0] and restingsets[1]
 # rxns = sstats.get_reactions() # Get all reactions
 # rxns = sstats.get_reactions(spurious = True) # Get only spurious reactions
 ##   3) Print the reactions out so you can see what's going on...
-print "Reactions between", restingsets[0], "and", restingsets[1], ":"
-for i, rxn in enumerate(rxns):
-  print "{0}: {1}".format(i, rxn)
+# print "Reactions between", restingsets[0], "and", restingsets[1], ":"
+# for i, rxn in enumerate(rxns):
+#   print "{0}: {1}".format(i, rxn)
 ##   4) Choose a reaction to analyze in more detail
 #rxn = rxns[0] # Select the first reaction (you can choose a different one if you like, of course)
 ##   5) Get the associated RestingSetRxnStats object
@@ -62,7 +62,7 @@ for i, rxn in enumerate(rxns):
 print "Resting Sets: "
 for i, rs in enumerate(restingsets):
   print "{0}: {1}".format(i, rs)
-restingset = restingsets[0] 
+# restingset = restingsets[0] 
 ##      NOTE: You can also use sstats.get_restingset(strands = list_of_strands) and all
 ##      resting sets involving those strands (in ANY order, and including those with additional strands)
 ##      will be returned.
