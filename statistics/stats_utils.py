@@ -8,7 +8,7 @@ from .. import options
 
 from ..simulation.multistrandjob import FirstPassageTimeModeJob, FirstStepModeJob
 
-from .stats import RestingSetRxnStats, RestingSetStats
+from .stats import SystemStats, RestingSetRxnStats, RestingSetStats
 
 ####  TODO: make_RestingSetStats (Is this done yet?)
 ####        make_ComplexRxnStats
@@ -321,3 +321,178 @@ def calc_unproductive_rxn_score(system_stats, allowed_error = 0.5, max_sims = 50
 
 def calc_intended_rxn_score(system_stats):
   pass
+
+
+
+######################################
+#       Import/Export Utilities      #
+######################################
+
+def export_data(sstats, filepath):
+  """ Exports data of this SystemStats object so that it can be imported in a later Python session.
+  Does not export the entire SystemStats object (only the XXXStats data that has been collected).
+  Data is exported in JSON format.
+  The following constructs are exported:
+    - domains
+    - strands
+    - complexes
+    - resting sets
+    - reactions
+    - resting-set reactions
+    - resting-set statistics objects
+    - resting-set-reaction statistics objects
+  Implemented, but badly and fragily dependent on SystemStats implementation """
+  ## Extract all objects to be exported
+  rs_reactions = list(sstats.rxn_to_stats.keys())
+  restingsets = set(sum([list(r.reactants + r.products) for r in rs_reactions], [])
+                + list(sstats.rs_to_stats.keys()))
+  reactions = sstats.reactions + sstats.spurious_reactions
+  complexes = set(sum([list(r.reactants + r.products) for r in reactions], [])
+                  + sum([list(rs.complexes) for rs in restingsets], [])
+                  + sstats.complexes)
+  strands = set(sum([c.strands for c in complexes], []))
+  domains = set(sum([s.base_domains() for s in strands], []))
+
+  ## Note: We destroy the domain hierarchy and only store "base" domains. This could be potentially bad.
+  domain_to_id = {dom: 'dom{0}_{1}'.format(dom.id, dom.name) for dom in domains} # id #s are guaranteed to be unique within a Python session
+  domain_to_dict = {d_id: {'name': d.name, 'constraints': str(d.constraints)} for d,d_id in domain_to_id.iteritems()}
+
+  strand_to_id = {strand: 'strand{0}_{1}'.format(strand.id, strand.name) for strand in strands}
+  strand_to_dict = {}
+  for s, s_id in strand_to_id.iteritems():
+    strand_domains = [domain_to_id[d] for d in s.base_domains()]
+    strand_to_dict[s_id] = {'name': s.name, 'domains': strand_domains}
+
+  complex_to_id = {cpx: 'cpx{0}_{1}'.format(cpx.id, cpx.name) for cpx in complexes}
+  complex_to_dict = {}
+  for c, c_id in complex_to_id.iteritems():
+    cpx_strands = [strand_to_id[s] for s in c.strands]
+    complex_to_dict[c_id] = {'name': c.name, 'strands': cpx_strands, 'structure': c.structure.to_dotparen()}
+  init_complex_ids = [complex_to_id[c] for c in sstats.complexes]
+
+  rs_to_id = {rs: 'rs{0}_{1}'.format(rs.id, rs.name) for rs in restingsets}
+  rs_to_dict = {}
+  for rs, rs_id in rs_to_id.iteritems():
+    rs_complexes = [complex_to_id[c] for c in rs.complexes]
+    rs_to_dict[rs_id] = {'name': rs.name, 'complexes': rs_complexes}
+
+  rxn_to_id = {rxn: 'rxn{0}_{1}'.format(rxn.id, str(rxn)) for rxn in reactions}
+  rxn_to_dict = {}
+  for r, r_id in rxn_to_id.iteritems():
+    reactants = [complex_to_id[c] for c in r.reactants]
+    products = [complex_to_id[c] for c in r.products]
+    rxn_to_dict[r_id] = {'name': r.name, 'reactants': reactants, 'products': products}
+
+  rsrxn_to_id = {rsrxn: 'rsrxn{0}_{1}'.format(rsrxn.id, str(rsrxn)) for rsrxn in rs_reactions}
+  rsrxn_to_dict = {}
+  for r, r_id in rsrxn_to_id.iteritems():
+    reactants = [rs_to_id[rs] for rs in r.reactants]
+    products = [rs_to_id[rs] for rs in r.products]
+    rsrxn_to_dict[r_id] = {'name': r.name, 'reactants': reactants, 'products': products}
+
+  rsstats_to_dict = {}
+  for rs in restingsets:
+    stats = sstats.get_stats(rs)
+    rsstats_to_dict[rs_to_id[rs]] = {'similarity_threshold': stats.get_similarity_threshold()}
+    for c in rs.complexes:
+      rsstats_to_dict[rs_to_id[rs]][complex_to_id[c]] = {
+        'prob': '{0} +/- {1}'.format(*stats.get_conformation_prob(c.name, 1, max_sims=0)),
+        'similarity_data': stats.get_conformation_prob_data(c.name)
+      }
+
+  rsrxnstats_to_dict = {}
+  for rsrxn in rs_reactions:
+    stats = sstats.get_stats(rsrxn)
+    rsrxnstats_to_dict[rsrxn_to_id[rsrxn]] = {
+      'prob': '{0} +/- {1}'.format(*stats.get_prob(1, max_sims = 0)),
+      'kcoll': '{0} +/- {1}'.format(*stats.get_kcoll(1, max_sims = 0)),
+      'k1': '{0} +/- {1}'.format(*stats.get_k1(1, max_sims = 0)),
+      'k2': '{0} +/- {1}'.format(*stats.get_k2(1, max_sims = 0)),
+      'prob_data': stats.get_prob_data(),
+      'kcoll_data': stats.get_kcoll_data(),
+      'k1_data': stats.get_k1_data(),
+      'k2_data': stats.get_k2_data()
+    }
+
+  #print rsrxn_to_id
+
+  # Prepare the overall dict object to be JSON-ed
+  sstats_dict = {
+    'domains': domain_to_dict,
+    'strands': strand_to_dict,
+    'complexes': complex_to_dict,
+    'resting-sets': rs_to_dict,
+    'reactions': rxn_to_dict,
+    'resting-set-reactions': rsrxn_to_dict,
+    'resting-set-stats': rsstats_to_dict,
+    'resting-set-reaction-stats': rsrxnstats_to_dict,
+    'init_complexes': init_complex_ids
+  }
+  
+  import json
+  f = open(filepath, 'w')
+  json.dump(sstats_dict, f)
+
+def import_data(filepath):
+  """ Imports a SystemStats object as exported in the format specified by export_data() """
+  import json
+  f = open(filepath)
+  sstats_dict = json.load(f)
+
+  #return sstats_dict
+
+  domains = {}
+  for domain_id, data in sstats_dict['domains'].iteritems():
+    domains[domain_id] = dna.Domain(name = data['name'], constraints = data['constraints'])
+
+  strands = {}
+  for strand_id, data in sstats_dict['strands'].iteritems():
+    strand_domains = [domains[d_id] for d_id in data['domains']]
+    strands[strand_id] = dna.Strand(name = data['name'], domains = strand_domains)
+
+  complexes = {}
+  for complex_id, data in sstats_dict['complexes'].iteritems():
+    cpx_strands = [strands[s_id] for s_id in data['strands']]
+    complexes[complex_id] = dna.Complex(name = data['name'], strands = cpx_strands, structure = data['structure'])
+
+  restingsets = {}
+  for rs_id, data in sstats_dict['resting-sets'].iteritems():
+    rs_complexes = [complexes[c_id] for c_id in data['complexes']]
+    restingsets[rs_id] = dna.RestingSet(name = data['name'], complexes = rs_complexes)
+
+  init_complexes = [complexes[c_id] for c_id in sstats_dict['init_complexes']]
+  sstats = SystemStats(complexes = init_complexes)
+
+  reactions = {}
+  for rxn_id, data in sstats_dict['reactions'].iteritems():
+    reactants = [complexes[c_id] for c_id in data['reactants']]
+    products = [complexes[c_id] for c_id in data['products']]
+    reactions[rxn_id] = sstats.get_reaction(reactants = reactants, products = products)
+
+  rs_reactions = {}
+  for rsrxn_id, data in sstats_dict['resting-set-reactions'].iteritems():
+    reactants = [restingsets[rs_id] for rs_id in data['reactants']]
+    products = [restingsets[rs_id] for rs_id in data['products']]
+    rs_reactions[rsrxn_id] = sstats.get_reaction(reactants = reactants, products = products)
+    
+  
+  for rs_id, data in sstats_dict['resting-set-stats'].iteritems():
+    stats = sstats.get_stats(restingsets[rs_id])
+    nupackjob = stats.get_nupackjob()
+    for key, val in data.iteritems():
+      if key == 'similarity_threshold':
+        stats.set_similarity_threshold(val)
+      else:
+        c = complexes[key]
+        nupackjob.set_complex_prob_data(c.name, val['similarity_data'])
+
+  for rsrxn_id, data in sstats_dict['resting-set-reaction-stats'].iteritems():
+    stats = sstats.get_stats(rs_reactions[rsrxn_id])
+    multijob = stats.get_multistrandjob()
+    tag = stats.multijob_tag
+    multijob.set_statistic_data(tag, 'prob', data['prob_data'])
+    multijob.set_statistic_data(tag, 'kcoll', data['kcoll_data'])
+    multijob.set_statistic_data(tag, 'k1', data['k1_data'])
+    multijob.set_statistic_data(tag, 'k2', data['k2_data'])
+    
+  return sstats

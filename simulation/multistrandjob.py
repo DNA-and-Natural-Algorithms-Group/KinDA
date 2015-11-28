@@ -176,6 +176,11 @@ class MultistrandJob(object):
     return self.datablocks[reaction + "_" + stat].get_error()
   def get_statistic_data(self, reaction = 'overall', stat = 'rate'):
     return self.datablocks[reaction + "_" + stat].get_data()
+  def set_statistic_data(self, reaction, stat, data):
+    block = self.datablocks[reaction + "_" + stat]
+    block.clear_data()
+    block.add_data(data)
+
   
 
   def create_ms_options(self, num_sims):

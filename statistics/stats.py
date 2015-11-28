@@ -50,10 +50,13 @@ class SystemStats(object):
     self.rs_reactions = self.enum_job.get_restingset_reactions()
 
     self.rxn_to_stats = stats_utils.make_RestingSetRxnStats(self.enum_job)
-    self.rs_to_stats = stats_utils.make_RestingSetStats(self.restingsets)
+    all_restingsets = set(self.restingsets
+        + sum([list(r.reactants + r.products) for r in self.rxn_to_stats.keys()], []))
+    self.rs_to_stats = stats_utils.make_RestingSetStats(all_restingsets)
     
     self.spurious_reactions = []
     self.spurious_rs_reactions = list(set(self.rxn_to_stats.keys()) - set(self.rs_reactions))
+
 
     for rxn in self.rs_reactions:
       rxn_stats = self.rxn_to_stats[rxn]
@@ -113,30 +116,6 @@ class SystemStats(object):
       return self.rs_to_stats[obj]
     else:
       print "Statistics for object {0} not found.".format(obj)
-
-  def export_data(self, filepath):
-    """ Exports data of this SystemStats object so that it can be imported in a later Python session.
-    Does not export the entire SystemStats object (only the XXXStats data that has been collected).
-    Data is exported in JSON format.
-    The following constructs are exported:
-      - complexes
-      - resting sets
-      - reactions
-      - resting-set reactions
-      - resting-set statistics objects
-      - resting-set-reaction statistics objects
-    NOT IMPLEMENTED """
-    #domains = 
-    #cpx_to_id = {cpx: 'cpx_{0}'.format(cpx.id) for cpx in self.complexes} # id #s are guaranteed to be unique within a Python session
-    #rs_to_id = {rs: 'rs_{0}'.format(rs.id) for rs in self.restingsets}
-    #rxn_to_id = {rxn: 'rxn_{0}'.format(rxn.id) for rxn in self.reactions + self.spurious_reactions}
-    #rsrxn_to_id = {rsrxn: 'rsrxn_{0}'.format(rsrxn.id) for rsrxn in self.rs_reactions + self.spurious_rs_reactions}
-
-    # Prepare the overall dict object to be JSON-ed
-    #sstats_dict = {}
-  def import_data(self, filepath):
-    """ NOT IMPLEMENTED """
-    pass
 
 
 
@@ -211,6 +190,8 @@ class RestingSetRxnStats(object):
     error is below the given allowed_error threshold. """
     return self.get_raw_stat('prob', allowed_error, max_sims)
 
+  def get_k1_data(self):
+    return self.get_raw_stat_data('k1')
   def get_k2_data(self):
     return self.get_raw_stat_data('k2')
   def get_kcoll_data(self):
@@ -240,6 +221,9 @@ class RestingSetRxnStats(object):
     self.k1_rxn_stats.append(rxn_stats)
   def add_k2_rxn(self, rxn_stats):
     self.k2_rxn_stats.append(rxn_stats)
+
+  def get_multistrandjob(self):
+    return self.multijob
   
   
     
@@ -302,6 +286,9 @@ class RestingSetStats(object):
     return self.sampler.similarity_threshold
   def set_similarity_threshold(self, threshold):
     self.sampler.set_similarity_threshold(threshold)
+
+  def get_conformation_prob_data(self, complex_name):
+    return self.sampler.get_complex_prob_data(complex_name)
     
   def get_top_MFE_structs(self, num):
     """ Attempts to obtain the top <num> MFE structures by calling
@@ -356,6 +343,9 @@ class RestingSetStats(object):
     self.inter_rxns.append(rxn)
   def add_spurious_rxn(self, rxn):
     self.spurious_rxns.append(rxn)
+
+  def get_nupackjob(self):
+    return self.sampler
   
 class ComplexRxnStats(object):
   """ Calculates statistics for this complex-level reaction.

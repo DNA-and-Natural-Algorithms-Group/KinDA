@@ -22,7 +22,7 @@ class NupackSampleJob(object):
     self.set_similarity_threshold(similarity_threshold)
 
     self.total_sims = 0
-  
+
   def get_complex_index(self, complex_name):
     """Returns the unique index associated with this complex name (mainly for internal use). """
     assert complex_name in self.complex_tags, "Complex tag {0} not found in resting set {1}".format(complex_name, self.restingset)
@@ -38,6 +38,13 @@ class NupackSampleJob(object):
     Nc = self.complex_counts[index]
     N = self.total_sims;
     return math.sqrt((Nc+1.0)*(N-Nc+1)/((N+3)*(N+2)*(N+2)));
+
+  def get_complex_prob_data(self, complex_name = "_spurious"):
+    return self.datablocks[complex_name].get_data()
+  def set_complex_prob_data(self, complex_name, data):
+    self.datablocks[complex_name].clear_data()
+    self.datablocks[complex_name].add_data(data)
+
   def set_similarity_threshold(self, similarity_threshold):
     self.similarity_threshold = similarity_threshold
 
