@@ -158,7 +158,6 @@ def from_Peppercorn_domain(domain):
   
   if domain.sequence == None: constraints = dna.Constraints("N" * domain.length)
   else: constraints = dna.Constraints(domain.sequence)
-  print domain, domain.sequence, constraints
   
   if domain.is_complement:
     return dna.Domain(name = domain.identity, constraints = constraints.complement).complement
