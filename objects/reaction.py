@@ -63,14 +63,24 @@ class Reaction(object):
   def has_reactants(self, complexes):
     return all([self._reactants.count(c) >= complexes.count(c) for c in complexes])
   def reactants_equal(self, complexes):
-    return tuple(sorted(complexes, key = lambda c: c.id)) == self._reactants
+    reactants = list(self._reactants)
+    for c in complexes:
+      if reactants.count(c) == 0:
+        return False
+      reactants.remove(c)
+    return reactants == []
 
   def is_product(self, c):
     return c in self._products
   def has_products(self, complexes):
     return all([self._products.count(c) >= complexes.count(c) for c in complexes]) # kinda inefficient...
   def products_equal(self, complexes):
-    return tuple(sorted(complexes, key = lambda c: c.id)) == self._products
+    products = list(self._products)
+    for c in complexes:
+      if products.count(c) == 0:
+        return False
+      products.remove(c)
+    return products == []
     
   # Equality definition
   def __eq__(self, other):

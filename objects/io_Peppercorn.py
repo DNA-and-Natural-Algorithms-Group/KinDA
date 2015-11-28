@@ -66,6 +66,7 @@ def to_Peppercorn_complex(complex, strands):
         base_to_seq_dict[(strand_num, index + i)] = (strand_num, domain_num)
       index += domain.length
   base_to_seq_dict[None] = None
+  base_to_seq_dict['?'] = '?'
       
   # Create new strandlist representation
   structure = []
