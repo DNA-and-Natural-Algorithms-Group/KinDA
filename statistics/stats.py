@@ -198,6 +198,9 @@ class RestingSetRxnStats(object):
     return self.get_raw_stat_data('kcoll')
   def get_prob_data(self):
     return self.get_raw_stat_data('prob')
+
+  def get_num_sims(self):
+    return self.get_multistrandjob().total_sims
     
   def get_raw_stat(self, stat, allowed_error, max_sims):
     """ General function to reduce the error on the given statistic
@@ -289,6 +292,9 @@ class RestingSetStats(object):
 
   def get_conformation_prob_data(self, complex_name):
     return self.sampler.get_complex_prob_data(complex_name)
+
+  def get_num_sims(self):
+    return self.get_nupackjob().total_sims
     
   def get_top_MFE_structs(self, num):
     """ Attempts to obtain the top <num> MFE structures by calling

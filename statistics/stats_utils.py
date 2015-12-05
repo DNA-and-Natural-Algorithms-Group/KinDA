@@ -479,20 +479,25 @@ def import_data(filepath):
   for rs_id, data in sstats_dict['resting-set-stats'].iteritems():
     stats = sstats.get_stats(restingsets[rs_id])
     nupackjob = stats.get_nupackjob()
+    num_sims = 0
     for key, val in data.iteritems():
       if key == 'similarity_threshold':
         stats.set_similarity_threshold(val)
       else:
         c = complexes[key]
         nupackjob.set_complex_prob_data(c.name, val['similarity_data'])
+        num_sims = len(val['similarity_data'])
+    nupackjob.total_sims = num_sims
 
   for rsrxn_id, data in sstats_dict['resting-set-reaction-stats'].iteritems():
     stats = sstats.get_stats(rs_reactions[rsrxn_id])
     multijob = stats.get_multistrandjob()
     tag = stats.multijob_tag
+    num_sims = len(data['prob_data'])
     multijob.set_statistic_data(tag, 'prob', data['prob_data'])
     multijob.set_statistic_data(tag, 'kcoll', data['kcoll_data'])
     multijob.set_statistic_data(tag, 'k1', data['k1_data'])
     multijob.set_statistic_data(tag, 'k2', data['k2_data'])
+    multijob.total_sims = num_sims
     
   return sstats
