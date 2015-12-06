@@ -482,12 +482,13 @@ def import_data(filepath):
     num_sims = 0
     for key, val in data.iteritems():
       if key == 'similarity_threshold':
-        stats.set_similarity_threshold(val)
+        threshold = val
       else:
         c = complexes[key]
         nupackjob.set_complex_prob_data(c.name, val['similarity_data'])
         num_sims = len(val['similarity_data'])
     nupackjob.total_sims = num_sims
+    stats.set_similarity_threshold(val)
 
   for rsrxn_id, data in sstats_dict['resting-set-reaction-stats'].iteritems():
     stats = sstats.get_stats(rs_reactions[rsrxn_id])
