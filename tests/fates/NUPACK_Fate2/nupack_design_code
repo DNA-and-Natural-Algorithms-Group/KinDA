@@ -1,0 +1,16 @@
+# 12/5/2015
+# NUPACK code for designing sequences for structure not favoring either fate
+
+# design material, temperature (C), and trials
+#
+material = dna    
+temperature = 25.0    
+trials = 10    
+
+#
+# target structure using dot-parens-plus notation
+# 2 3 + 3* 4* A* + B* C B A 4 2* 1*
+((((((((((((((((((((+))))))))))((((((((((((((((+((((((((((..........))))))))))))))))))))))))))))))))))))......
+# Best NUPACK output
+# GTGCCCAGGCCGGCCGGGCG+CGCCCGGCCGCGCCGGCACGCCCGCG+CGCCGCCCCGATTATCCCCCCGGGGCGGCGCGCGGGCGTGCCGGCGGCCTGGGCACCGAGCT
+# Normalized ensemble defect: 1.1%

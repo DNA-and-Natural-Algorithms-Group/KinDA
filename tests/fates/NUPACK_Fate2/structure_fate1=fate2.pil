@@ -13,3 +13,7 @@ strand strand3A = d3* t4* dA* : 0
 strand strandGATE = dB* dC dB dA t4 d2* t1* : 0
 
 structure Gate = strand23 + strand3A + strandGATE : ((+)((+(.)))).
+
+# Conformation probabilities (over 10000 sampled conformations):
+#   Gate:     0.9981003799240152   +/- 0.0004353668437864456
+#   spurious: 0.001899620075984803 +/- 0.0004353668437864456

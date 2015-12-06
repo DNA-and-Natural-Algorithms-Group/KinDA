@@ -1,0 +1,15 @@
+# Peppercorn paper, multiple fates system
+# 12/5/2015: Modified for NUPACK sequences optimized to equalize Fates 1 & 2 (i.e. no actual multiple fates here)
+sequence t1 = AGCTCG : 6
+sequence d2 = GTGCCCAGGC : 10
+sequence d3 = CGGCCGGGCG : 10
+sequence t4 = CCGGCG : 6
+sequence dA = CGCGGGCGTG : 10
+sequence dB = CGGGGCGGCG : 10
+sequence dC = ATTATCCCCC : 10
+
+strand strand23 = d2 d3 : 0
+strand strand3A = d3* t4* : 0
+strand strandGATE = dA* dB* dC dB dA t4 d2* t1* : 0
+
+structure Gate = strand23 + strand3A + strandGATE : ((+).+((.)).).
