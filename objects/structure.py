@@ -221,4 +221,9 @@ class Structure(object):
     this structure will use the new strand ordering. """
     amount = amount % len(self._strands)
     self._strand_order = self._strand_order[amount:] + self._strand_order[:amount]
+
+  def __str__(self):
+    return self.to_dotparen()
+  def __repr__(self):
+    return self.to_dotparen()
     

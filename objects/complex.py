@@ -92,6 +92,11 @@ class Complex(object):
     return self._structure.pseudoknotted
     
   ## Equivalence
+  def rotate_strands(self, amount = 1):
+    amount = amount % len(self._strands)
+    self._strands = self._strands[amount:] + self._strands[:amount]
+    self._structure.rotate_strands(amount)
+
   def equivalent_to(self, other):
     """ Returns True if the two complexes are equivalent. Two complexes
     are equivalent if there is a strand rotation under which the lists of
@@ -114,15 +119,27 @@ class Complex(object):
   ## (In)equality
   def __eq__(self, other): 
     """ Returns True if the two complexes have the same name. """
-    return type(self)==type(other) and self.name == other.name
+    if type(self) != type(other):
+      return False
+    if len(self.strands) != len(other.strands):
+      return False
+
+    for rot_amt in range(len(self.strands)):
+      if self.strands == other.strands and self.structure.to_dotparen() == other.structure.to_dotparen():
+        return True
+      self.rotate_strands()
+
+    return False
   def __ne__(self, other):
     """ Returns True if the complexes are not equal. """
     return not self.__eq__(other)
   def __hash__(self):
     """ Returns a hash value for this Complex. """
-    return sum([ord(c) * pow(2,i)
-      for i, c
-      in enumerate(self._object_type + self.name)])
+    struct_str_list = self.structure.to_dotparen().split('+')
+    return (sum([sum([0 if c=='?' else 1 if c=='.' else 2 * pow(3,i)
+      for i, c in enumerate(struct_str)])
+      for struct_str in struct_str_list])
+      + sum([ord(c) * pow(2,i) for i, c in enumerate(self._object_type)]))
   
   
   ## Output
