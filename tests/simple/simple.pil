@@ -1,0 +1,14 @@
+# Simple toehold-exchange system
+# All sequences randomly generated from ATCG alphabet
+sequence t1 = AAAGAT : 6
+sequence d2 = AGCTGACTTA : 10
+sequence t3 = TCCCTT : 6
+
+strand top1 = t1 d2 : 16
+strand top2 = d2 t3 : 16
+strand base = t3* d2* t1* : 22
+
+structure T1Bound = top1 + base : ((+.))
+structure T3Intruder = top2 : ..
+structure T3Bound = top2 + base : ((+)).
+structure T1Intruder = top1 : ..
