@@ -188,7 +188,7 @@ def get_spurious_products(reactants, reactions, stop_states):
       if obj._object_type == "complex":
         strands_to_restingsets[tuple(obj.strands)] = dna.RestingSet(complexes = [obj])
       else:
-        strands_to_restingsets[tuple(c.strands)] = obj
+        strands_to_restingsets[tuple(obj.strands)] = obj
 
     return strands_to_restingsets
     
@@ -455,13 +455,18 @@ def import_data(filepath):
     cpx_strands = [strands[s_id] for s_id in data['strands']]
     complexes[complex_id] = dna.Complex(name = data['name'], strands = cpx_strands, structure = data['structure'])
 
+  init_complexes = [complexes[c_id] for c_id in sstats_dict['init_complexes']]
+  sstats = SystemStats(complexes = init_complexes)
+
   restingsets = {}
   for rs_id, data in sstats_dict['resting-sets'].iteritems():
     rs_complexes = [complexes[c_id] for c_id in data['complexes']]
-    restingsets[rs_id] = dna.RestingSet(name = data['name'], complexes = rs_complexes)
-
-  init_complexes = [complexes[c_id] for c_id in sstats_dict['init_complexes']]
-  sstats = SystemStats(complexes = init_complexes)
+    rs_candidates = sstats.get_restingsets(complex = rs_complexes[0])
+    if len(rs_candidates) > 0:
+      restingsets[rs_id] = rs_candidates[0]
+    else:
+      restingsets[rs_id] = dna.RestingSet(name = data['name'], complexes = rs_complexes)
+      print "Warning: Could not find a resting set with complex {0}".format(rs_complexes[0])
 
   reactions = {}
   for rxn_id, data in sstats_dict['reactions'].iteritems():
@@ -478,6 +483,9 @@ def import_data(filepath):
   
   for rs_id, data in sstats_dict['resting-set-stats'].iteritems():
     stats = sstats.get_stats(restingsets[rs_id])
+    if stats == None:
+      print "Warning: Could not match up stored statistics for {0} with a resting set in the new SystemStats object.".format(restingsets[rs_id])
+      continue
     nupackjob = stats.get_nupackjob()
     num_sims = 0
     for key, val in data.iteritems():
@@ -492,6 +500,9 @@ def import_data(filepath):
 
   for rsrxn_id, data in sstats_dict['resting-set-reaction-stats'].iteritems():
     stats = sstats.get_stats(rs_reactions[rsrxn_id])
+    if stats == None:
+      print "Warning: Could not match up stored statistics for {0} with a resting-set reaction in the new SystemStats object.".format(rs_reactions[rsrxn_id])
+      continue
     multijob = stats.get_multistrandjob()
     tag = stats.multijob_tag
     num_sims = len(data['prob_data'])

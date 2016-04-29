@@ -1,9 +1,3 @@
-try:
-  import multiprocessing
-except ImportError:
-  print "Could not import multiprocessing package. Try turning multiprocessing off in options.py"
-  raise
-
 from ..imports import multistrandhome, dnaobjectshome
 
 import math
@@ -17,6 +11,13 @@ from dnaobjects import utils, io_Multistrand, Macrostate, RestingSet, Complex
 
 from .. import options
 from datablock import Datablock
+
+if options.multistrand_params['multithreading']:
+  try:
+    import multiprocessing
+  except ImportError:
+    print "Could not import multiprocessing package. Try turning multiprocessing off in options.py"
+    raise
 
 # GLOBALS
 TRAJECTORY_MODE = 128

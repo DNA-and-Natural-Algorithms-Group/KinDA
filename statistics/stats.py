@@ -54,6 +54,8 @@ class SystemStats(object):
         + sum([list(r.reactants + r.products) for r in self.rxn_to_stats.keys()], []))
     self.rs_to_stats = stats_utils.make_RestingSetStats(all_restingsets)
     
+    self.spurious_restingsets = list(set(self.rs_to_stats.keys()) - set(self.restingsets))
+
     self.spurious_reactions = []
     self.spurious_rs_reactions = list(set(self.rxn_to_stats.keys()) - set(self.rs_reactions))
 
@@ -84,7 +86,7 @@ class SystemStats(object):
     if len(rxns) >= 1:
       return next(iter(rxns))
     else:
-      print "Warning: Could not find reaction with the given reactants and products"
+      print "Warning: Could not find reaction with the given reactants {0} and products {1}".format(reactants, products)
       return None
 
   def get_reactions(self, reactants = [], products = [], spurious = None):
@@ -101,8 +103,14 @@ class SystemStats(object):
 
     return filter(lambda x: x.has_reactants(reactants) and x.has_products(products), all_rxns)
 
-  def get_restingsets(self, complex = None, strands = []):
-    rs = self.restingsets
+  def get_restingsets(self, complex = None, strands = [], spurious = False):
+    if spurious == True:
+      rs = self.spurious_restingsets
+    elif spurious == False:
+      rs = self.restingsets
+    else:
+      rs = self.restingsets + self.spurious_restingsets
+
     if complex != None:
       rs = filter(lambda x: complex in x, rs)
     else:
