@@ -12,7 +12,7 @@ from KinDA import options
 ## GLOBALS
 # The follow_fast_reactions function is copied shamelessly from KinD's
 # utilities.py.
-def follow_fast_reactions(complexes, all_fast_reactions, restingsets, inprogress, visited):
+def follow_fast_reactions(complexes, all_fast_reactions, restingsets, inprogress, visited = dict()):
   """Returns a list containing lists of resting states. Each of the inner lists
   represents a set of products that can result from fast reactions starting 
   from the given complex.
@@ -55,8 +55,8 @@ def follow_fast_reactions(complexes, all_fast_reactions, restingsets, inprogress
     
     # Memoize the enumerated products
     visited[cmplx] = prods
-    print len(visited), len(inprogress)
-    if len(inprogress) % 25 == 0: print len(inprogress)
+    #print len(visited), len(inprogress)
+    #if len(inprogress) % 25 == 0: print len(inprogress)
     
   # Calculate combinatorial fates
   complex_products = [visited[cmplx] for cmplx in complexes]
@@ -127,13 +127,14 @@ class EnumerateJob(object):
     restingsets = self.enumerated_restingsets
     
     condensed_rxns = set()
+    i = 0
     for rxn in slow_rxns:
       products = follow_fast_reactions(
           rxn.products,
           fast_rxns,
           restingsets,
-          set(),
-          dict()
+          set()#,
+          #dict()
       )
       reactants = [dna.utils.get_containing_set(self.enumerated_restingsets, c)
             for c
@@ -142,6 +143,9 @@ class EnumerateJob(object):
       for p in products:
         rs_rxn = dna.RestingSetReaction(reactants = reactants, products = p)
         condensed_rxns.add(rs_rxn)
+
+      i += 1
+      print "{0}/{1}".format(i, len(slow_rxns))
 
     # Make sure the reverse reaction between every pair of reactants is included
     # This is an important difference between our enumeration and Peppercorn enumeration,
@@ -152,6 +156,8 @@ class EnumerateJob(object):
       condensed_rxns.add(rs_rxn)
 
     self.condensed_reactions = condensed_rxns
+
+    self.condensed = True
     
   def get_complexes(self):
     if not self.enumerated: self.enumerate()

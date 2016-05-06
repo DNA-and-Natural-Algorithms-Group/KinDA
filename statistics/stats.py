@@ -45,9 +45,11 @@ class SystemStats(object):
 
     self.complexes = self.enum_job.get_complexes()
     self.restingsets = self.enum_job.get_restingsets()
+    print "got restingsets"
 
     self.reactions = self.enum_job.get_reactions()
     self.rs_reactions = self.enum_job.get_restingset_reactions()
+    print "got rs rxns"
 
     self.rxn_to_stats = stats_utils.make_RestingSetRxnStats(self.enum_job)
     all_restingsets = set(self.restingsets
