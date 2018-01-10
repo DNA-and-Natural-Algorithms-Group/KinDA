@@ -15,6 +15,7 @@ from datablock import Datablock
 if options.multistrand_params['multithreading']:
   try:
     import multiprocessing
+    import signal
   except ImportError:
     print "Could not import multiprocessing package. Try turning multiprocessing off in options.py"
     raise
@@ -213,22 +214,51 @@ class MultistrandJob(object):
       self.run_sims_singlethreaded(num_sims, sims_per_update, status_func)
 
   def run_sims_multithreaded(self, num_sims, sims_per_update = 1, status_func = lambda:None):
+    """
+    Sets up a multiprocessing.Pool object to run simulations concurrently over multiple subprocesses.
+    The Pool object has number of worker processes equal to the number of cpus, as given by
+      multiprocessing.cpu_count()
+    Due to a Python bug, SIGINT events (e.g. produced by Ctrl-C) do not cause the worker processes to terminate
+    gracefully, causing the result-handling loop to hang indefinitely and forcing the main process to be halted
+    externally. This is resolved by removing the SIGINT handler before creating the worker processes, so
+    that all workers ignore SIGINT, allowing the main process to handle SIGINT and terminate them without hanging.
+    The original SIGINT handler is restored immediately after creating the worker processes (otherwise the
+    main process would ignore SIGINT as well). Note that this workaround produces a short time interval in which
+    all SIGINT signals are ignored.
+    """
+
+    # Temporarily remove the SIGINT event handler
+    sigint_handler = signal.signal(signal.SIGINT, signal.SIG_IGN)
+
+    # Create Pool instance and worker processes
     k = multiprocessing.cpu_count()
     p = multiprocessing.Pool( processes = k )
 
+    # Restore original SIGINT event handler
+    if sigint_handler is None:  sigint_handler = signal.SIG_DFL
+    signal.signal(signal.SIGINT, sigint_handler)
+
     print "[MULTITHREADING ON] Running %d simulations over %d cores" % (num_sims, k)
-    it = p.imap_unordered(run_sims_global, [(self, 1)] * num_sims)
+    it = p.imap_unordered(run_sims_global, [(self, 2)] * num_sims)
     
-    sims_completed = 0
-    for res in it:
-      self.process_results(res)
+    try:
+      sims_completed = 0
+      for res in it:
+        self.process_results(res)
 
-      sims_completed += 1
-      if sims_completed % sims_per_update == 0:
-        status_func()
-        print "*** Completed {0} of {1} simulations [{2} total simulations] ***".format(sims_completed, num_sims, self.total_sims)
+        sims_completed += 1
+        if sims_completed % sims_per_update == 0:
+          status_func()
+          print "*** Completed {0} of {1} simulations [{2} total simulations] ***".format(sims_completed, num_sims, self.total_sims)
+      p.close()
+    except KeyboardInterrupt:
+      # (More) gracefully handle SIGINT by terminating worker processes properly
+      # and then allowing SIGINT to be handled normally
+      print "SIGINT: Terminating Multistrand processes prematurely..."
+      p.terminate()
+      p.join()
+      raise KeyboardInterrupt
 
-    p.close()
 
   def run_sims_singlethreaded(self, num_sims, sims_per_update = 1, status_func = None):
     print "[MULTITHREADING OFF] Running %d simulations with updates every %d simulations" % (num_sims, sims_per_update)
