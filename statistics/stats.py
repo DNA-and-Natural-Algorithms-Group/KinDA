@@ -47,7 +47,6 @@ class SystemStats(object):
     self.restingsets = self.enum_job.get_restingsets()
     print "got restingsets"
 
-    self.reactions = self.enum_job.get_reactions()
     self.rs_reactions = self.enum_job.get_restingset_reactions()
     print "got rs rxns"
 
@@ -58,7 +57,6 @@ class SystemStats(object):
     
     self.spurious_restingsets = list(set(self.rs_to_stats.keys()) - set(self.restingsets))
 
-    self.spurious_reactions = []
     self.spurious_rs_reactions = list(set(self.rxn_to_stats.keys()) - set(self.rs_reactions))
 
 
@@ -91,19 +89,24 @@ class SystemStats(object):
       print "Warning: Could not find reaction with the given reactants {0} and products {1}".format(reactants, products)
       return None
 
-  def get_reactions(self, reactants = [], products = [], spurious = None):
+  def get_reactions(self, reactants = [], products = [], unproductive = None, spurious = None):
     """ Returns a list of all reactions including the given reactants and the given products.
         If specified, spurious = True will return only spurious reactions (those not enumerated by Peppercorn)
         and spurious = False will return only enumerated reactions. Otherwise, no distinction will be made.
         """
     if spurious == True:
-      all_rxns = self.spurious_reactions + self.spurious_rs_reactions
+      rxns = self.spurious_rs_reactions
     elif spurious == False:
-      all_rxns = self.reactions + self.rs_reactions
+      rxns = self.rs_reactions
     else:
-      all_rxns = self.spurious_reactions + self.spurious_rs_reactions + self.reactions + self.rs_reactions
+      rxns = self.spurious_rs_reactions + self.rs_reactions
 
-    return filter(lambda x: x.has_reactants(reactants) and x.has_products(products), all_rxns)
+    if unproductive == True:
+      rxns = filter(lambda x: x.has_reactants(x.products) and x.has_products(x.reactants), rxns)
+    elif unproductive == False:
+      rxns = filter(lambda x: not(x.has_reactants(x.products) and x.has_products(x.reactants)), rxns)
+
+    return filter(lambda x: x.has_reactants(reactants) and x.has_products(products), rxns)
 
   def get_restingsets(self, complex = None, strands = [], spurious = False):
     if spurious == True:
