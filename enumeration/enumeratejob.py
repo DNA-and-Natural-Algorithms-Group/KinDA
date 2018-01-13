@@ -12,12 +12,13 @@ from KinDA import options
 ## GLOBALS
 # The follow_fast_reactions function is copied shamelessly from KinD's
 # utilities.py.
-def follow_fast_reactions(complexes, all_fast_reactions, restingsets, inprogress, visited = dict()):
+def follow_fast_reactions(complexes, all_fast_reactions, restingsets, inprogress, products_dict = dict()):
   """Returns a list containing lists of resting states. Each of the inner lists
   represents a set of products that can result from fast reactions starting 
   from the given complex.
   An important optimization would be to add memoization. [NOTE: memoization added but untested]"""
 
+  products_dict_temp = {}
   for i, cmplx in enumerate(complexes):
   
     # If the complex is currently being processed, you've entered a cycle, so stop enumerating
@@ -25,13 +26,17 @@ def follow_fast_reactions(complexes, all_fast_reactions, restingsets, inprogress
       return []
 
     # If the complex has already been processed, don't reprocess it!
-    if cmplx in visited:
+    if cmplx in products_dict_temp:
+      continue
+    elif cmplx in products_dict:
+      products_dict_temp[cmplx] = products_dict[cmplx]
       continue
     
     # If the complex is in a resting state, the resting state is the only product
     rs = dna.utils.get_containing_set(restingsets, cmplx)
     if rs is not None:
-      visited[cmplx] = [[rs]]
+      #visited[cmplx] = [[rs]]
+      products_dict_temp[cmplx] = [[rs]]
       continue
     
     # Mark the complex as being processed to avoid reaction cycles
@@ -44,7 +49,7 @@ def follow_fast_reactions(complexes, all_fast_reactions, restingsets, inprogress
     fast_reactions = filter(lambda x: x.is_reactant(cmplx), all_fast_reactions)
     for rxn in fast_reactions:
       # Find the product sets of each of rxn's products
-      rxn_results = follow_fast_reactions(rxn.products, all_fast_reactions, restingsets, inprogress, visited)
+      rxn_results = follow_fast_reactions(rxn.products, all_fast_reactions, restingsets, inprogress, products_dict)
       #rxn_results = follow_fast_reactions(rxn.products, all_fast_reactions, restingsets, inprogress, dict())
       
       # Add this reaction's product sets to the cumulative list
@@ -52,14 +57,17 @@ def follow_fast_reactions(complexes, all_fast_reactions, restingsets, inprogress
 
     # Unmark the complex as being processed
     inprogress.remove(cmplx)
+
+    # Store products that could result from cmplx
+    products_dict_temp[cmplx] = prods
     
-    # Memoize the enumerated products
-    visited[cmplx] = prods
-    #print len(visited), len(inprogress)
+    # Memoize the enumerated products, but only if inprogress is empty (otherwise some paths may be unchecked)
+    if len(inprogress) == 0:
+      products_dict[cmplx] = prods
     #if len(inprogress) % 25 == 0: print len(inprogress)
     
   # Calculate combinatorial fates
-  complex_products = [visited[cmplx] for cmplx in complexes]
+  complex_products = [products_dict_temp[cmplx] for cmplx in complexes]
   all_products = [sum(p, []) for p in it.product(*complex_products)]
   return all_products
 
@@ -145,7 +153,7 @@ class EnumerateJob(object):
         condensed_rxns.add(rs_rxn)
 
       i += 1
-      print "{0}/{1}".format(i, len(slow_rxns))
+      print "KinDA: Performing reaction condensation... {0}%\r".format(100*i/len(slow_rxns)),
 
     # Make sure the reverse reaction between every pair of reactants is included
     # This is an important difference between our enumeration and Peppercorn enumeration,
@@ -154,6 +162,8 @@ class EnumerateJob(object):
     for reactants in reactant_pairs:
       rs_rxn = dna.RestingSetReaction(reactants = reactants, products = reactants)
       condensed_rxns.add(rs_rxn)
+
+    print "KinDA: Performing reaction condensation... Done!"
 
     self.condensed_reactions = condensed_rxns
 

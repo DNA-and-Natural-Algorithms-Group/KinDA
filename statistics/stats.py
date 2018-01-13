@@ -19,118 +19,6 @@ from ..imports import PyNupack as nupack
 ## GLOBALS
 
 ## CLASSES
-class SystemStats(object):
-  """ Stores and manages Stats objects for each system component for easier retrieval.
-      Data can also be stored in a file and retrieved for later analysis.
-      A SystemStats object is instantiated with an EnumerateJob object, from which
-      detailed and condensed reactions as well as resting sets and complexes are taken. """
-
-  reactions = None
-  spurious_reactions = None
-
-  rs_reactions = None
-  spurious_rs_reactions = None
-
-  restingsets = None
-  complexes = None
-
-  enum_job = None
-
-  rxn_to_stats = None
-  rs_to_stats = None
-
-  def __init__(self, complexes, c_max = None):
-    ## 
-    self.enum_job = EnumerateJob(complexes = complexes)
-
-    self.complexes = self.enum_job.get_complexes()
-    self.restingsets = self.enum_job.get_restingsets()
-    print "got restingsets"
-
-    self.rs_reactions = self.enum_job.get_restingset_reactions()
-    print "got rs rxns"
-
-    self.rxn_to_stats = stats_utils.make_RestingSetRxnStats(self.enum_job)
-    all_restingsets = set(self.restingsets
-        + sum([list(r.reactants + r.products) for r in self.rxn_to_stats.keys()], []))
-    self.rs_to_stats = stats_utils.make_RestingSetStats(all_restingsets)
-    
-    self.spurious_restingsets = list(set(self.rs_to_stats.keys()) - set(self.restingsets))
-
-    self.spurious_rs_reactions = list(set(self.rxn_to_stats.keys()) - set(self.rs_reactions))
-
-
-    for rxn in self.rs_reactions:
-      rxn_stats = self.rxn_to_stats[rxn]
-      for reactant in rxn.reactants:
-        rs_stats = self.rs_to_stats[reactant]
-        rxn_stats.set_rs_stats(reactant, rs_stats)
-        rs_stats.add_inter_rxn(rxn_stats)
-
-    for rxn in self.spurious_rs_reactions:
-      rxn_stats = self.rxn_to_stats[rxn]
-      for reactant in rxn.reactants:
-        rs_stats = self.rs_to_stats[reactant]
-        rxn_stats.set_rs_stats(reactant, rs_stats)
-        rs_stats.add_spurious_rxn(rxn_stats)
-
-    for rs_stats in self.rs_to_stats.values():
-      rs_stats.c_max = c_max
-
-
-
-  def get_reaction(self, reactants, products):
-    """ Returns a single reaction with exactly the same reactants and products as those given. """
-    rxns = self.get_reactions(reactants, products)
-    rxns = filter(lambda x: x.reactants_equal(reactants) and x.products_equal(products), rxns)
-    if len(rxns) >= 1:
-      return next(iter(rxns))
-    else:
-      print "Warning: Could not find reaction with the given reactants {0} and products {1}".format(reactants, products)
-      return None
-
-  def get_reactions(self, reactants = [], products = [], unproductive = None, spurious = None):
-    """ Returns a list of all reactions including the given reactants and the given products.
-        If specified, spurious = True will return only spurious reactions (those not enumerated by Peppercorn)
-        and spurious = False will return only enumerated reactions. Otherwise, no distinction will be made.
-        """
-    if spurious == True:
-      rxns = self.spurious_rs_reactions
-    elif spurious == False:
-      rxns = self.rs_reactions
-    else:
-      rxns = self.spurious_rs_reactions + self.rs_reactions
-
-    if unproductive == True:
-      rxns = filter(lambda x: x.has_reactants(x.products) and x.has_products(x.reactants), rxns)
-    elif unproductive == False:
-      rxns = filter(lambda x: not(x.has_reactants(x.products) and x.has_products(x.reactants)), rxns)
-
-    return filter(lambda x: x.has_reactants(reactants) and x.has_products(products), rxns)
-
-  def get_restingsets(self, complex = None, strands = [], spurious = False):
-    if spurious == True:
-      rs = self.spurious_restingsets
-    elif spurious == False:
-      rs = self.restingsets
-    else:
-      rs = self.restingsets + self.spurious_restingsets
-
-    if complex != None:
-      rs = filter(lambda x: complex in x, rs)
-    else:
-      rs = filter(lambda x: all([s in x.strands for s in strands]), rs)
-    return rs
-
-  def get_stats(self, obj):
-    if obj in self.rxn_to_stats:
-      return self.rxn_to_stats[obj]
-    elif obj in self.rs_to_stats:
-      return self.rs_to_stats[obj]
-    else:
-      print "Statistics for object {0} not found.".format(obj)
-
-
 
 class RestingSetRxnStats(object):
   """ Calculates statistics for this resting-set reaction.
@@ -170,38 +58,67 @@ class RestingSetRxnStats(object):
     self.k2_rxn_stats = []
     
   
-  def get_reduced_k1(self, allowed_error = 0.50, max_sims = 500):
+  def _get_reduced_k1_stats(self, relative_error, max_sims):
+    """ Returns a tuple of the net k1 value and standard error,
+    calculated by taking into account temporary
+    reactant depletion that reduces the effective rate of this reaction. 
+    Additional simulations are run until the fractional error is
+    below the given relative_error threshold. """
+    fractions = [1 - rs.get_temp_depletion(relative_error, max_sims) for rs in self.rs_stats.values() if rs != None]
+    rate_fraction = reduce(lambda x,y: x*y, fractions, 1.0)
+    raw_k1 = self.get_k1(relative_error / rate_fraction, max_sims)
+    raw_k1_err = set.get_k1_err(max_sims = 0)
+    k1 = (raw_k1*rate_fraction, raw_k1_err*rate_fraction)
+    return k1
+
+  def get_reduced_k1(self, relative_error = 0.50, max_sims = 500):
     """ Returns the net k1 value, calculated by taking into account temporary
     reactant depletion that reduces the effective rate of this reaction. 
     Additional simulations are run until the fractional error is
-    below the given allowed_error threshold. """
-    fractions = [1 - rs.get_temp_depletion(allowed_error) for rs in self.rs_stats.values() if rs != None]
-    rate_fraction = reduce(lambda x,y: x*y, fractions, 1.0)
-    raw_k1 = self.get_k1(allowed_error / rate_fraction, max_sims)
-    k1 = (raw_k1[0]*rate_fraction, raw_k1[1]*rate_fraction)
-    return k1
-  def get_k1(self, allowed_error = 0.50, max_sims = 500):
+    below the given relative_error threshold. """
+    return self._get_reduced_k1_stats(relative_error, max_sims)[0]
+  def get_k1(self, relative_error = 0.50, max_sims = 500):
     """ Returns the raw k1 value calculated from Multistrand trajectory
-    simulations. The allowed_error is the fractional error allowed in
+    simulations. The relative_error is the fractional error allowed in
     the return value. Additional trials are simulated until this error
     threshold is achieved. """
-    return self.get_raw_stat('k1', allowed_error, max_sims)
-  def get_k2(self, allowed_error = 0.50, max_sims = 500):
+    return self.get_raw_stat('k1',relative_error, max_sims)[0]
+  def get_k2(self, relative_error = 0.50, max_sims = 500):
     """ Returns the k2 folding rate on successful Multistrand trajectories. 
     Additional simulations are run until the fractional error is
-    below the given allowed_error threshold. """
-    return self.get_raw_stat('k2', allowed_error, max_sims)
-  def get_kcoll(self, allowed_error = 0.50, max_sims = 500):
+    below the given relative_error threshold. """
+    if len(self.reactants) > len(self.products):
+      print "WARNING: k2 rates are currently not correctly computed for reactions that don't end with a dissociation reaction"
+    return self.get_raw_stat('k2', relative_error, max_sims)[0]
+  def get_kcoll(self, relative_error = 0.50, max_sims = 500):
     """ Returns the average kcoll value calculated over successful Multistrand
     trajectories. Additional simulations are run until the fractional error is
-    below the given allowed_error threshold. """
-    return self.get_raw_stat('kcoll', allowed_error, max_sims)
-  def get_prob(self, allowed_error = 0.50, max_sims = 500):
+    below the given relative_error threshold. """
+    return self.get_raw_stat('kcoll', relative_error, max_sims)[0]
+  def get_prob(self, relative_error = 0.50, max_sims = 500):
     """ Returns the fraction of Multistrand trajectories that ended
     in the product states given to this Stats object. This may not be
     a meaningful value. Additional simulations are run until the fractional
-    error is below the given allowed_error threshold. """
-    return self.get_raw_stat('prob', allowed_error, max_sims)
+    error is below the given relative_error threshold. """
+    return self.get_raw_stat('prob', relative_error, max_sims)[0]
+
+  def get_reduced_k1_err(self, relative_error = 0.50, max_sims = 500):
+    """ Returns the standard error on the net k1 value """
+    return self._get_reduced_k1_stats(relative_error, max_sims)[1]
+  def get_k1_err(self, relative_error = 0.50, max_sims = 500):
+    """ Returns the standard error on the raw k1 value """
+    return self.get_raw_stat('k1', relative_error, max_sims)[1]
+  def get_k2_err(self, relative_error = 0.50, max_sims = 500):
+    """ Returns the standard error on k2 """
+    if len(self.reactants) > len(self.products):
+      print "WARNING: k2 rates are currently not correctly computed for reactions that don't end with a dissociation reaction"
+    return self.get_raw_stat('k2', relative_error, max_sims)[1]
+  def get_kcoll_err(self, relative_error = 0.50, max_sims = 500):
+    """ Returns the standard error on kcoll """
+    return self.get_raw_stat('kcoll', relative_error, max_sims)[1]
+  def get_prob_err(self, relative_error = 0.50, max_sims = 500):
+    """ Returns the standard error on the probability """
+    return self.get_raw_stat('prob', relative_error, max_sims)[1]
 
   def get_k1_data(self):
     return self.get_raw_stat_data('k1')
@@ -215,12 +132,12 @@ class RestingSetRxnStats(object):
   def get_num_sims(self):
     return self.get_multistrandjob().total_sims
     
-  def get_raw_stat(self, stat, allowed_error, max_sims):
+  def get_raw_stat(self, stat, relative_error, max_sims):
     """ General function to reduce the error on the given statistic
     to below the given threshold and return the value and standard
     error of the statistic. """
     # Reduce error to threshold
-    self.multijob.reduce_error_to(allowed_error, max_sims, self.multijob_tag, stat)
+    self.multijob.reduce_error_to(relative_error, max_sims, self.multijob_tag, stat)
     # Calculate and return statistic
     val = self.multijob.get_statistic(self.multijob_tag, stat)
     error = self.multijob.get_statistic_error(self.multijob_tag, stat)
@@ -252,7 +169,6 @@ class RestingSetStats(object):
       The following information should be stored with this object
       for convenience in the form of other stats objects,
       using the add_XXX_rxn() functions:
-        - intra-RS reactions (ComplexRxnStats)
         - inter-RS reactions (RestingSetRxnStats)
         - spurious reactions (RestingSetRxnStats)
   """
@@ -277,26 +193,28 @@ class RestingSetStats(object):
     self.c_max = None
   
     ## Set up reaction stat lists
-    self.intra_rxns = []
     self.inter_rxns = []
     self.spurious_rxns = []
     
-  def get_conformation_prob(self, complex_name, allowed_error = 0.50, max_sims = 5000):
+  def get_conformation_prob(self, complex_name, relative_error = 0.50, max_sims = 5000):
     """ Returns the probability and probability error
     of the given conformation based on the current number of samples.
     Use '_spurious' as a complex name to get the probability of
     conformations that do not match up with any of the expected
     conformations. """
-    self.sampler.reduce_error_to(allowed_error, max_sims, complex_name)
+    self.sampler.reduce_error_to(relative_error, max_sims, complex_name)
     prob = self.sampler.get_complex_prob(complex_name)
+    return prob
+  def get_conformation_prob_err(self, complex_name, relative_error = 0.50, max_sims = 5000):
+    self.sampler.reduce_error_to(relative_error, max_sims, complex_name)
     error = self.sampler.get_complex_prob_error(complex_name)
-    return (prob, error)
-  def get_conformation_probs(self, allowed_error = 0.50, max_sims = 5000):
+    return error
+  def get_conformation_probs(self, relative_error = 0.50, max_sims = 5000):
     """ Returns the probability and probability error for all
     conformations in the resting set as a dictionary. """
     names = [c.name for c in self.restingset.complexes] + ["_spurious"]
     for n in names:
-      self.sampler.reduce_error_to(allowed_error, max_sims, n)
+      self.sampler.reduce_error_to(relative_error, max_sims, n)
     return {name: self.get_conformation_prob(name, max_sims = 0) for name in names}
   def get_similarity_threshold(self):
     return self.sampler.similarity_threshold
@@ -323,41 +241,44 @@ class RestingSetStats(object):
       energy_gap += 0.5
     return struct_list
     
-  def get_temp_depletion_due_to(self, rxn, allowed_error, max_sims):
-    t_unbound = self.c_max / rxn.get_k1(allowed_error, max_sims = max_sims)[0]
-    for reactant in rxn.reactants:
-      c_max = rxn.get_rs_stats(reactant).c_max
-      if c_max == None or c_max == 0:
-        return 0.0
-      t_unbound /= c_max
-    t_bound = 1.0 / rxn.get_k2(allowed_error, max_sims = max_sims)[0]
-    return t_bound / (t_bound + t_unbound)
-  def get_temp_depletion(self, allowed_error = 0.5, max_sims = 500):
-    if self.c_max == None or self.c_max == 0:
-      return 0.0
-      
-    rxns = list(filter(lambda r: r.reactants == r.products, self.inter_rxns))
-    depletions = [self.get_temp_depletion_due_to(rxn, allowed_error, max_sims) for rxn in rxns]
-    return min(1, sum(depletions)) # The sum is a crude estimate of worst-case depletion
+  def get_temp_depletion_due_to(self, rxn, relative_error = 0.5, max_sims=500):
+    binding_polynomial = 1. / (1 - self.get_temp_depletion(relative_error, max_sims))
 
-  def get_perm_depletion_due_to(self, rxn, allowed_error, max_sims):
+    other_reactant = rxn.reactants[0] if rxn.reactants[0]!=self.restingset else rxn.reactants[1]
+    c_max = rxn.get_rs_stats(other_reactant).c_max
+    if c_max is None or c_max == 0:  return 0
+    return c_max * rxn.get_k1(max_sims = 0) / rxn.get_k2(max_sims = 0) / binding_polynomial
+  def get_temp_depletion(self, relative_error = 0.5, max_sims = 500):
+    binding_polynomial = 1.0
+
+    rxns = list(filter(lambda r: len(r.reactants)>1 and r.reactants == r.products, self.inter_rxns))
+    for rxn in rxns:
+      other_reactant = rxn.reactants[0] if rxn.reactants[0]!=self.restingset else rxn.reactants[1]
+      c_max = rxn.get_rs_stats(other_reactant).c_max
+      if c_max is None or c_max == 0:  continue
+
+      rxn.get_k1(relative_error, max_sims = max_sims)
+      rxn.get_k2(relative_error, max_sims = max_sims)
+      binding_polynomial += c_max * rxn.get_k1(max_sims = 0) / rxn.get_k2(max_sims = 0)
+     
+    return 1 - 1/binding_polynomial
+
+  def get_perm_depletion_due_to(self, rxn, relative_error, max_sims):
     conc = 1.0
     for reactant in rxn.reactants:
       c_max = rxn.get_rs_stats(reactant).c_max
       if c_max == None:
         return 0.0
       conc *= c_max
-    return conc * rxn.get_k1(allowed_error, max_sims = max_sims)[0] / self.c_max
-  def get_perm_depletion(self, allowed_error = 0.5, max_sims = 500):
+    return conc * rxn.get_k1(relative_error, max_sims = max_sims) / self.c_max
+  def get_perm_depletion(self, relative_error = 0.5, max_sims = 500):
     """ Returns the rate in /s at which the given resting set is depleted due to spurious reactions """
     if self.c_max == None or self.c_max == 0:
       return 0.0
 
-    depletions = [self.get_perm_depletion_due_to(rxn, allowed_error, max_sims) for rxn in self.spurious_rxns]
+    depletions = [self.get_perm_depletion_due_to(rxn, relative_error, max_sims) for rxn in self.spurious_rxns]
     return sum(depletions)
   
-  def add_intra_rxn(self, rxn):
-    self.intra_rxns.append(rxn)
   def add_inter_rxn(self, rxn):
     self.inter_rxns.append(rxn)
   def add_spurious_rxn(self, rxn):
@@ -366,52 +287,54 @@ class RestingSetStats(object):
   def get_nupackjob(self):
     return self.sampler
   
-class ComplexRxnStats(object):
-  """ Calculates statistics for this complex-level reaction.
-      The following statistics are calculated directly:
-        - rate constant (via Multistrand)
-        - rate constants of base-by-base subreactions [NOT IMPLEMENTED]
-      The following information should be stored with this object for
-      convenience in displaying and calculating certain information:
-        - ComplexStats objects for each reactant
-  """
-  def __init__(self, reactants, products, loose_products = True, loose_cutoff = None):
-    ## Store reactants and products
-    self.reactants = reactants[:]
-    self.products = products[:]
-    
-    ## If necessary, create "loose" product macrostates allowing a set amount
-    ## of deviation from the exact product complexes.
-    if loose_products:
-      if loose_cutoff == None:
-        loose_cutoff = options.general_params['loose_complex_similarity']
-      macrostates = [utils.similar_complex_macrostate(c, loose_cutoff) for c in products]
-    else:
-      macrostates = [utils.exact_complex_macrostate(c) for c in products]
-    self.stop_conditions = Macrostate(name = 'success',
-                                                 type = 'conjunction',
-                                                 macrostates = macrostates)
-                  
-    ## Set up Multistrand simulation job for the overall reaction
-    self.rxnjob = FirstPassageTimeModeJob(self.reactants, self.stop_conditions)
-    
-    ## Set up Multistrand simulation jobs for base-by-base reactions
-    ## [NOT IMPLEMENTED]
-    
-    ## Initialize ComplexStats list for reactants
-    self.complex_stats = dict([(c.id, None) for c in reactants])
-    
-  def get_rate(self, allowed_error = 0.50, max_sims = 500):
-    self.rxnjob.reduce_error_to(allowed_error, max_sims, 'success', 'rate')
-    rate = self.rxnjob.get_statistic('success', 'rate')
-    error = self.rxnjob.get_statistic_error('success', 'rate')
-    return (rate, error)
-    
-  def set_complex_stats(self, complex_id, stats):
-    self.complex_stats[complex_id] = stats
-  def get_complex_stats(self, complex_id):
-    return self.complex_stats[complex_id]
-  
-class ComplexStats(object):
-  pass
-
+### NOTE: ComplexRxnStats and ComplexStats are not currently fully implemented
+#
+# class ComplexRxnStats(object):
+#   """ Calculates statistics for this complex-level reaction.
+#       The following statistics are calculated directly:
+#         - rate constant (via Multistrand)
+#         - rate constants of base-by-base subreactions [NOT IMPLEMENTED]
+#       The following information should be stored with this object for
+#       convenience in displaying and calculating certain information:
+#         - ComplexStats objects for each reactant
+#   """
+#   def __init__(self, reactants, products, loose_products = True, loose_cutoff = None):
+#     ## Store reactants and products
+#     self.reactants = reactants[:]
+#     self.products = products[:]
+#     
+#     ## If necessary, create "loose" product macrostates allowing a set amount
+#     ## of deviation from the exact product complexes.
+#     if loose_products:
+#       if loose_cutoff == None:
+#         loose_cutoff = options.general_params['loose_complex_similarity']
+#       macrostates = [utils.similar_complex_macrostate(c, loose_cutoff) for c in products]
+#     else:
+#       macrostates = [utils.exact_complex_macrostate(c) for c in products]
+#     self.stop_conditions = Macrostate(name = 'success',
+#                                                  type = 'conjunction',
+#                                                  macrostates = macrostates)
+#                   
+#     ## Set up Multistrand simulation job for the overall reaction
+#     self.rxnjob = FirstPassageTimeModeJob(self.reactants, self.stop_conditions)
+#     
+#     ## Set up Multistrand simulation jobs for base-by-base reactions
+#     ## [NOT IMPLEMENTED]
+#     
+#     ## Initialize ComplexStats list for reactants
+#     self.complex_stats = dict([(c.id, None) for c in reactants])
+#     
+#   def get_rate(self, relative_error = 0.50, max_sims = 500):
+#     self.rxnjob.reduce_error_to(relative_error, max_sims, 'success', 'rate')
+#     rate = self.rxnjob.get_statistic('success', 'rate')
+#     error = self.rxnjob.get_statistic_error('success', 'rate')
+#     return (rate, error)
+#     
+#   def set_complex_stats(self, complex_id, stats):
+#     self.complex_stats[complex_id] = stats
+#   def get_complex_stats(self, complex_id):
+#     return self.complex_stats[complex_id]
+#   
+# class ComplexStats(object):
+#   pass
+# 

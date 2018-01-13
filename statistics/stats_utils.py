@@ -8,7 +8,7 @@ from .. import options
 
 from ..simulation.multistrandjob import FirstPassageTimeModeJob, FirstStepModeJob
 
-from .stats import SystemStats, RestingSetRxnStats, RestingSetStats
+from .stats import RestingSetRxnStats, RestingSetStats
 
 ####  TODO: make_RestingSetStats (Is this done yet?)
 ####        make_ComplexRxnStats
@@ -91,7 +91,8 @@ def make_RestingSetRxnStats(enum_job):
     rxn_to_stats[rxn] = stats
 
   # Create a RestingSetRxnStats object for each spurious reaction between a set of reactants
-  # The "unproductive" reaction will be included either as a valid reaction (if it was enumerated) or spurious if not
+  # The "unproductive" reaction will be included either as a valid reaction (if it was enumerated) or spurious if not.
+  # However, note that by default we modify Peppercorn enumeration to include all unproductive reactions.
   for rxn in spurious_rxns:
     stats = RestingSetRxnStats(
         reactants = rxn.reactants,
@@ -285,19 +286,26 @@ def make_RestingSetStats(restingsets):
   rs_to_stats = {rs: RestingSetStats(rs) for rs in restingsets}
   return rs_to_stats
   
-def make_stats(*args, **kargs):
-  rs_rxns = kargs.get('reactions',[])
-  rs = kargs.get('resting-sets', [])
+def make_stats(enum_job):
+  rxn_to_stats = make_RestingSetRxnStats(enum_job)
+
+  rs_rxns = rxn_to_stats.keys()
+  restingsets = set(enum_job.get_restingsets() + [rs for rxn in rs_rxns for rs in rxn.reactants+rxn.products])
+  rs_to_stats = make_RestingSetStats(restingsets)
   
-  rxn_to_stats = make_RestingSetRxnStats(rs_rxns)
-  rs_to_stats = make_RestingSetStats(rs)
-  
+  enumerated_rs_rxns = set(enum_job.get_restingset_reactions())
+
   for rxn in rs_rxns:
     rxn_stats = rxn_to_stats[rxn]
-    for reactant in rxn.reactants:
+    for reactant in set(rxn.reactants):
       rs_stats = rs_to_stats[reactant]
       rxn_stats.set_rs_stats(reactant, rs_stats)
-      rs_stats.add_inter_rxn(rxn_stats)
+      if rxn in enumerated_rs_rxns:
+        rs_stats.add_inter_rxn(rxn_stats)
+      else:
+        rs_stats.add_spurious_rxn(rxn_stats)
+
+  return rs_to_stats, rxn_to_stats
 
 
 
@@ -305,18 +313,18 @@ def make_stats(*args, **kargs):
 #          Score calculation         #
 ######################################
 
-def calc_spurious_rxn_score(system_stats, t_max, allowed_error = 0.5, max_sims = 500):
+def calc_spurious_rxn_score(system_stats, t_max, relative_error = 0.5, max_sims = 500):
   max_depletion = 0.0
   for rs in system_stats.get_restingsets():
     stats = system_stats.get_stats(rs)
-    max_depletion = max(max_depletion, min(stats.get_perm_depletion(allowed_error, max_sims = max_sims)*t_max, 1))
+    max_depletion = max(max_depletion, min(stats.get_perm_depletion(relative_error, max_sims = max_sims)*t_max, 1))
   return max_depletion
 
-def calc_unproductive_rxn_score(system_stats, allowed_error = 0.5, max_sims = 500):
+def calc_unproductive_rxn_score(system_stats, relative_error = 0.5, max_sims = 500):
   max_depletion = 0.0
   for rs in system_stats.get_restingsets():
     stats = system_stats.get_stats(rs)
-    max_depletion = max(max_depletion, stats.get_temp_depletion(allowed_error, max_sims = max_sims))
+    max_depletion = max(max_depletion, stats.get_temp_depletion(relative_error, max_sims = max_sims))
   return max_depletion
 
 def calc_intended_rxn_score(system_stats):
@@ -329,8 +337,8 @@ def calc_intended_rxn_score(system_stats):
 ######################################
 
 def export_data(sstats, filepath):
-  """ Exports data of this SystemStats object so that it can be imported in a later Python session.
-  Does not export the entire SystemStats object (only the XXXStats data that has been collected).
+  """ Exports data of this KinDA object so that it can be imported in a later Python session.
+  Does not export the entire KinDA object (only the XXXStats data that has been collected).
   Data is exported in JSON format.
   The following constructs are exported:
     - domains
@@ -341,7 +349,7 @@ def export_data(sstats, filepath):
     - resting-set reactions
     - resting-set statistics objects
     - resting-set-reaction statistics objects
-  Implemented, but badly and fragily dependent on SystemStats implementation """
+  Implemented, but badly and fragily dependent on KinDA object implementation """
   ## Extract all objects to be exported
   rs_reactions = list(sstats.rxn_to_stats.keys())
   restingsets = set(sum([list(r.reactants + r.products) for r in rs_reactions], [])
@@ -434,7 +442,7 @@ def export_data(sstats, filepath):
   json.dump(sstats_dict, f)
 
 def import_data(filepath):
-  """ Imports a SystemStats object as exported in the format specified by export_data() """
+  """ Imports a KinDA object as exported in the format specified by export_data() """
   import json
   f = open(filepath)
   sstats_dict = json.load(f)
@@ -456,7 +464,7 @@ def import_data(filepath):
     complexes[complex_id] = dna.Complex(name = data['name'], strands = cpx_strands, structure = data['structure'])
 
   init_complexes = [complexes[c_id] for c_id in sstats_dict['init_complexes']]
-  sstats = SystemStats(complexes = init_complexes)
+  sstats = KinDA(complexes = init_complexes)
 
   restingsets = {}
   for rs_id, data in sstats_dict['resting-sets'].iteritems():
@@ -484,7 +492,7 @@ def import_data(filepath):
   for rs_id, data in sstats_dict['resting-set-stats'].iteritems():
     stats = sstats.get_stats(restingsets[rs_id])
     if stats == None:
-      print "Warning: Could not match up stored statistics for {0} with a resting set in the new SystemStats object.".format(restingsets[rs_id])
+      print "Warning: Could not match up stored statistics for {0} with a resting set in the new KinDA object.".format(restingsets[rs_id])
       continue
     nupackjob = stats.get_nupackjob()
     num_sims = 0
@@ -501,7 +509,7 @@ def import_data(filepath):
   for rsrxn_id, data in sstats_dict['resting-set-reaction-stats'].iteritems():
     stats = sstats.get_stats(rs_reactions[rsrxn_id])
     if stats == None:
-      print "Warning: Could not match up stored statistics for {0} with a resting-set reaction in the new SystemStats object.".format(rs_reactions[rsrxn_id])
+      print "Warning: Could not match up stored statistics for {0} with a resting-set reaction in the new KinDA object.".format(rs_reactions[rsrxn_id])
       continue
     multijob = stats.get_multistrandjob()
     tag = stats.multijob_tag
