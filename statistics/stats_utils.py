@@ -205,7 +205,7 @@ def get_spurious_products(reactants, reactions, stop_states):
     
   ## Valid states consist of all states that we explicitly do NOT wish Multistrand to halt on,
   ## plus the given expected stop states.
-  ## This consists of those states those that can be enumerated from the initial state by following
+  ## This consists of those states that can be enumerated from the initial state by following
   ## the given reactions and all states that can be formed from a binding reaction between
   ## two reactants in the initial state.
   valid_states = enumerate_states(strandlist_reactants, strandlist_reactions, strandlist_stop_states.copy()) \
