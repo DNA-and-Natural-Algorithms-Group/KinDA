@@ -1,7 +1,15 @@
+# nupackjob.py
+# Created by Joseph Berleant, 9/21/2014
+#
+# Implements a class for handling interactions with Nupack to obtain statistics about resting sets.
+
+
+## IMPORTS
+
+import sys
 import math
 
-#import PyNupack as nupack
-from ..imports import pynupackhome, dnaobjectshome
+from ..imports import dnaobjectshome
 from dnaobjects import utils, Complex
 
 from ..imports import PyNupack as nupack
@@ -9,43 +17,88 @@ from .. import options
 from datablock import Datablock
 
 
+## CLASSES
+
 class NupackSampleJob(object):
-  
+  """ The NupackSampleJob class implements basic statistics collection using Nupack.
+  This class collects statistics on a particular resting set, including the probabilities
+  of the constituent complexes.
+  Use sample() to request a certain number of secondary structures from the Boltzmann distribution (using Nupack).
+  Use get_complex_prob() to request the probability estimate for a particular complex.
+  The similarity threshold may be changed with set_similarity_threshold().
+  """
+
   def __init__(self, restingset, similarity_threshold = None):
+    """ Constructs a NupackSampleJob object with the given resting set and similarity threshold.
+    If similarity threshold is not given, the value in options.py (general_params['loose_complex_similarity'])
+    is used. """
+
+    # Store resting set and relevant complex information
     self.restingset = restingset
     self.complex_tags = {tag: idx for idx, tag in enumerate([c.name for c in restingset.complexes] + ['_spurious'])}
     self.complex_counts = [0] * len(self.complex_tags)
     
+    # Data structure for storing raw sampling data
     self.datablocks = {tag: Datablock() for tag in self.complex_tags if tag != '_spurious'}
 
+    # Set similarity threshold, using default value in options.py if none specified
     if similarity_threshold == None:  similarity_threshold = options.general_params['loose_complex_similarity']
     self.set_similarity_threshold(similarity_threshold)
 
     self.total_sims = 0
 
+
   def get_complex_index(self, complex_name):
-    """Returns the unique index associated with this complex name (mainly for internal use). """
+    """ Returns the unique index associated with this complex name (mainly for internal use). """
     assert complex_name in self.complex_tags, "Complex tag {0} not found in resting set {1}".format(complex_name, self.restingset)
     return self.complex_tags[complex_name]
         
   def get_complex_prob(self, complex_name = "_spurious"):
+    """ Returns the conformation probability associated with the given complex_name.
+    complex_name should match the name field of one of the complexes in the original resting set used
+    to instantiate this NupackSampleJob.
+    The Bayesian estimator (n+1)/(N+2) is used to estimate this probability, in order to prevent
+    improbable estimates when n=0,N.
+    """
     index = self.get_complex_index(complex_name)
     N = self.total_sims
     Nc = self.complex_counts[index]
     return (Nc + 1.0)/(N + 2)
   def get_complex_prob_error(self, complex_name = "_spurious"):
+    """ Returns the standard error on the conformation probability associated with the given complex_name.
+    complex_name should match the name field of one of the complex in the resting set used to
+    construct this NupackSampleJob.
+    The Bayesian estimator for the standard error is used
+      SE = (n+1)*(N-n+1)/((N+3)*(N+2)*(N+2))
+    to avoid artifacts when n=0,N.
+    """
     index = self.get_complex_index(complex_name)
     Nc = self.complex_counts[index]
     N = self.total_sims;
     return math.sqrt((Nc+1.0)*(N-Nc+1)/((N+3)*(N+2)*(N+2)));
 
   def get_complex_prob_data(self, complex_name = "_spurious"):
+    """ Returns raw sampling data for the given complex_name.
+    Data is returned as a list consisting of float values, where each float value is 1 minus the
+    maximum fractional defect for any domain in that sampled secondary structure. """
     return self.datablocks[complex_name].get_data()
   def set_complex_prob_data(self, complex_name, data):
+    """ Set the raw sampling data for the given complex_name.
+    Should be used only when importing an old KinDA session to restore state. """
     self.datablocks[complex_name].clear_data()
     self.datablocks[complex_name].add_data(data)
 
+  def get_num_sims():
+    """ Returns the total number of sampled secondary structures. """
+    return self.total_sims
+
   def set_similarity_threshold(self, similarity_threshold):
+    """ Modifies the similarity threshold used to classify each sampled secondary structure as one of
+    the expected complex conformations. The complex probability estimates are recomputed based
+    on the new similarity threshold, so that future calls to get_complex_prob() will give
+    correct statistics based on previously sampled secondary structures. """
+
+    ## Change internal similarity threshold
     self.similarity_threshold = similarity_threshold
 
     ## Recalculate complex counts
@@ -64,6 +117,16 @@ class NupackSampleJob(object):
         self.complex_counts[spurious_idx] += 1
 
   def sample(self, num_samples):
+    """ Queries Nupack for num_samples secondary structures, sampled from the Boltzmann distribution
+    of secondary structures for this resting set. The sampled secondary structures are automatically
+    processed to compute new estimates for each conformation probability.
+    Uses the following parameters from options.py:
+      nupack_params['temp'] (the temperature given to Nupack)
+      nupack_params['material'] ('rna' or 'dna')
+      nupack_params['dangles'] (dangles specifier given to Nupack)
+    """
+
+    ## Set up arguments/options for Nupack call
     T = options.nupack_params['temp']
     material = options.nupack_params['material']
     dangles = options.nupack_params['dangles']
@@ -71,15 +134,20 @@ class NupackSampleJob(object):
     strand_seqs = [strand.constraints
                     for strand
                     in strands]
-    sampled = []
+
+    ## Call Nupack
     structs = nupack.sample(num_samples, strand_seqs, T, material, dangles)
-    #print structs
-    for s in structs:
-      sampled.append(Complex(strands = strands, structure = s))
-      
+
+    ## Convert each Nupack sampled structure (a dot-paren string) into a DNAObjects Complex object and process.
+    sampled = [Complex(strands = strands, structure = s) for s in structs]
     self.add_sampled_complexes(sampled)
+
   def add_sampled_complexes(self, sampled):
-    ## Add sampling data
+    """ Processes a list of sampled Complex objects, computing the similarity to each of the
+    resting set conformations and updating the estimates for each conformation probability. """
+
+    ## For each complex in the resting set, add the number of sampled secondary structures
+    ## that satisfy the similarity threshold to the running complex count.
     all_similarities = []
     for c in self.restingset.complexes:
       similarities = [1-utils.max_domain_defect(s, c.structure) for s in sampled]
@@ -89,25 +157,37 @@ class NupackSampleJob(object):
       self.datablocks[c.name].add_data(similarities)
       all_similarities.append(similarities)
 
-    ## Update complex counts
+    ## Update complex count for the spurious complex
+    ## A conformation is considered spurious if it does not satisfy the similarity threshold
+    ## for any of the predicted conformations in the resting set.
     spurious_idx = self.get_complex_index('_spurious')
     for complex_similarities in zip(*all_similarities):
       if all(map(lambda v: v < self.similarity_threshold, complex_similarities)):
         self.complex_counts[spurious_idx] += 1
         
+    ## Update running count of number of samples
     self.total_sims += len(sampled)
         
     
   def reduce_error_to(self, rel_goal, max_sims, complex_name = "_spurious"):
+    """ Continue querying Nupack for secondary structures sampled from the Boltzmann distribution
+    until the standard error of the estimated probability for the given complex_name
+    is at most rel_goal*complex_prob, or max_sims conformations have been sampled.
+    If no complex_name is given, the halting condition is based on the error
+    for the spurious conformation probability.
+    """
     num_sims = 0
     prob = self.get_complex_prob(complex_name)
     error = self.get_complex_prob_error(complex_name)
-    goal = rel_goal * self.get_complex_prob(complex_name)
+    goal = rel_goal * prob
     while not error <= goal and num_sims < max_sims:
+      # Print status message
+      print "({0}%) prob('{1}'):".format(100*num_sims/max_sims, complex_name),
+      print "{0} +/- {1} (Goal: +/- {2})\r".format(prob, error, goal),
+      sys.stdout.flush()
+
       # Estimate additional trials based on inverse square root relationship
       # between error and number of trials
-      print "*** Conformation probability for '{0}':".format(complex_name),
-      print "{0} +/- {1} (Goal: +/- {2}) [max additional sims: {3}] ***".format(prob, error, goal, max_sims - num_sims)
       if error == float('inf'):
         num_trials = 10
       else:
@@ -115,9 +195,13 @@ class NupackSampleJob(object):
         num_trials = int(self.total_sims * (reduction**2 - 1) + 1)
         num_trials = min(500, num_trials, max_sims - num_sims, self.total_sims + 1)
         
+      # Query Nupack
       self.sample(num_trials)
 
+      # Update estimates and goal
       num_sims += num_trials
       prob = self.get_complex_prob(complex_name)
       error = self.get_complex_prob_error(complex_name)
-      goal = rel_goal * self.get_complex_prob(complex_name)
+      goal = rel_goal * prob
+
+    print
