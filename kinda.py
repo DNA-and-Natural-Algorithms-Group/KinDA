@@ -50,20 +50,20 @@ class KinDA(object):
       # Create enumeration object
       self._enum_job = EnumerateJob(complexes = self.complexes)#, reactions = reactions)### TODO: IMPLEMENT THIS FUNCTIONALITY IN EnumerateJob
       # Incorporate enumerated data
-      self._complexes |= self.enum_job.get_complexes()
-      self._restingsets |= self.enum_job.get_restingsets()
-      self._reactions |= self.enum_job.get_reactions()
-      self._rs_reactions |= self.enum_job.get_restingset_reactions()
+      self._complexes |= set(self._enum_job.get_complexes())
+      self._restingsets |= set(self._enum_job.get_restingsets())
+      self._reactions |= set(self._enum_job.get_reactions())
+      self._rs_reactions |= set(self._enum_job.get_restingset_reactions())
     else:
       self._enum_job = None
 
     # Create stats objects for reactions and resting sets
     # make_stats() will also make stats objects for potential spurious reactions and resting sets
-    self._rs_to_stats, self._rxn_to_stats = stats_utils.make_stats(self.enum_job) ### TODO: fix stats_utils.make_stats so it doesn't require enum_job
+    self._rs_to_stats, self._rxn_to_stats = stats_utils.make_stats(self._enum_job) ### TODO: fix stats_utils.make_stats so it doesn't require enum_job
 
     # Pull out spurious reactions/resting sets
-    self._spurious_restingsets = set(self._rs_to_stats.keys()) - self._restingsets)
-    self._spurious_rs_reactions = set(self._rxn_to_stats.keys()) - self._rs_reactions)
+    self._spurious_restingsets = set(self._rs_to_stats.keys()) - self._restingsets
+    self._spurious_rs_reactions = set(self._rxn_to_stats.keys()) - self._rs_reactions
 
     # Set default max concentration for each resting set
     for rs_stats in self._rs_to_stats.values():
@@ -80,7 +80,7 @@ class KinDA(object):
   @property
   def restingsets(self):
     """ Returns a list of all resting sets (given, enumerated, and spurious) predicted for the system. """
-    return list(self._restingsets + self._spurious_restingsets)
+    return list(self._restingsets | self._spurious_restingsets)
 
   @property
   def reactions(self):
@@ -90,7 +90,7 @@ class KinDA(object):
   @property
   def restingset_reactions(self):
     """ Returns a list of all resting-set (condensed) reactions (given, enumerated, and spurious) for the system. """
-    return list(self._rs_reactions + self._spurious_rs_reactions)
+    return list(self._rs_reactions | self._spurious_rs_reactions)
 
 
   ## Convenience filters for specific objects
@@ -111,11 +111,11 @@ class KinDA(object):
         and spurious = False will return only enumerated reactions. Otherwise, no distinction will be made.
         """
     if spurious == True:
-      rxns = self.spurious_rs_reactions
+      rxns = self._spurious_rs_reactions
     elif spurious == False:
-      rxns = self.rs_reactions
+      rxns = self._rs_reactions
     else:
-      rxns = self.spurious_rs_reactions + self.rs_reactions
+      rxns = self._spurious_rs_reactions | self._rs_reactions
 
     if unproductive == True:
       rxns = filter(lambda x: x.has_reactants(x.products) and x.has_products(x.reactants), rxns)
@@ -133,11 +133,11 @@ class KinDA(object):
     If spurious is None, both spurious and non-spurious resting sets may be returned.
     """
     if spurious == True:
-      rs = self.spurious_restingsets
+      rs = self._spurious_restingsets
     elif spurious == False:
-      rs = self.restingsets
+      rs = self._restingsets
     else:
-      rs = self.restingsets + self.spurious_restingsets
+      rs = self._restingsets | self._spurious_restingsets
 
     if complex != None:
       rs = filter(lambda x: complex in x, rs)
@@ -148,10 +148,10 @@ class KinDA(object):
   def get_stats(self, obj):
     """ Returns the stats object corresponding to the given system object.
     obj must be a resting-set reaction or resting set in the system. """
-    if obj in self.rxn_to_stats:
-      return self.rxn_to_stats[obj]
-    elif obj in self.rs_to_stats:
-      return self.rs_to_stats[obj]
+    if obj in self._rxn_to_stats:
+      return self._rxn_to_stats[obj]
+    elif obj in self._rs_to_stats:
+      return self._rs_to_stats[obj]
     else:
       print "Statistics for object {0} not found.".format(obj)
 
