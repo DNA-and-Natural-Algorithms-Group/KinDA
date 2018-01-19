@@ -59,7 +59,7 @@ class KinDA(object):
 
     # Create stats objects for reactions and resting sets
     # make_stats() will also make stats objects for potential spurious reactions and resting sets
-    self._rs_to_stats, self._rxn_to_stats = stats_utils.make_stats(self._enum_job) ### TODO: fix stats_utils.make_stats so it doesn't require enum_job
+    self._rs_to_stats, self._rxn_to_stats = stats_utils.make_stats(list(self._complexes), list(self._restingsets), list(self._reactions), list(self._rs_reactions))
 
     # Pull out spurious reactions/resting sets
     self._spurious_restingsets = set(self._rs_to_stats.keys()) - self._restingsets
