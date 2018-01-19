@@ -14,7 +14,7 @@ from dnaobjects import utils, Complex
 
 from ..imports import PyNupack as nupack
 from .. import options
-from datablock import Datablock
+#from datablock import Datablock
 
 
 ## CLASSES
@@ -34,12 +34,12 @@ class NupackSampleJob(object):
     is used. """
 
     # Store resting set and relevant complex information
-    self.restingset = restingset
-    self.complex_tags = {tag: idx for idx, tag in enumerate([c.name for c in restingset.complexes] + ['_spurious'])}
-    self.complex_counts = [0] * len(self.complex_tags)
+    self._restingset = restingset
+    self._complex_tags = {tag: idx for idx, tag in enumerate([c.name for c in restingset.complexes] + ['_spurious'])}
+    self._complex_counts = [0] * len(self._complex_tags)
     
     # Data structure for storing raw sampling data
-    self.datablocks = {tag: Datablock() for tag in self.complex_tags if tag != '_spurious'}
+    self._data = {tag: [] for tag in self._complex_tags if tag != '_spurious'}
 
     # Set similarity threshold, using default value in options.py if none specified
     if similarity_threshold == None:  similarity_threshold = options.general_params['loose_complex_similarity']
@@ -47,11 +47,20 @@ class NupackSampleJob(object):
 
     self.total_sims = 0
 
+  @property
+  def restingset(self):
+    return self._restingset
+  @property
+  def complex_names(self):
+    return sorted([c.name for c in restingset.complexes], key = lambda k: self._complex_tags[k])
+  @property
+  def complex_counts(self):
+    return self._complex_counts[:]
 
   def get_complex_index(self, complex_name):
     """ Returns the unique index associated with this complex name (mainly for internal use). """
-    assert complex_name in self.complex_tags, "Complex tag {0} not found in resting set {1}".format(complex_name, self.restingset)
-    return self.complex_tags[complex_name]
+    assert complex_name in self._complex_tags, "Complex tag {0} not found in resting set {1}".format(complex_name, self.restingset)
+    return self._complex_tags[complex_name]
         
   def get_complex_prob(self, complex_name = "_spurious"):
     """ Returns the conformation probability associated with the given complex_name.
@@ -62,7 +71,7 @@ class NupackSampleJob(object):
     """
     index = self.get_complex_index(complex_name)
     N = self.total_sims
-    Nc = self.complex_counts[index]
+    Nc = self._complex_counts[index]
     return (Nc + 1.0)/(N + 2)
   def get_complex_prob_error(self, complex_name = "_spurious"):
     """ Returns the standard error on the conformation probability associated with the given complex_name.
@@ -73,7 +82,7 @@ class NupackSampleJob(object):
     to avoid artifacts when n=0,N.
     """
     index = self.get_complex_index(complex_name)
-    Nc = self.complex_counts[index]
+    Nc = self._complex_counts[index]
     N = self.total_sims;
     return math.sqrt((Nc+1.0)*(N-Nc+1)/((N+3)*(N+2)*(N+2)));
 
@@ -81,12 +90,11 @@ class NupackSampleJob(object):
     """ Returns raw sampling data for the given complex_name.
     Data is returned as a list consisting of float values, where each float value is 1 minus the
     maximum fractional defect for any domain in that sampled secondary structure. """
-    return self.datablocks[complex_name].get_data()
+    return self._data[complex_name][:]
   def set_complex_prob_data(self, complex_name, data):
     """ Set the raw sampling data for the given complex_name.
     Should be used only when importing an old KinDA session to restore state. """
-    self.datablocks[complex_name].clear_data()
-    self.datablocks[complex_name].add_data(data)
+    self._data[complex_name] = data[:]
 
   def get_num_sims():
     """ Returns the total number of sampled secondary structures. """
@@ -102,19 +110,19 @@ class NupackSampleJob(object):
     self.similarity_threshold = similarity_threshold
 
     ## Recalculate complex counts
-    self.complex_counts = [0] * len(self.complex_tags)
+    self._complex_counts = [0] * len(self._complex_tags)
     all_similarities = []
     for c in self.restingset.complexes:
-      similarities = self.datablocks[c.name].get_data()
+      similarities = self._data[c.name]
       num_similar = map(lambda v: v >= self.similarity_threshold, similarities).count(True)
-      self.complex_counts[self.get_complex_index(c.name)] = num_similar
+      self._complex_counts[self.get_complex_index(c.name)] = num_similar
       all_similarities.append(similarities)
 
     ## Update complex counts
     spurious_idx = self.get_complex_index('_spurious')
     for complex_similarities in zip(*all_similarities):
       if all(map(lambda v: v < self.similarity_threshold, complex_similarities)):
-        self.complex_counts[spurious_idx] += 1
+        self._complex_counts[spurious_idx] += 1
 
   def sample(self, num_samples):
     """ Queries Nupack for num_samples secondary structures, sampled from the Boltzmann distribution
@@ -152,9 +160,9 @@ class NupackSampleJob(object):
     for c in self.restingset.complexes:
       similarities = [1-utils.max_domain_defect(s, c.structure) for s in sampled]
       num_similar = map(lambda v: v >= self.similarity_threshold, similarities).count(True)
-      self.complex_counts[self.get_complex_index(c.name)] += num_similar
+      self._complex_counts[self.get_complex_index(c.name)] += num_similar
 
-      self.datablocks[c.name].add_data(similarities)
+      self._data[c.name].extend(similarities)
       all_similarities.append(similarities)
 
     ## Update complex count for the spurious complex
@@ -163,7 +171,7 @@ class NupackSampleJob(object):
     spurious_idx = self.get_complex_index('_spurious')
     for complex_similarities in zip(*all_similarities):
       if all(map(lambda v: v < self.similarity_threshold, complex_similarities)):
-        self.complex_counts[spurious_idx] += 1
+        self._complex_counts[spurious_idx] += 1
         
     ## Update running count of number of samples
     self.total_sims += len(sampled)
@@ -182,7 +190,8 @@ class NupackSampleJob(object):
     goal = rel_goal * prob
     while not error <= goal and num_sims < max_sims:
       # Print status message
-      print "({0}%) prob('{1}'):".format(100*num_sims/max_sims, complex_name),
+      expected_additional_sims = int(self.total_sims * ((error/goal)**2-1) + 1) if error!=float('inf') else max_sims
+      print "[{0}%] prob('{1}'):".format(100*num_sims/(num_sims + expected_additional_sims), complex_name),
       print "{0} +/- {1} (Goal: +/- {2})\r".format(prob, error, goal),
       sys.stdout.flush()
 
