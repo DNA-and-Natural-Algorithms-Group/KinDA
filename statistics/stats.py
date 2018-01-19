@@ -199,7 +199,7 @@ class RestingSetStats(object):
   def get_conformation_prob(self, complex_name, relative_error = 0.50, max_sims = 5000):
     """ Returns the probability and probability error
     of the given conformation based on the current number of samples.
-    Use '_spurious' as a complex name to get the probability of
+    Use None as a complex name to get the probability of
     conformations that do not match up with any of the expected
     conformations. """
     self.sampler.reduce_error_to(relative_error, max_sims, complex_name)
@@ -212,7 +212,7 @@ class RestingSetStats(object):
   def get_conformation_probs(self, relative_error = 0.50, max_sims = 5000):
     """ Returns the probability and probability error for all
     conformations in the resting set as a dictionary. """
-    names = [c.name for c in self.restingset.complexes] + ["_spurious"]
+    names = [c.name for c in self.restingset.complexes] + [None]
     for n in names:
       self.sampler.reduce_error_to(relative_error, max_sims, n)
     return {name: self.get_conformation_prob(name, max_sims = 0) for name in names}

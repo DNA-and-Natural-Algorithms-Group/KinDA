@@ -14,7 +14,6 @@ from dnaobjects import utils, Complex
 
 from ..imports import PyNupack as nupack
 from .. import options
-#from datablock import Datablock
 
 
 ## CLASSES
@@ -35,11 +34,11 @@ class NupackSampleJob(object):
 
     # Store resting set and relevant complex information
     self._restingset = restingset
-    self._complex_tags = {tag: idx for idx, tag in enumerate([c.name for c in restingset.complexes] + ['_spurious'])}
+    self._complex_tags = {tag: idx for idx, tag in enumerate([c.name for c in restingset.complexes] + [None])}
     self._complex_counts = [0] * len(self._complex_tags)
     
     # Data structure for storing raw sampling data
-    self._data = {tag: [] for tag in self._complex_tags if tag != '_spurious'}
+    self._data = {tag: [] for tag in self._complex_tags if tag is not None}
 
     # Set similarity threshold, using default value in options.py if none specified
     if similarity_threshold == None:  similarity_threshold = options.general_params['loose_complex_similarity']
@@ -62,7 +61,7 @@ class NupackSampleJob(object):
     assert complex_name in self._complex_tags, "Complex tag {0} not found in resting set {1}".format(complex_name, self.restingset)
     return self._complex_tags[complex_name]
         
-  def get_complex_prob(self, complex_name = "_spurious"):
+  def get_complex_prob(self, complex_name = None):
     """ Returns the conformation probability associated with the given complex_name.
     complex_name should match the name field of one of the complexes in the original resting set used
     to instantiate this NupackSampleJob.
@@ -73,7 +72,7 @@ class NupackSampleJob(object):
     N = self.total_sims
     Nc = self._complex_counts[index]
     return (Nc + 1.0)/(N + 2)
-  def get_complex_prob_error(self, complex_name = "_spurious"):
+  def get_complex_prob_error(self, complex_name = None):
     """ Returns the standard error on the conformation probability associated with the given complex_name.
     complex_name should match the name field of one of the complex in the resting set used to
     construct this NupackSampleJob.
@@ -86,7 +85,7 @@ class NupackSampleJob(object):
     N = self.total_sims;
     return math.sqrt((Nc+1.0)*(N-Nc+1)/((N+3)*(N+2)*(N+2)));
 
-  def get_complex_prob_data(self, complex_name = "_spurious"):
+  def get_complex_prob_data(self, complex_name = None):
     """ Returns raw sampling data for the given complex_name.
     Data is returned as a list consisting of float values, where each float value is 1 minus the
     maximum fractional defect for any domain in that sampled secondary structure. """
@@ -119,7 +118,7 @@ class NupackSampleJob(object):
       all_similarities.append(similarities)
 
     ## Update complex counts
-    spurious_idx = self.get_complex_index('_spurious')
+    spurious_idx = self.get_complex_index(None)
     for complex_similarities in zip(*all_similarities):
       if all(map(lambda v: v < self.similarity_threshold, complex_similarities)):
         self._complex_counts[spurious_idx] += 1
@@ -168,7 +167,7 @@ class NupackSampleJob(object):
     ## Update complex count for the spurious complex
     ## A conformation is considered spurious if it does not satisfy the similarity threshold
     ## for any of the predicted conformations in the resting set.
-    spurious_idx = self.get_complex_index('_spurious')
+    spurious_idx = self.get_complex_index(None)
     for complex_similarities in zip(*all_similarities):
       if all(map(lambda v: v < self.similarity_threshold, complex_similarities)):
         self._complex_counts[spurious_idx] += 1
@@ -177,7 +176,7 @@ class NupackSampleJob(object):
     self.total_sims += len(sampled)
         
     
-  def reduce_error_to(self, rel_goal, max_sims, complex_name = "_spurious"):
+  def reduce_error_to(self, rel_goal, max_sims, complex_name = None):
     """ Continue querying Nupack for secondary structures sampled from the Boltzmann distribution
     until the standard error of the estimated probability for the given complex_name
     is at most rel_goal*complex_prob, or max_sims conformations have been sampled.
