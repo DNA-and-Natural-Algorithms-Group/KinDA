@@ -1,3 +1,15 @@
+# stats_utils.py
+# Created by Joseph Berleant, 11/11/2014
+#
+# Provides utility functions for making stats objects, computing system-level scores,
+# and exporting/importing data from a KinDA session.
+
+####  Future possible TODOs:
+####        make_ComplexRxnStats
+####        make_ComplexStats
+####        calc_intended_rxn_score
+
+
 ## IMPORTS
 
 import itertools as it
@@ -6,19 +18,15 @@ from ..imports import dnaobjectshome
 import dnaobjects as dna
 from .. import options
 
-from ..simulation.multistrandjob import FirstPassageTimeModeJob, FirstStepModeJob
+from ..simulation.multistrandjob import FirstStepModeJob
 
 from .stats import RestingSetRxnStats, RestingSetStats
 
-####  TODO: make_RestingSetStats (Is this done yet?)
-####        make_ComplexRxnStats
-####        make_ComplexStats
-####        calc_spurious_rxn_score
-####        calc_unproductive_rxn_score
-####        calc_intended_rxn_score
 
 ## GLOBALS
 def listminuslist(minuend, subtrahend):
+  """ For each element in subtrahend, removes an equal element in minuend, with earlier
+  elements removed first. The order of the remaining elements in minuend is preserved. """
   difference = minuend[:]
   for elem in subtrahend:
     if elem in difference: difference.remove(elem)
@@ -29,19 +37,15 @@ def listminuslist(minuend, subtrahend):
 # Utilities for making Stats objects #
 ######################################
 
-def make_RestingSetRxnStats(enum_job):
+def make_RestingSetRxnStats(restingsets, detailed_rxns, condensed_rxns):
   """ A convenience function, creating a dict mapping
   reactions to stats objects such that all stats objects
   with the same reactants share a Multistrand job object
   for improved efficiency. """
-  # Pull out important items from enumeration job
-  detailed_rxns = enum_job.get_reactions()
-  condensed_rxns = enum_job.get_restingset_reactions()
+
+  # Initialize set of spurious reactions
   spurious_rxns = set([]); # a list of all spurious reactions possible between any reactant pair
   
-  # Retrieve all resting sets
-  restingsets = enum_job.get_restingsets()
-
   # Determine all possible pairs of reactants
   reactants = set([
       tuple(sorted([r1, r2], key = lambda rs: rs.id))
@@ -145,8 +149,8 @@ def get_spurious_products(reactants, reactions, stop_states):
     return enumerated
 
   def binding_spurious_states(init_state, valid_states):
-    # Return spurious states one step away from given reactants,
-    # produced by a binding reaction between two reactants
+    """ Return spurious states one step away from given reactants,
+    produced by a binding reaction between two reactants """
     spurious_states = set([])
 
     # states produced through binding
@@ -160,8 +164,8 @@ def get_spurious_products(reactants, reactions, stop_states):
     spurious_states = set([s for s in spurious_states if s not in valid_states])
     return spurious_states
   def dissociation_spurious_states(init_state, valid_states):
-    # Return spurious states one step away from given reactants,
-    # produced by a dissocation reaction
+    """ Return spurious states one step away from given reactants,
+    produced by a dissocation reaction. """
     spurious_states = set([])
 
     # states produced through disassociation
@@ -194,7 +198,7 @@ def get_spurious_products(reactants, reactions, stop_states):
     return strands_to_restingsets
     
     
-  ## Convert to strandlist-level objects
+  # Convert to strandlist-level objects
   strandlist_reactants = hashable_state([tuple(r.strands) for r in reactants])
   strandlist_reactions = [[[hashable_strand_rotation(r.strands) for r in rxn.reactants],
                            [hashable_strand_rotation(p.strands) for p in rxn.products]]
@@ -203,22 +207,22 @@ def get_spurious_products(reactants, reactions, stop_states):
                             for state
                             in stop_states])
     
-  ## Valid states consist of all states that we explicitly do NOT wish Multistrand to halt on,
-  ## plus the given expected stop states.
-  ## This consists of those states that can be enumerated from the initial state by following
-  ## the given reactions and all states that can be formed from a binding reaction between
-  ## two reactants in the initial state.
+  # Valid states consist of all states that we explicitly do NOT wish Multistrand to halt on,
+  # plus the given expected stop states.
+  # This consists of those states that can be enumerated from the initial state by following
+  # the given reactions and all states that can be formed from a binding reaction between
+  # two reactants in the initial state.
   valid_states = enumerate_states(strandlist_reactants, strandlist_reactions, strandlist_stop_states.copy()) \
                  | binding_spurious_states(strandlist_reactants, set([]))
 
-  ## The spurious states are determined as those one step away from
-  ## intermediate states only.
-  ## Stop states are not included because once a stop state is reached,
-  ## the simulation should halt.
+  # The spurious states are determined as those one step away from
+  # intermediate states only.
+  # Stop states are not included because once a stop state is reached,
+  # the simulation should halt.
   valid_intermediates = valid_states - strandlist_stop_states
   
-  ## Get all spurious states that can be formed by dissociation
-  ## within any valid intermediate state
+  # Get all spurious states that can be formed by dissociation
+  # within any valid intermediate state
   spurious_states = set([])
   for state in valid_intermediates:
     spurious_states |= dissociation_spurious_states(state, valid_states)
@@ -248,6 +252,8 @@ def create_macrostate(state, tag):
        If the 'loose_complex' flag is set, then a LOOSE Macrostate
        is used corresponding to a p-approximation of the domain-level complex.
        For an exact definition of p-approximation, see the paper.
+       Note that this usage is currently unsupported by Multistrand but may
+       be supported in a future update.
        If the 'loose_complex' flag is not set, then an EXACT macrostate
        is used corresponding to the exact domain-level conformation.
     3. Create a CONJUNCTION macrostate corresponding to the conjunction
@@ -257,8 +263,7 @@ def create_macrostate(state, tag):
   could share the underlying DISASSOC/LOOSE/EXACT Macrostates. It's not clear
   if this would have a significant performance increase.
   Note that there is no way to represent a macrostate consisting of states with
-  2 or more of a certain complex. This is a shortcoming of Multistrand
-  as well as the DNAObjects package.
+  2 or more of a certain complex.
   """
   loose_complexes = options.flags['loose_complexes']
   loose_cutoff = options.general_params['loose_complex_similarity']
@@ -286,21 +291,28 @@ def make_RestingSetStats(restingsets):
   rs_to_stats = {rs: RestingSetStats(rs) for rs in restingsets}
   return rs_to_stats
   
-def make_stats(enum_job):
-  rxn_to_stats = make_RestingSetRxnStats(enum_job)
+def make_stats(complexes, restingsets, detailed_rxns, condensed_rxns):
+  """ Creates a RestingSetRxnStats object for each resting-set reaction
+  and a RestingSetStats object for each resting set. """
 
+  # Make RestingSetRxnStats objects for condensed reactions and predicted spurious reactions.
+  rxn_to_stats = make_RestingSetRxnStats(restingsets, detailed_rxns, condensed_rxns)
+
+  # Collect all resting sets, including spurious ones predicted by make_RestingSetRxnStats()
+  # and make RestingSetStats for each.
   rs_rxns = rxn_to_stats.keys()
-  restingsets = set(enum_job.get_restingsets() + [rs for rxn in rs_rxns for rs in rxn.reactants+rxn.products])
+  restingsets = set(restingsets + [rs for rxn in rs_rxns for rs in rxn.reactants+rxn.products])
   rs_to_stats = make_RestingSetStats(restingsets)
   
-  enumerated_rs_rxns = set(enum_job.get_restingset_reactions())
+  condensed_rxns_set = set(condensed_rxns)
 
+  # Link RestingSetStats and RestingSetRxnStats objects to each other.
   for rxn in rs_rxns:
     rxn_stats = rxn_to_stats[rxn]
     for reactant in set(rxn.reactants):
       rs_stats = rs_to_stats[reactant]
       rxn_stats.set_rs_stats(reactant, rs_stats)
-      if rxn in enumerated_rs_rxns:
+      if rxn in condensed_rxns_set:
         rs_stats.add_inter_rxn(rxn_stats)
       else:
         rs_stats.add_spurious_rxn(rxn_stats)
@@ -313,14 +325,18 @@ def make_stats(enum_job):
 #          Score calculation         #
 ######################################
 
-def calc_spurious_rxn_score(system_stats, t_max, relative_error = 0.5, max_sims = 500):
+def calc_spurious_rxn_score(system_stats, relative_error = 0.5, max_sims = 500):
+  """ Calculates the spurious reaction score, which is the maximum rate of depletion of
+  any resting set due to spurious reactions. """
   max_depletion = 0.0
   for rs in system_stats.get_restingsets():
     stats = system_stats.get_stats(rs)
-    max_depletion = max(max_depletion, min(stats.get_perm_depletion(relative_error, max_sims = max_sims)*t_max, 1))
+    max_depletion = max(max_depletion, stats.get_perm_depletion(relative_error, max_sims = max_sims))
   return max_depletion
 
 def calc_unproductive_rxn_score(system_stats, relative_error = 0.5, max_sims = 500):
+  """ Calculates the unproductive reaction score, which is the maximum fraction of any resting set
+  occuped with unproductive reactions at a given time. """
   max_depletion = 0.0
   for rs in system_stats.get_restingsets():
     stats = system_stats.get_stats(rs)
