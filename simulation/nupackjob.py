@@ -196,27 +196,21 @@ class NupackSampleJob(object):
 
     # Prepare progress table
     update_func = print_progress_table(
-        ["complex", "prob", "error", "err goal", "% done", "# sims", "est. sims needed"],
-        [10, 10, 10, 10, 10, 10, 17])
+        ["complex", "prob", "error", "err goal", "", "sims done", "progress"],
+        [10, 10, 10, 10, 10, 17, 10])
 
     # Run simulations
     while not error <= goal and num_sims < max_sims:
-      # Print status message
-#      expected_additional_sims = int(self.total_sims * ((error/goal)**2-1) + 1) if error!=float('inf') else max_sims
-#      print "[{0}%] prob('{1}'):".format(100*num_sims/(num_sims + expected_additional_sims), complex_name),
-#      print "{0} +/- {1} (Goal: +/- {2})\r".format(prob, error, goal),
-#      sys.stdout.flush()
-
       # Estimate additional trials based on inverse square root relationship
       # between error and number of trials
       if error == float('inf'):
         num_trials = 10
-        update_func([complex_name, prob, error, goal, "--", "--", "--"])
+        update_func([complex_name, prob, error, goal, "", "--/--", "--"])
       else:
         reduction = error / goal
         exp_add_sims = int(self.total_sims * (reduction**2 - 1) + 1)
         num_trials = min(500, exp_add_sims, max_sims - num_sims, self.total_sims + 1)
-        update_func([complex_name, prob, error, goal, str(100*num_sims/(num_sims+exp_add_sims))+'%', num_sims, num_sims+exp_add_sims]) 
+        update_func([complex_name, prob, error, goal, "", "%d/%d"%(num_sims,num_sims+exp_add_sims), str(100*num_sims/(num_sims+exp_add_sims))+'%']) 
         
       # Query Nupack
       self.sample(num_trials)
