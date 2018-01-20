@@ -1,12 +1,11 @@
 import itertools as it
 
-
-#from imports import peppercornhome
 import peppercornenumerator as enum
 import peppercornenumerator.objects as enumobj
 import dnaobjects as dna
 
-### TODO: Add conversion functionality to/from RestingSets
+### Possible future TODOs:
+###   Add conversion functionality to Peppercorn resting sets
 
 ######################################
 ## Conversion to Peppercorn objects ##
@@ -25,67 +24,14 @@ import dnaobjects as dna
 def to_Peppercorn_domain(domain):
   """ Converts a DNAObjects.Domain object to the equivalent Peppercorn
   construct. If the domain name ends in an asterisk (*) it is assumed
-  to be a complementary domain. Otherwise, it is assumed to be
-  non-complementary. """  
+  to be a complementary domain. Note that the sequence constraints of the
+  domain are lost in the conversion, as Peppercorn does not store this
+  information. """
   
-  # Determine if complementary
-#  if domain.name[-1] == "*":
-#    name = domain.name[:-1]
-#    comp = True
-#    constraints = domain.constraints.complement # Input constraints for non-complement
-#  else:
-#    name = domain.name
-#    comp = False
-#    constraints = domain.constraints
   # Return Peppercorn domain
-#  peppercorn_domain = enumobj.PepperDomain(name, domain.length, comp, constraints)
   peppercorn_domain = enumobj.PepperDomain(domain.name, length=domain.length)
   return peppercorn_domain
   
-#def to_Peppercorn_strand(strand, domains):
-#  """ Converts a DNAObjects.Strand object to the equivalent Peppercorn
-#  construct. This function requires as an argument a dict mapping
-#  DNAObject.Domain objects to their equivalent Peppercorn Domains. """
-#  import enumerator.utils as enum
-#  
-#  # Make list of Peppercorn Domains from the original domains list
-#  d_list = [domains[d] for d in strand.base_domains()]
-#  # Return Peppercorn Strand
-#  return enum.Strand(strand.name, d_list)
-  
-#def to_Peppercorn_complex(complex, strands):
-#  """ Converts a DNAObjects.Complex object to the equivalent Peppercorn
-#  construct. This function requires a dict mapping DNAObject Strand objects
-#  to their equivalent Peppercorn Strands. """
-#  import enumerator.utils as enum
-#  
-#  # Make list of Peppercorn Strands for this complex
-#  s_list = [strands[strand] for strand in complex.strands]
-#  
-#  ## Determine domain-level strandlist structure representation
-#  # Map (strand_num, index) tuples to (strand_num, domain_num)
-#  base_to_seq_dict = {}
-#  for strand_num, strand in enumerate(complex.strands):
-#    index = 0
-#    for domain_num, domain in enumerate(strand.base_domains()):
-#      for i in range(domain.length):
-#        base_to_seq_dict[(strand_num, index + i)] = (strand_num, domain_num)
-#      index += domain.length
-#  base_to_seq_dict[None] = None
-#  base_to_seq_dict['?'] = '?'
-#      
-#  # Create new strandlist representation
-#  structure = []
-#  for strand_struct, strand in zip(complex.structure.to_strandlist(), complex.strands):
-#    index = 0
-#    substruct = []
-#    for domain in strand.base_domains():
-#      substruct.append(base_to_seq_dict[strand_struct[index]])
-#      index += domain.length
-#    structure.append(substruct)
-#    
-#  # Return Peppercorn Complex
-#  return enum.Complex(complex.name, s_list, structure)
 def to_Peppercorn_complex(complex, domains):
   """ Converts a DNAObjects.Complex object to the equivalent Peppercorn
   construct. This function requires a dict mapping DNAObject Strand objects
@@ -93,6 +39,9 @@ def to_Peppercorn_complex(complex, domains):
 
   nl_structure = complex.structure.to_dotparen()
 
+  # Compute PepperComplax domain sequence and structure
+  # The domain sequence is a list of domains, interpersed with '+' elements indicating nicks
+  # The structure is a list of '(', '.', ')', and '+', with '+' indicating nicks
   enum_domains = []
   dl_structure = ""
   idx = 0
@@ -107,6 +56,7 @@ def to_Peppercorn_complex(complex, domains):
   enum_domains = enum_domains[:-1] # remove last +
   dl_structure = list(dl_structure[:-1]) # remove last +
 
+  # Create and return equivalent PepperComplex object
   return enumobj.PepperComplex(enum_domains, dl_structure, name = complex.name)
   
  
@@ -131,7 +81,7 @@ def to_Peppercorn(*args, **kargs):
     - reactions
   Other supplied objects are ignored.
   The output is in the form of a dictionary mapping the keys
-  'domains', 'strands', 'complexes', and 'reactions' to a list of tuples
+  'domains', 'complexes', and 'reactions' to a list of tuples
   of the form (object, converted_object). This may be iterated through
   directly or converted into a dict for object lookup.
   """
@@ -139,8 +89,6 @@ def to_Peppercorn(*args, **kargs):
   reactions = set(kargs.get('reactions', []))
   complexes = set(sum([list(r.reactants | r.products) for r in reactions], [])
                   + kargs.get('complexes', []))
-#  strands = set(sum([c.strands for c in complexes], [])
-#                + kargs.get('strands', []))
   domains = set([d for c in complexes for d_list in c.base_domains() for d in d_list]
                 + sum([d.base_domains() for d in kargs.get('domains', [])], []))
                 
@@ -149,10 +97,6 @@ def to_Peppercorn(*args, **kargs):
   for d in set(sum([d.base_domains() for d in domains], [])):
     enum_domains[d] = to_Peppercorn_domain(d)
   
-#  enum_strands = {}
-#  for strand in set(strands):
-#    enum_strands[strand] = to_Peppercorn_strand(strand, enum_domains)
-#  
   enum_complexes = {}
   for complex in set(complexes):
     enum_complexes[complex] = to_Peppercorn_complex(complex, enum_domains)
@@ -164,10 +108,10 @@ def to_Peppercorn(*args, **kargs):
   ## Return in a dict
   results = dict()
   results['domains'] = enum_domains.items()
-#  results['strands'] = enum_strands.items()
   results['complexes'] = enum_complexes.items()
   results['reactions'] = enum_reactions.items()
   return results
+
 #
 ###############################
 
@@ -177,15 +121,12 @@ def to_Peppercorn(*args, **kargs):
 ## Conversion from Peppercorn objects ##
 ########################################
 #
+
 def from_Peppercorn_domain(domain, seq = None):
-  """ Converts a Peppercorn Domain object to an equivalent
+  """ Converts a Peppercorn PepperDomain object to an equivalent
   DNAObjects Domain object, with the given constraints. If no constraints
   are supplied, the 'N' constraint is applied to all bases in the domain. """
-  import dnaobjects as dna
   
-#  if domain.sequence == None: constraints = dna.Constraints("N" * domain.length)
-#  else: constraints = dna.Constraints(domain.sequence)
-#  
   if seq is None:  constraints = dna.Constraints("N"* domain.length)
   else:  constraints = dna.Constraints(seq)
 
@@ -193,20 +134,13 @@ def from_Peppercorn_domain(domain, seq = None):
     return dna.Domain(name = domain.identity, constraints = constraints.complement).complement
   else:
     return dna.Domain(name = domain.name, constraints = constraints)
-  
-#def from_Peppercorn_strand(strand, domains):
-#  """ Converts a Peppercorn Strand object to an equivalent DNAObjects Strand.
-#  This function requires as an argument a dict mapping Peppercorn Domain
-#  objects to their equivalent DNAObject Domains. """
-#  import dnaobjects as dna
-#  
-#  d_list = [domains[d] for d in strand.domains]
-#  return dna.Strand(name = strand.name, domains = d_list)
-  
+ 
 def from_Peppercorn_complex(complex, domains):
-  """ Converts a Peppercorn Complex object to an equivalent DNAObjects Complex.
-  This function requires as an argument a dict mapping Peppercorn Strand
-  objects to their equivalent DNAObject Strands. """
+  """ Converts a Peppercorn PepperComplex object to an equivalent DNAObjects Complex.
+  This function requires as an argument a dict mapping Peppercorn PepperDomain
+  objects to their equivalent DNAObject Domain. Because Peppercorn does not
+  currently implement a Strand object, we create new DNAObject Strand object for
+  each strand in the complex. """
   
   pepper_s_list = [list(y) for x,y in it.groupby(complex.sequence, lambda char: char=='+') if not x]
   s_list = [dna.Strand(domains = [domains[d] for d in pepper_s]) for pepper_s in pepper_s_list]
@@ -215,13 +149,15 @@ def from_Peppercorn_complex(complex, domains):
                      structure = ''.join(complex.structure))
                      
 def from_Peppercorn_reaction(reaction, complexes):
-  """ Converts a Peppercorn ReactionPathway object to an equivalent DNAObjects
+  """ Converts a Peppercorn PepperReaction object to an equivalent DNAObjects
   Reaction object. This function requires as an argument a dict mapping
-  Peppercorn Complexes to their equivalent DNAObject Complexes. """
+  Peppercorn PepperComplex objects to their equivalent DNAObject Complex.
+  Note: Peppercorn PepperReaction objects do not store reaction names, so
+  the new DNAObjects Reaction will have an automatically generated name."""
   
   reactants = [complexes[r] for r in reaction.reactants]
   products = [complexes[p] for p in reaction.products]
-  return dna.Reaction(reactants = reactants, # unfortunately, names are lost in this conversion
+  return dna.Reaction(reactants = reactants,
                       products = products)
                       
 def from_Peppercorn_restingset(restingset, complexes):
@@ -262,10 +198,6 @@ def from_Peppercorn(*args, **kargs):
   for d in domains:
     seq = domain_seqs.get(d.name, None)
     dna_domains[d] = from_Peppercorn_domain(d, seq = seq)
-  
-#  dna_strands = {}
-#  for s in strands:
-#    dna_strands[s] = from_Peppercorn_strand(s, dna_domains)
     
   dna_complexes = {}
   for c in complexes:
@@ -282,7 +214,6 @@ def from_Peppercorn(*args, **kargs):
   ## Make return value
   result = dict()
   result['domains'] = dna_domains.items()
-#  result['strands'] = dna_strands.items()
   result['complexes'] = dna_complexes.items()
   result['reactions'] = dna_reactions.items()
   result['restingsets'] = dna_restingsets.items()
