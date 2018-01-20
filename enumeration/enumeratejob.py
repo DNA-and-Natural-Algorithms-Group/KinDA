@@ -4,7 +4,7 @@ import itertools as it
 from KinDA.imports import peppercornhome, dnaobjectshome
 
 import dnaobjects as dna
-import enumerator.enumerator as enum
+import peppercornenumerator as enum
 
 from KinDA import options
 
@@ -76,28 +76,84 @@ def follow_fast_reactions(complexes, all_fast_reactions, restingsets, inprogress
 class EnumerateJob(object):
   def __init__(self, *args, **kargs):
     # Pull out domains, strands, complexes
-    self.domains = kargs.get('domains', [])
-    self.strands = kargs.get('strands', [])
-    self.complexes = kargs.get('complexes', [])
+    self._init_reactions = kargs.get('reactions', [])
+    self._init_complexes = kargs.get('complexes', [])
+    self._init_strands = kargs.get('strands', [])
+    self._init_domains = kargs.get('domains', [])
+
+    self._reactions = set(self._init_reactions)
+    self._complexes = set(self._init_complexes
+                        + [c for rxn in self._reactions for c in rxn.reactants+rxn.products])
+    self._strands = set(self._init_strands
+                     + [s for c in self.complexes for s in c.strands])
+    self._domains = set(self._init_domains
+                     + [d for s in self.strands for d in s.base_domains()])
     
     # Flag indicating if enumeration has occurred yet
-    self.enumerated = False
-    self.condensed = False
+    self._enumerated = False
+    self._condensed = False
+
+    # Default vals enumerated/condensed objects
+    self._enumerated_complexes = []
+    self._enumerated_restingsets = []
+    self._enumerated_slow_rxns = []
+    self._enumerated_fast_rxns = []
+    self._condensed_rxns = []
       
+  @property
+  def reactions(self):
+    return list(self._reactions)
+  @property
+  def complexes(self):
+    return list(self._complexes)
+  @property
+  def strands(self):
+    return list(self._strands)
+  @property
+  def domains(self):
+    return list(self._domains)
+
+  @property
+  def enumerated_complexes(self):
+    return self._enumerated_complexes
+  @property
+  def enumerated_restingsets(self):
+    return self._enumerated_restingsets
+  @property
+  def enumerated_slow_rxns(self):
+    return self._enumerated_slow_rxns
+  @property
+  def enumerated_fast_rxns(self):
+    return self._enumerated_fast_rxns
+  @property
+  def condensed_rxns(self):
+    return self._condensed_rxns
+
+  @property
+  def enumerated(self):
+    return self._enumerated
+  @property
+  def condensed(self):
+    return self._condensed
     
   def enumerate(self):
     ## Convert to Peppercorn objects
     enum_objects = dna.io_Peppercorn.to_Peppercorn(
         domains = self.domains,
-        strands = self.strands,
-        complexes = self.complexes
+#        strands = self.strands,
+        complexes = self.complexes,
+        reactions = self.reactions
     )
     
     ## Instantiate and run enumerator
+#    e = enum.Enumerator(
+#        [v for k, v in enum_objects['domains']],
+#        [v for k, v in enum_objects['strands']],
+#        [v for k, v in enum_objects['complexes']]
+#    )
     e = enum.Enumerator(
-        [v for k, v in enum_objects['domains']],
-        [v for k, v in enum_objects['strands']],
-        [v for k, v in enum_objects['complexes']]
+        initial_complexes = [v for _,v in enum_objects['complexes']],
+        initial_reactions = [v for _,v in enum_objects['reactions']]
     )
     # Set peppercorn options
     if '--release-cutoff-1-1' in options.peppercorn_params:
@@ -111,23 +167,24 @@ class EnumerateJob(object):
     dna_objects = dna.io_Peppercorn.from_Peppercorn(
         complexes = e.complexes,
         reactions = e.reactions,
-        restingsets = e.resting_states
+        restingsets = e.resting_sets,
+        domain_seqs = {d.name: str(d.constraints) for d in self.domains}
     )
     rxns_dict = dict(dna_objects['reactions'])
-    self.enumerated_complexes = [v for k, v in dna_objects['complexes']]
-    self.enumerated_slow_rxns = set(sum(
+    self._enumerated_complexes = [v for _, v in dna_objects['complexes']]
+    self._enumerated_slow_rxns = set(sum(
         [[rxns_dict[rxn] for rxn in e.get_slow_reactions(c) if rxn in rxns_dict]
           for c
           in e.resting_complexes],
         []))
-    self.enumerated_fast_rxns = set(sum(
+    self._enumerated_fast_rxns = set(sum(
         [[rxns_dict[rxn] for rxn in e.get_fast_reactions(c) if rxn in rxns_dict]
           for c
           in e.complexes],
         []))
-    self.enumerated_restingsets = [v for k, v in dna_objects['restingsets']]
+    self._enumerated_restingsets = [v for _, v in dna_objects['restingsets']]
   
-    self.enumerated = True
+    self._enumerated = True
     
   def condense_reactions(self):  
     slow_rxns = self.enumerated_slow_rxns
@@ -165,9 +222,9 @@ class EnumerateJob(object):
 
     print "KinDA: Performing reaction condensation... Done!"
 
-    self.condensed_reactions = condensed_rxns
+    self._condensed_rxns = condensed_rxns
 
-    self.condensed = True
+    self._condensed = True
     
   def get_complexes(self):
     if not self.enumerated: self.enumerate()
@@ -184,5 +241,5 @@ class EnumerateJob(object):
   def get_restingset_reactions(self):
     if not self.enumerated:  self.enumerate()
     if not self.condensed:  self.condense_reactions()
-    return list(self.condensed_reactions)
+    return list(self.condensed_rxns)
   

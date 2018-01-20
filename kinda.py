@@ -48,7 +48,7 @@ class KinDA(object):
 
     if enumerate:
       # Create enumeration object
-      self._enum_job = EnumerateJob(complexes = self.complexes)#, reactions = reactions)### TODO: IMPLEMENT THIS FUNCTIONALITY IN EnumerateJob
+      self._enum_job = EnumerateJob(complexes = self.complexes, reactions = self.reactions)
       # Incorporate enumerated data
       self._complexes |= set(self._enum_job.get_complexes())
       self._restingsets |= set(self._enum_job.get_restingsets())
