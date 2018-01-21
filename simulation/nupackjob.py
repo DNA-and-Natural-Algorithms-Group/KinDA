@@ -9,8 +9,7 @@
 import sys
 import math
 
-from ..imports import dnaobjectshome
-from dnaobjects import utils, Complex
+from ..objects import utils, Complex
 
 from ..imports import PyNupack as nupack
 from .. import options

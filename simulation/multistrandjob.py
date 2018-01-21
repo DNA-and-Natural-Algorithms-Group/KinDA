@@ -1,5 +1,3 @@
-from ..imports import multistrandhome, dnaobjectshome
-
 import math
 
 # Import Multistrand
@@ -7,7 +5,7 @@ import multistrand.objects as MSObjects
 from multistrand.options import Options as MSOptions
 from multistrand.system import SimSystem as MSSimSystem
 
-from dnaobjects import utils, io_Multistrand, Macrostate, RestingSet, Complex
+from ..objects import utils, io_Multistrand, Macrostate, RestingSet, Complex
 
 from .. import options
 from datablock import Datablock

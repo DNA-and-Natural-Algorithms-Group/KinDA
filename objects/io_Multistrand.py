@@ -1,4 +1,4 @@
-from imports import multistrandhome
+from ..imports import multistrandhome
 
 ### TODO: Add conversion from Multistrand objects to DNAObjects objects
 

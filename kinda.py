@@ -6,8 +6,8 @@
 
 ## IMPORTS
 
-from KinDA.enumeration.enumeratejob import EnumerateJob
-from KinDA.statistics import stats_utils
+from .enumeration.enumeratejob import EnumerateJob
+from .statistics import stats_utils
   
 
 ## GLOBALS

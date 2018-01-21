@@ -3,7 +3,7 @@ import itertools as it
 
 from KinDA.imports import peppercornhome, dnaobjectshome
 
-import dnaobjects as dna
+from .. import objects as dna
 import peppercornenumerator as enum
 
 from KinDA import options
