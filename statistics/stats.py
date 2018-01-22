@@ -1,5 +1,13 @@
-#### TODO: RestingSetRxnStats should be updated to take a DNAObjects.Reaction object,
-####       rather than reactants and products separately.
+# stats.py
+# Created by Joseph Berleant, 11/11/2014
+#
+# Defines RestingSetRxnStats and RestingSetStats, convenience classes that encapsulate
+# functions for querying statistics about DSD reactions and resting macrostates.
+
+#### Possible future TODOs:
+####   -Implement ComplexStats and ComplexRxnStats
+####   -RestingSetRxnStats can be updated to take a DNAObjects.Reaction object,
+####    rather than reactants and products separately.
 
 ## IMPORTS
 
@@ -7,16 +15,12 @@ from ..simulation.multistrandjob import FirstPassageTimeModeJob, \
     TransitionModeJob, FirstStepModeJob
 from ..simulation.nupackjob import NupackSampleJob
 from ..enumeration.enumeratejob import EnumerateJob
-import stats_utils
+from ..objects import utils, Macrostate
 from .. import options
-  
-from dnaobjects import utils, Macrostate
+import stats_utils
 
-#import PyNupack as nupack
 from ..imports import PyNupack as nupack
     
-
-## GLOBALS
 
 ## CLASSES
 
@@ -29,8 +33,8 @@ class RestingSetRxnStats(object):
       The following information should be stored with this object for
       convenience in displaying and calculating certain information:
         - RestingSetStats objects for each reactant
-        - ComplexRxnStats objects for each collision reaction contributing to k1
-        - ComplexRxnStats objects for each sub-reaction contributing to k2
+        - ComplexRxnStats objects for each collision reaction contributing to k1 [NOT IMPLEMENTED]
+        - ComplexRxnStats objects for each sub-reaction contributing to k2 [NOT IMPLEMENTED]
   """
   def __init__(self, *args, **kargs):
     ## Extract function arguments

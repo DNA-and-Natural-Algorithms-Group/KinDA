@@ -14,8 +14,7 @@
 
 import itertools as it
 
-from ..imports import dnaobjectshome
-import dnaobjects as dna
+from .. import objects as dna
 from .. import options
 
 from ..simulation.multistrandjob import FirstStepModeJob
