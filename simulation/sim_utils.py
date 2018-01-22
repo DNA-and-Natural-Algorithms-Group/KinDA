@@ -17,7 +17,7 @@ def print_progress_table(col_headers, col_widths = None, col_init_data = None):
   """
 
   def update_progress(col_data):
-    print '\r' + ' '.join([(str(d)+' '*(w-1))[:w-1] for d,w in zip(col_data, col_widths)]),
+    print ' '.join([(str(d)+' '*(w-1))[:w-1] for d,w in zip(col_data, col_widths)]) + '\r',
     sys.stdout.flush()
 
   if col_widths is None:

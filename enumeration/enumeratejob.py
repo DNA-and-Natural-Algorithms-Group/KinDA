@@ -1,8 +1,6 @@
 ## IMPORTS
 import itertools as it
 
-from KinDA.imports import peppercornhome
-
 from .. import objects as dna
 import peppercornenumerator as enum
 
