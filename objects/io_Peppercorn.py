@@ -135,15 +135,25 @@ def from_Peppercorn_domain(domain, seq = None):
   else:
     return dna.Domain(name = domain.name, constraints = constraints)
  
-def from_Peppercorn_complex(complex, domains):
+def from_Peppercorn_strand(strand, domains):
+  """ Converts a Peppercorn 'strand' (i.e. a tuple of PepperDomain objects) into
+  an equivalent DNAObjects Strand object. Note that because Peppercorn no longer
+  implements an object representing strands, this tuple representation is the closest
+  we have. This means that strand names are not preserved when converting 
+  to Peppercorn and back. """
+  return dna.Strand(domains = [domains[d] for d in strand])
+
+def from_Peppercorn_complex(complex, strands):
   """ Converts a Peppercorn PepperComplex object to an equivalent DNAObjects Complex.
-  This function requires as an argument a dict mapping Peppercorn PepperDomain
-  objects to their equivalent DNAObject Domain. Because Peppercorn does not
-  currently implement a Strand object, we create new DNAObject Strand object for
-  each strand in the complex. """
+  This function requires as an argument a dict mapping tuples of Peppercorn
+  PepperDomains to their equivalent DNAObject Strand objects. Because Peppercorn does not
+  currently implement a Strand object, the PepperDomain tuples give us a consistent
+  representation between PepperComplexes. It is important that, after the conversion,
+  different DNAObject Complexes share Strand objects, or Multistrand simulations may
+  not work. """
   
-  pepper_s_list = [list(y) for x,y in it.groupby(complex.sequence, lambda char: char=='+') if not x]
-  s_list = [dna.Strand(domains = [domains[d] for d in pepper_s]) for pepper_s in pepper_s_list]
+  pepper_s_list = [tuple(y) for x,y in it.groupby(complex.sequence, lambda char: char=='+') if not x]
+  s_list = [strands[pepper_s] for pepper_s in pepper_s_list]
   return dna.Complex(name = complex.name,
                      strands = s_list,
                      structure = ''.join(complex.structure))
@@ -189,7 +199,8 @@ def from_Peppercorn(*args, **kargs):
   complexes = set(sum([r.reactants + r.products for r in reactions], [])
                   + sum([rs.complexes for rs in restingsets], [])
                   + kargs.get('complexes', []))
-  domains = set([d for c in complexes for d in c.sequence if d!='+']
+  strands = set([tuple(strand) for c in complexes for nick,strand in it.groupby(c.sequence, lambda v:v=='+') if not nick])
+  domains = set([d for strand in strands for d in strand]
                 + kargs.get('domains', []))
   domain_seqs = kargs.get('domain_seqs', {})
                 
@@ -198,10 +209,14 @@ def from_Peppercorn(*args, **kargs):
   for d in domains:
     seq = domain_seqs.get(d.name, None)
     dna_domains[d] = from_Peppercorn_domain(d, seq = seq)
-    
+
+  dna_strands = {}
+  for s in strands:
+    dna_strands[s] = from_Peppercorn_strand(s, dna_domains)
+
   dna_complexes = {}
   for c in complexes:
-    dna_complexes[c] = from_Peppercorn_complex(c, dna_domains)
+    dna_complexes[c] = from_Peppercorn_complex(c, dna_strands)
     
   dna_reactions = {}
   for r in reactions:
