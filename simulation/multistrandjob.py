@@ -274,6 +274,8 @@ class MultistrandJob(object):
       error = calc_error()
       goal = rel_goal * calc_mean()
 
+    print
+
     
 
 class FirstPassageTimeModeJob(MultistrandJob):
