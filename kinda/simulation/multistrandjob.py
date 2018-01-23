@@ -256,7 +256,7 @@ class MultistrandJob(object):
       # Estimate additional trials based on inverse square root relationship
       # between error and number of trials
       if error == float('inf'):
-        num_trials = 5
+        num_trials = 10
         exp_add_sims = max_sims
       else:
         reduction = error / goal

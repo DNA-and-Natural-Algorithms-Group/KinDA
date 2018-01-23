@@ -16,9 +16,7 @@ import itertools as it
 
 from .. import objects as dna
 from .. import options
-
 from ..simulation.multistrandjob import FirstStepModeJob
-
 from .stats import RestingSetRxnStats, RestingSetStats
 
 
@@ -69,7 +67,7 @@ def make_RestingSetRxnStats(restingsets, detailed_rxns, condensed_rxns):
     
     # Make product tags for each product group so data can be pulled out later
     tags = [str(rxn) for rxn in condensed_rxns if rxn.reactants_equal(r)]
-    tags = tags + ['_spurious({0})'.format(str(rxn)) for rxn in new_spurious_rxns]
+    tags = tags + ['_spurious({})'.format(str(rxn)) for rxn in new_spurious_rxns]
     
     # Make Macrostates for Multistrand stop conditions
     stop_conditions = [
@@ -366,13 +364,10 @@ def export_data(sstats, filepath):
     - resting-set-reaction statistics objects
   Implemented, but badly and fragily dependent on KinDA object implementation """
   ## Extract all objects to be exported
-  rs_reactions = list(sstats.rxn_to_stats.keys())
-  restingsets = set(sum([list(r.reactants + r.products) for r in rs_reactions], [])
-                + list(sstats.rs_to_stats.keys()))
-  reactions = sstats.reactions + sstats.spurious_reactions
-  complexes = set(sum([list(r.reactants + r.products) for r in reactions], [])
-                  + sum([list(rs.complexes) for rs in restingsets], [])
-                  + sstats.complexes)
+  rs_reactions = sstats._condensed_reactions
+  restingsets = sstats._restingsets
+  reactions = sstats._detailed_reactions
+  complexes = sstats._complexes
   strands = set(sum([c.strands for c in complexes], []))
   domains = set(sum([s.base_domains() for s in strands], []))
 
@@ -391,7 +386,6 @@ def export_data(sstats, filepath):
   for c, c_id in complex_to_id.iteritems():
     cpx_strands = [strand_to_id[s] for s in c.strands]
     complex_to_dict[c_id] = {'name': c.name, 'strands': cpx_strands, 'structure': c.structure.to_dotparen()}
-  init_complex_ids = [complex_to_id[c] for c in sstats.complexes]
 
   rs_to_id = {rs: 'rs{0}_{1}'.format(rs.id, rs.name) for rs in restingsets}
   rs_to_dict = {}
@@ -419,7 +413,7 @@ def export_data(sstats, filepath):
     rsstats_to_dict[rs_to_id[rs]] = {'similarity_threshold': stats.get_similarity_threshold()}
     for c in rs.complexes:
       rsstats_to_dict[rs_to_id[rs]][complex_to_id[c]] = {
-        'prob': '{0} +/- {1}'.format(*stats.get_conformation_prob(c.name, 1, max_sims=0)),
+        'prob': '{0} +/- {1}'.format(stats.get_conformation_prob(c.name, 1, max_sims=0), stats.get_conformation_prob_err(c.name, max_sims=0)),
         'similarity_data': stats.get_conformation_prob_data(c.name)
       }
 
@@ -427,14 +421,12 @@ def export_data(sstats, filepath):
   for rsrxn in rs_reactions:
     stats = sstats.get_stats(rsrxn)
     rsrxnstats_to_dict[rsrxn_to_id[rsrxn]] = {
-      'prob': '{0} +/- {1}'.format(*stats.get_prob(1, max_sims = 0)),
-      'kcoll': '{0} +/- {1}'.format(*stats.get_kcoll(1, max_sims = 0)),
-      'k1': '{0} +/- {1}'.format(*stats.get_k1(1, max_sims = 0)),
-      'k2': '{0} +/- {1}'.format(*stats.get_k2(1, max_sims = 0)),
-      'prob_data': stats.get_prob_data(),
-      'kcoll_data': stats.get_kcoll_data(),
-      'k1_data': stats.get_k1_data(),
-      'k2_data': stats.get_k2_data()
+      'prob': '{0} +/- {1}'.format(stats.get_prob(1, max_sims = 0), stats.get_prob_err(max_sims=0)),
+      'kcoll': '{0} +/- {1}'.format(stats.get_kcoll(1, max_sims = 0), stats.get_kcoll_err(max_sims=0)),
+      'k1': '{0} +/- {1}'.format(stats.get_k1(1, max_sims = 0), stats.get_k1_err(max_sims=0)),
+      'k2': '{0} +/- {1}'.format(stats.get_k2(1, max_sims = 0), stats.get_k2_err(max_sims=0)),
+      'simulation_data': stats.get_simulation_data(),
+      'tag': stats.multijob_tag
     }
 
   #print rsrxn_to_id
@@ -449,7 +441,6 @@ def export_data(sstats, filepath):
     'resting-set-reactions': rsrxn_to_dict,
     'resting-set-stats': rsstats_to_dict,
     'resting-set-reaction-stats': rsrxnstats_to_dict,
-    'init_complexes': init_complex_ids
   }
   
   import json
@@ -462,7 +453,7 @@ def import_data(filepath):
   f = open(filepath)
   sstats_dict = json.load(f)
 
-  #return sstats_dict
+#  return sstats_dict
 
   domains = {}
   for domain_id, data in sstats_dict['domains'].iteritems():
@@ -478,31 +469,25 @@ def import_data(filepath):
     cpx_strands = [strands[s_id] for s_id in data['strands']]
     complexes[complex_id] = dna.Complex(name = data['name'], strands = cpx_strands, structure = data['structure'])
 
-  init_complexes = [complexes[c_id] for c_id in sstats_dict['init_complexes']]
-  sstats = KinDA(complexes = init_complexes)
-
   restingsets = {}
   for rs_id, data in sstats_dict['resting-sets'].iteritems():
     rs_complexes = [complexes[c_id] for c_id in data['complexes']]
-    rs_candidates = sstats.get_restingsets(complex = rs_complexes[0])
-    if len(rs_candidates) > 0:
-      restingsets[rs_id] = rs_candidates[0]
-    else:
-      restingsets[rs_id] = dna.RestingSet(name = data['name'], complexes = rs_complexes)
-      print "Warning: Could not find a resting set with complex {0}".format(rs_complexes[0])
+    restingsets[rs_id] = dna.RestingSet(data['name'], complexes = rs_complexes)
 
   reactions = {}
   for rxn_id, data in sstats_dict['reactions'].iteritems():
     reactants = [complexes[c_id] for c_id in data['reactants']]
     products = [complexes[c_id] for c_id in data['products']]
-    reactions[rxn_id] = sstats.get_reaction(reactants = reactants, products = products)
+    reactions[rxn_id] = dna.Reaction(name = data['name'], reactants = reactants, products = products)
 
   rs_reactions = {}
   for rsrxn_id, data in sstats_dict['resting-set-reactions'].iteritems():
     reactants = [restingsets[rs_id] for rs_id in data['reactants']]
     products = [restingsets[rs_id] for rs_id in data['products']]
-    rs_reactions[rsrxn_id] = sstats.get_reaction(reactants = reactants, products = products)
+    rs_reactions[rsrxn_id] = dna.RestingSetReaction(name = data['name'], reactants = reactants, products = products)
     
+  from .. import kinda
+  sstats = kinda.KinDA(complexes = complexes.values(), restingsets = restingsets.values(), detailed_reactions = reactions.values(), condensed_reactions = rs_reactions.values(), enumeration = False)
   
   for rs_id, data in sstats_dict['resting-set-stats'].iteritems():
     stats = sstats.get_stats(restingsets[rs_id])
@@ -527,12 +512,9 @@ def import_data(filepath):
       print "Warning: Could not match up stored statistics for {0} with a resting-set reaction in the new KinDA object.".format(rs_reactions[rsrxn_id])
       continue
     multijob = stats.get_multistrandjob()
-    tag = stats.multijob_tag
-    num_sims = len(data['prob_data'])
-    multijob.set_statistic_data(tag, 'prob', data['prob_data'])
-    multijob.set_statistic_data(tag, 'kcoll', data['kcoll_data'])
-    multijob.set_statistic_data(tag, 'k1', data['k1_data'])
-    multijob.set_statistic_data(tag, 'k2', data['k2_data'])
+    stats.multijob_tag = data['tag']
+    num_sims = len(data['simulation_data']['tags'])
+    multijob.set_simulation_data(data['simulation_data'])
     multijob.total_sims = num_sims
     
   return sstats

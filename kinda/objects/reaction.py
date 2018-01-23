@@ -96,8 +96,8 @@ class Reaction(object):
   def __str__(self):
     return self.__repr__()
   def __repr__(self):
-    reactant_str = ' + '.join([repr(r) for r in self._reactants])
-    product_str = ' + '.join([repr(p) for p in self._products])
+    reactant_str = ' + '.join([repr(r) for r in sorted(self._reactants, key=lambda c:c.name)])
+    product_str = ' + '.join([repr(p) for p in sorted(self._products, key=lambda c:c.name)])
     return reactant_str + " -> " + product_str
     
     
@@ -106,4 +106,8 @@ class RestingSetReaction(Reaction):
   """ The RestingSetReaction class is ostensibly for only reactions between
   resting sets. However, it is currently identical to the Reaction class and
   the two are interchangeable."""
-  pass
+
+  def __repr__(self):
+    reactant_str = ' + '.join([repr(r) for r in sorted(self._reactants, key=lambda rs:[c.name for c in rs.complexes])])
+    product_str = ' + '.join([repr(p) for p in sorted(self._products, key=lambda rs:[c.name for c in rs.complexes])])
+    return reactant_str + " -> " + product_str
