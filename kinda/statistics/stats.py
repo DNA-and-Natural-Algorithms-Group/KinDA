@@ -122,14 +122,8 @@ class RestingSetRxnStats(object):
     """ Returns the standard error on the probability """
     return self.get_raw_stat('prob', relative_error, max_sims)[1]
 
-  def get_k1_data(self):
-    return self.get_raw_stat_data('k1')
-  def get_k2_data(self):
-    return self.get_raw_stat_data('k2')
-  def get_kcoll_data(self):
-    return self.get_raw_stat_data('kcoll')
-  def get_prob_data(self):
-    return self.get_raw_stat_data('prob')
+  def get_simulation_data(self):
+    return self.multijob.get_simulation_data()
 
   def get_num_sims(self):
     return self.get_multistrandjob().total_sims
@@ -144,9 +138,7 @@ class RestingSetRxnStats(object):
     val = self.multijob.get_statistic(self.multijob_tag, stat)
     error = self.multijob.get_statistic_error(self.multijob_tag, stat)
     return (val, error)
-  def get_raw_stat_data(self, stat):
-    return self.multijob.get_statistic_data(self.multijob_tag, stat)
-  
+ 
   def set_rs_stats(self, reactant, stats):
     self.rs_stats[reactant] = stats
   def get_rs_stats(self, reactant):

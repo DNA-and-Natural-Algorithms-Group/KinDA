@@ -6,15 +6,17 @@
 
 ## IMPORTS
 
-from .enumeration.enumeratejob import EnumerateJob
 from .statistics import stats_utils
+from .objects import io_PIL
   
 
 ## GLOBALS
 
 # Convenience function to create KinDA object from a given PIL file
-def make_kinda_from_pil(enumerate = True):
-  pass ## TODO
+# Currently only accepts old-style PIL notation (no kernel notation)
+def make_kinda_from_pil(path, enumerate = True):
+  domains, strands, complexes = io_PIL.from_PIL(path)
+  return KinDA(complexes, enumerate = enumerate)
 
 
 ## CLASSES
@@ -47,8 +49,12 @@ class KinDA(object):
     )
 
     if enumerate:
+      # Import EnumerateJob only if necessary
+      from .enumeration.enumeratejob import EnumerateJob
+
       # Create enumeration object
       self._enum_job = EnumerateJob(complexes = self.complexes, reactions = self.reactions)
+
       # Incorporate enumerated data
       self._complexes |= set(self._enum_job.get_complexes())
       self._restingsets |= set(self._enum_job.get_restingsets())

@@ -283,7 +283,6 @@ class FirstPassageTimeModeJob(MultistrandJob):
                                                   FIRST_PASSAGE_MODE)
       
     self.tags = [sc.tag for sc in self.ms_params['stop_conditions']]
-                                                    error_func = rate_error_func)
   
   def process_results(self, ms_options):
     results = ms_options.interface.results

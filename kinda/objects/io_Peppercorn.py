@@ -192,6 +192,10 @@ def from_Peppercorn(*args, **kargs):
   In addition, because Peppercorn domains do not store sequences, we
   allow an additional dict to be included as kargs['domain_seqs']
   that maps domain names to domain sequences. """
+
+  ## Clear previously created Peppercorn objects from memory
+  ## to prevent duplication errors.
+  enumobj.clear_memory()
   
   ## Extract all objects to be converted
   restingsets = set(kargs.get('restingsets', []))
