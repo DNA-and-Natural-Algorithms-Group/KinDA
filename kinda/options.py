@@ -1,5 +1,4 @@
 flags = {
-  'no-cleanup': False,
   'loose_complexes': False
 }
 

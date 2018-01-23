@@ -81,6 +81,9 @@ structure Output = OB : ..
 structure Intermediate = OB + C + LB : .(+((+)).)
 ```
 
+## Configuration Options
+The file `kinda/options.py` contains optional arguments that may be modified to change the behavior of Multistrand, Peppercorn, Nupack, and KinDA.
+
 ## Version
 0.5
 
