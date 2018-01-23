@@ -38,6 +38,8 @@ $ python setup.py install --user
 Load the file `Zhang_etal_Science2007.pil` in an interactive KinDA session, and 
 begin querying basic data.
 
+For example, run the following from within the `examples` subdirectory of KinDA.
+
 ```sh
 $ python -i analyze.py Zhang_etal_Science2007.pil
 ```
