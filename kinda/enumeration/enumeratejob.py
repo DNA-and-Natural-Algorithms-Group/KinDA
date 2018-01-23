@@ -1,11 +1,10 @@
 ## IMPORTS
 import itertools as it
 
-from .. import objects as dna
 import peppercornenumerator as enum
 
-from KinDA import options
-
+from .. import objects as dna
+from .. import options
 
 ## GLOBALS
 # The follow_fast_reactions function is copied shamelessly from KinD's

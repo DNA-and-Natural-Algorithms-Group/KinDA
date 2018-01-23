@@ -1,3 +1,11 @@
-import os, sys
+#
+#  __init__.py
+#  KinDA: Kinetic DNA strand-displacement Analyzer
+#
 
-__all__ = ['simulation']
+__version__ = "v0.5.0"
+
+from kinda import KinDA
+import statistics
+import simulation
+import enumeration
