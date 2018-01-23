@@ -11,6 +11,18 @@ behavior of resting macrostates and condensed reactions are collected using
 Multistrand (https://github.com/DNA-and-Natural-Algorithms-Group/multistrand),
 and may be computed at a desired level of precision using KinDA.
 
+## Dependencies
+Prior to installing KinDA, make sure you have the following packages installed:
+* Multistrand (https://github.com/DNA-and-Natural-Algorithms-Group/multistrand)
+* Nupack
+
+In addition, ensure the environment variable `NUPACKHOME` is set to the base directory
+of your Nupack files.
+
+KinDA will automatically install the following packages, if necessary:
+* Peppercorn enumerator (https://github.com/DNA-and-Natural-Algorithms-Group/peppercornenumerator)
+
+
 ## Installation
 ```bash
 $ python setup.py install
