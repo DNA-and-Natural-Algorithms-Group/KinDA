@@ -8,7 +8,6 @@ from multistrand.system import SimSystem as MSSimSystem
 from ..objects import utils, io_Multistrand, Macrostate, RestingSet, Complex
 
 from .. import options
-#from datablock import Datablock
 
 import sim_utils
 
@@ -230,12 +229,7 @@ class MultistrandJob(object):
     def calc_error():  
       return self._stats_funcs[stat][2](reaction, self._ms_results)
 
-#    tag = reaction + "_" + stat
-#    block = self.datablocks[tag]
-
     num_sims = 0
-#    error = block.get_error()
-#    goal = rel_goal * block.get_mean()
     error = calc_error()
     goal = rel_goal * calc_mean()
 
@@ -251,7 +245,6 @@ class MultistrandJob(object):
     table_update_func = sim_utils.print_progress_table(
         [stat, "error", "err goal", "", "batch sims", "overall sims", "progress"],
         [14, 14, 14, 6, 17, 17, 10])
-#    table_update_func([block.get_mean(), error, goal, "", "--/--", "--/--", "--"])
     table_update_func([calc_mean(), error, goal, "", "--/--", "--/--", "--"])
     while not error <= goal and num_sims < max_sims:
       # Estimate additional trials based on inverse square root relationship
@@ -266,11 +259,8 @@ class MultistrandJob(object):
         
       self.run_simulations(num_trials, sims_per_update = 10, status_func = status_func)
       status_func(num_trials)
-#      print self._ms_results
 
       num_sims += num_trials
-#      error = block.get_error()
-#      goal = rel_goal * block.get_mean()
       error = calc_error()
       goal = rel_goal * calc_mean()
 
@@ -287,11 +277,8 @@ class FirstPassageTimeModeJob(MultistrandJob):
                                                   FIRST_PASSAGE_MODE)
       
     self.tags = [sc.tag for sc in self.ms_params['stop_conditions']]
-#    for sc in self.ms_params['stop_conditions']:
-#      self.datablocks[sc.tag + "_time"] = Datablock()
-#      self.datablocks[sc.tag + "_rate"] = Datablock(mean_func = rate_mean_func,
-#                                                    error_func = rate_error_func)
-#  
+                                                    error_func = rate_error_func)
+  
   def process_results(self, ms_options):
     results = ms_options.interface.results
     
@@ -305,11 +292,6 @@ class FirstPassageTimeModeJob(MultistrandJob):
       
 class TransitionModeJob(MultistrandJob):
   
-#  datablocks = {}
-#  states = None
-#  
-#  ms_params = {}
-#  
   def __init__(self, start_state, macrostates, stop_states):
     stop_conditions = macrostates[:]
     
@@ -377,26 +359,13 @@ class TransitionModeJob(MultistrandJob):
 
 class FirstStepModeJob(MultistrandJob):
   
-#  datablocks = {}
-#  tags = None
-#  
-#  ms_params = {}
-#  
   def __init__(self, start_state, stop_conditions):
   
     super(FirstStepModeJob, self).__init__(start_state, stop_conditions, FIRST_STEP_MODE)
       
     self.tags = [sc.tag for sc in self.ms_params['stop_conditions']]
     self.tags.append("None")
-#    for tag in self.tags:
-#      self.datablocks[tag + "_prob"] = Datablock(mean_func = bernoulli_mean_func,
-#                                                  std_func = bernoulli_std_func,
-#                                                  error_func = bernoulli_error_func)
-#      self.datablocks[tag + "_kcoll"] = Datablock(mean_func = rate_mean_func,
-#                                                  error_func = rate_error_func)
-#      self.datablocks[tag + "_k1"] = Datablock(mean_func = k1_mean_func)
-#      self.datablocks[tag + "_k2"] = Datablock(mean_func = rate_mean_func,
-#                                                  error_func = rate_error_func)
+
     self._stats_funcs['prob'] = (sim_utils.bernoulli_mean, sim_utils.bernoulli_std, sim_utils.bernoulli_error)
     self._stats_funcs['kcoll'] = (sim_utils.kcoll_mean, sim_utils.kcoll_std, sim_utils.kcoll_error)
     self._stats_funcs['k1'] = (sim_utils.k1_mean, sim_utils.k1_std, sim_utils.k1_error)
