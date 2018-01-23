@@ -1,3 +1,10 @@
+# multistrandjob.py
+# Created by Joseph Berleant, 9-15-2014
+#
+# Defines classes for interfacing with Multistrand in its 4 main modes
+# (trajectory, transition, first passage, and first step) and collecting
+# and processing data relevant to each mode.
+
 import math
 
 # Import Multistrand
@@ -6,7 +13,6 @@ from multistrand.options import Options as MSOptions
 from multistrand.system import SimSystem as MSSimSystem
 
 from ..objects import utils, io_Multistrand, Macrostate, RestingSet, Complex
-
 from .. import options
 
 import sim_utils
