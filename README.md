@@ -35,11 +35,11 @@ $ python setup.py install --user
 ## Quickstart using the example script "analyze.py"
 
 ### Quickstart
-Load the file `zhang_catalyst.pil` in an interactive KinDA session, and 
+Load the file `Zhang_etal_Science2007.pil` in an interactive KinDA session, and 
 begin querying basic data.
 
 ```sh
-$ python -i analyze.py zhang_catalyst.pil
+$ python -i analyze.py Zhang_etal_Science2007.pil
 ```
 
 ### Input format
@@ -48,7 +48,7 @@ PIL Files may be input in either old-style or new-style (kernel) notation.
 This example file is specified in old-style notation:
 
 ```
-# zhang_catalyst.pil
+# Zhang_etal_Science2007.pil
 #
 # This PIL file represents the entropy-driven catalyst system described by:
 #  David Zhang, Andrew Turberfield, Bernard Yurke, Erik Winfree (Science, 2007)

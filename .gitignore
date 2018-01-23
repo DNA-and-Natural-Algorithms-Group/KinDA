@@ -1,2 +1,10 @@
 # Ignore pre-compiled Python files
 *.pyc
+
+# Ignore build files
+build/
+dist/
+kinda.egg-info/
+
+# Ignore internal test scripts
+kinda/tests/

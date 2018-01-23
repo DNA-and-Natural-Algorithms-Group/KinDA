@@ -1,4 +1,12 @@
-# ORIGINAL SYSTEM
+# Zhang_etal_Science2007.pil
+#
+# This PIL file represents the entropy-driven catalyst system described by:
+#  David Zhang, Andrew Turberfield, Bernard Yurke, Erik Winfree (Science, 2007)
+#  Engineering Entropy-Driven Reactions and Networks Catalyzed by DNA
+# 
+# See Figure 1B for description of each system component.
+
+# Specify all domains
 sequence d1 = CTTTCCTACA : 10
 sequence d2 = CCTACGTCTCCAACTAACTTACGG : 24
 sequence t3 = CCCT : 4
@@ -6,12 +14,14 @@ sequence d4 = CATTCAATACCCTACG : 16
 sequence t5 = TCTCCA : 6
 sequence d6 = CCACATACATCATATT : 16
 
+# Specify all strands
 strand F = d2 t3 d4 : 44
 strand C = d4 t5 : 22
 strand OB = d1 d2 : 34
 strand SB = d6 t3 d4 : 36
 strand LB = t5* d4* t3* d2* : 50
 
+# Specify all predicted complexes
 structure Fuel = F : ...
 structure Catalyst = C : ..
 structure Substrate = OB + SB + LB : .(+.((+.)))
@@ -19,4 +29,3 @@ structure Waste = F + LB : (((+.)))
 structure Signal = SB : ...
 structure Output = OB : ..
 structure Intermediate = OB + C + LB : .(+((+)).)
-
