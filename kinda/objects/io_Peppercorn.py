@@ -85,6 +85,11 @@ def to_Peppercorn(*args, **kargs):
   of the form (object, converted_object). This may be iterated through
   directly or converted into a dict for object lookup.
   """
+
+  ## Clear previously created Peppercorn objects from memory
+  ## to prevent duplication errors.
+  enumobj.clear_memory()
+ 
   ## Extract all objects to be converted
   reactions = set(kargs.get('reactions', []))
   complexes = set(sum([list(r.reactants | r.products) for r in reactions], [])
@@ -193,10 +198,7 @@ def from_Peppercorn(*args, **kargs):
   allow an additional dict to be included as kargs['domain_seqs']
   that maps domain names to domain sequences. """
 
-  ## Clear previously created Peppercorn objects from memory
-  ## to prevent duplication errors.
-  enumobj.clear_memory()
-  
+ 
   ## Extract all objects to be converted
   restingsets = set(kargs.get('restingsets', []))
   reactions = set(kargs.get('reactions', []))
