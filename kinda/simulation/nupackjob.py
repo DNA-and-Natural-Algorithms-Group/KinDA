@@ -10,8 +10,7 @@ import sys
 import math
 
 from ..objects import utils, Complex
-from ..imports import PyNupack as nupack
-from .. import options
+from .. import nupack, options
 from sim_utils import print_progress_table
 
 

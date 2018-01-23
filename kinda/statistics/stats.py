@@ -16,10 +16,8 @@ from ..simulation.multistrandjob import FirstPassageTimeModeJob, \
 from ..simulation.nupackjob import NupackSampleJob
 from ..enumeration.enumeratejob import EnumerateJob
 from ..objects import utils, Macrostate
-from .. import options
+from .. import nupack, options
 import stats_utils
-
-from ..imports import PyNupack as nupack
     
 
 ## CLASSES
