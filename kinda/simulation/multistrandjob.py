@@ -263,7 +263,7 @@ class MultistrandJob(object):
         exp_add_sims = int(self.total_sims * (reduction**2 - 1) + 1)
         num_trials = min(exp_add_sims, max_batch_size, max_sims - num_sims, self.total_sims + 1)
         
-      self.run_simulations(num_trials, sims_per_update = 10, status_func = status_func)
+      self.run_simulations(num_trials, sims_per_update = 1, status_func = status_func)
       status_func(num_trials)
 
       num_sims += num_trials
