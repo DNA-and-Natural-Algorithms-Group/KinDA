@@ -44,7 +44,8 @@ $ python -i analyze.py Zhang_etal_Science2007.pil
 
 ### Input format
 
-PIL Files may be input in either old-style or new-style (kernel) notation.
+Currently, PIL Files must be input in old-style PIL notation. Support for new-style (kernel) notation
+is planned for a future release.
 This example file is specified in old-style notation:
 
 ```
