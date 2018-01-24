@@ -328,7 +328,7 @@ def calc_spurious_rxn_score(system_stats, relative_error = 0.5, max_sims = 500):
   max_depletion = 0.0
   for rs in system_stats.get_restingsets():
     stats = system_stats.get_stats(rs)
-    max_depletion = max(max_depletion, stats.get_perm_depletion(relative_error, max_sims = max_sims))
+    max_depletion = max(max_depletion, stats.get_permanent_depletion(relative_error, max_sims = max_sims))
   return max_depletion
 
 def calc_unproductive_rxn_score(system_stats, relative_error = 0.5, max_sims = 500):
@@ -337,11 +337,8 @@ def calc_unproductive_rxn_score(system_stats, relative_error = 0.5, max_sims = 5
   max_depletion = 0.0
   for rs in system_stats.get_restingsets():
     stats = system_stats.get_stats(rs)
-    max_depletion = max(max_depletion, stats.get_temp_depletion(relative_error, max_sims = max_sims))
+    max_depletion = max(max_depletion, stats.get_temporary_depletion(relative_error, max_sims = max_sims))
   return max_depletion
-
-def calc_intended_rxn_score(system_stats):
-  pass
 
 
 
@@ -413,7 +410,7 @@ def export_data(sstats, filepath):
     rsstats_to_dict[rs_to_id[rs]] = {'similarity_threshold': stats.get_similarity_threshold()}
     for c in rs.complexes:
       rsstats_to_dict[rs_to_id[rs]][complex_to_id[c]] = {
-        'prob': '{0} +/- {1}'.format(stats.get_conformation_prob(c.name, 1, max_sims=0), stats.get_conformation_prob_err(c.name, max_sims=0)),
+        'prob': '{0} +/- {1}'.format(stats.get_conformation_prob(c.name, 1, max_sims=0), stats.get_conformation_prob_error(c.name, max_sims=0)),
         'similarity_data': stats.get_conformation_prob_data(c.name)
       }
 
@@ -421,10 +418,10 @@ def export_data(sstats, filepath):
   for rsrxn in rs_reactions:
     stats = sstats.get_stats(rsrxn)
     rsrxnstats_to_dict[rsrxn_to_id[rsrxn]] = {
-      'prob': '{0} +/- {1}'.format(stats.get_prob(1, max_sims = 0), stats.get_prob_err(max_sims=0)),
-      'kcoll': '{0} +/- {1}'.format(stats.get_kcoll(1, max_sims = 0), stats.get_kcoll_err(max_sims=0)),
-      'k1': '{0} +/- {1}'.format(stats.get_k1(1, max_sims = 0), stats.get_k1_err(max_sims=0)),
-      'k2': '{0} +/- {1}'.format(stats.get_k2(1, max_sims = 0), stats.get_k2_err(max_sims=0)),
+      'prob': '{0} +/- {1}'.format(stats.get_prob(1, max_sims = 0), stats.get_prob_error(max_sims=0)),
+      'kcoll': '{0} +/- {1}'.format(stats.get_kcoll(1, max_sims = 0), stats.get_kcoll_error(max_sims=0)),
+      'k1': '{0} +/- {1}'.format(stats.get_k1(1, max_sims = 0), stats.get_k1_error(max_sims=0)),
+      'k2': '{0} +/- {1}'.format(stats.get_k2(1, max_sims = 0), stats.get_k2_error(max_sims=0)),
       'simulation_data': stats.get_simulation_data(),
       'tag': stats.multijob_tag
     }

@@ -6,19 +6,20 @@ import kinda
 ## Ability to read kernel-style PIL notation to be implemented in the future.
 pilpath=sys.argv[1]
 
-#### To use KinDA to analyze statistics, create a KinDA object, which
+#### To use KinDA to analyze statistics, create a System object, which
 #### provides convenient ways to access the reactions and resting sets of a
 #### a system, along with access to the corresponding Stats objects.
-#### The KinDA object sets a fair number of things up behind the scenes,
-#### so while it's possible to avoid using the KinDA object (and set everything up manually),
+#### The System object sets a fair number of things up behind the scenes,
+#### so while it's possible to avoid using the System object (and set everything up manually),
 #### it's not recommended unless you know the code fairly well.
 
-#### Create the KinDA object
-##   Only the complexes are necessary (all necessary domains and strands are extracted)
+#### Create the System object
+##   Here, the System object is created automatically from a PIL file.
+##   It can also be created with kinda.System(complexes = complexes, ...)
 ##   The c_max parameter is the default maximum concentration for any resting set, used
 ##   for calculating overall unproductive and spurious scores for the system.
 ##   c_max can be set manually for particular resting sets (see below) [TODO: Show example]
-kinda_obj = kinda.make_kinda_from_pil(pilpath, c_max = 1e-7)
+kinda_obj = kinda.from_pil(pilpath, c_max = 1e-7)
 
 
 #### To analyze a reaction in detail...

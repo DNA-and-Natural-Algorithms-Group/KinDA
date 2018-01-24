@@ -1,7 +1,7 @@
 # kinda.py
 # Created by Joseph Berleant, 1/12/2018
 #
-# Defines the KinDA class, encapsulating statistics calculations for DNA strand-displacement system properties.
+# Defines the System class, encapsulating statistics calculations for DNA strand-displacement system properties.
 
 
 ## IMPORTS
@@ -12,24 +12,24 @@ from .objects import io_PIL
 
 ## GLOBALS
 
-# Convenience function to create KinDA object from a given PIL file
+# Convenience function to create System object from a given PIL file
 # Currently only accepts old-style PIL notation (no kernel notation)
-def make_kinda_from_pil(path, enumeration = True, **kwargs):
+def from_pil(path, enumeration = True, **kwargs):
   domains, strands, complexes = io_PIL.from_PIL(path)
-  return KinDA(complexes, enumeration = enumeration, **kwargs)
+  return System(complexes, enumeration = enumeration, **kwargs)
 
 
 ## CLASSES
-class KinDA(object):
+class System(object):
   """ Stores and manages Stats objects for each system component for easier retrieval.
       Data can also be stored in a file and retrieved for later analysis.
-      A KinDA object is instantiated with an EnumerateJob object, from which
+      A System object is instantiated with an EnumerateJob object, from which
       detailed and condensed reactions as well as resting sets and complexes are taken. """
 
   def __init__(self, complexes, restingsets = [], detailed_reactions = [], condensed_reactions = [], enumeration = True, c_max = None):
-    """ Constructs a KinDA object with the given complexes, restingsets, reactions, and condensed reactions.
+    """ Constructs a System object with the given complexes, restingsets, reactions, and condensed reactions.
     If enumeration is True (default), the Peppercorn enumerator is used to enumerate a detailed reaction network.
-    KinDA performs reaction condensation to produce the condensed reaction network. The given restingsets and
+    System performs reaction condensation to produce the condensed reaction network. The given restingsets and
     reactions are added to the enumerated network. Detailed reactions are added to the network prior to condensation.
     If enumeration is False, then no enumeration is performed and only the given resting sets and reactions are
     used for analysis.

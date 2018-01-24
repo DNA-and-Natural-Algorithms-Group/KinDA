@@ -66,7 +66,7 @@ class RestingSetRxnStats(object):
     reactant depletion that reduces the effective rate of this reaction. 
     Additional simulations are run until the fractional error is
     below the given relative_error threshold. """
-    fractions = [1 - rs.get_temp_depletion(relative_error, max_sims) for rs in self.rs_stats.values() if rs != None]
+    fractions = [1 - rs.get_temporary_depletion(relative_error, max_sims) for rs in self.rs_stats.values() if rs != None]
     rate_fraction = reduce(lambda x,y: x*y, fractions, 1.0)
     raw_k1 = self.get_k1(relative_error / rate_fraction, max_sims)
     raw_k1_err = set.get_k1_err(max_sims = 0)
@@ -104,21 +104,21 @@ class RestingSetRxnStats(object):
     error is below the given relative_error threshold. """
     return self.get_raw_stat('prob', relative_error, max_sims)[0]
 
-  def get_reduced_k1_err(self, relative_error = 0.50, max_sims = 5000):
+  def get_reduced_k1_error(self, relative_error = 0.50, max_sims = 5000):
     """ Returns the standard error on the net k1 value """
     return self._get_reduced_k1_stats(relative_error, max_sims)[1]
-  def get_k1_err(self, relative_error = 0.50, max_sims = 5000):
+  def get_k1_error(self, relative_error = 0.50, max_sims = 5000):
     """ Returns the standard error on the raw k1 value """
     return self.get_raw_stat('k1', relative_error, max_sims)[1]
-  def get_k2_err(self, relative_error = 0.50, max_sims = 5000):
+  def get_k2_error(self, relative_error = 0.50, max_sims = 5000):
     """ Returns the standard error on k2 """
     if len(self.reactants) > len(self.products):
       print "WARNING: k2 rates are currently not correctly computed for reactions that don't end with a dissociation reaction"
     return self.get_raw_stat('k2', relative_error, max_sims)[1]
-  def get_kcoll_err(self, relative_error = 0.50, max_sims = 5000):
+  def get_kcoll_error(self, relative_error = 0.50, max_sims = 5000):
     """ Returns the standard error on kcoll """
     return self.get_raw_stat('kcoll', relative_error, max_sims)[1]
-  def get_prob_err(self, relative_error = 0.50, max_sims = 5000):
+  def get_prob_error(self, relative_error = 0.50, max_sims = 5000):
     """ Returns the standard error on the probability """
     return self.get_raw_stat('prob', relative_error, max_sims)[1]
 
@@ -199,7 +199,7 @@ class RestingSetStats(object):
     self.sampler.reduce_error_to(relative_error, max_sims, complex_name)
     prob = self.sampler.get_complex_prob(complex_name)
     return prob
-  def get_conformation_prob_err(self, complex_name, relative_error = 0.50, max_sims = 100000):
+  def get_conformation_prob_error(self, complex_name, relative_error = 0.50, max_sims = 100000):
     self.sampler.reduce_error_to(relative_error, max_sims, complex_name)
     error = self.sampler.get_complex_prob_error(complex_name)
     return error
@@ -218,7 +218,7 @@ class RestingSetStats(object):
   def get_conformation_prob_data(self, complex_name):
     return self.sampler.get_complex_prob_data(complex_name)
 
-  def get_num_sims(self):
+  def get_num_simulations(self):
     return self.get_nupackjob().total_sims
     
   def get_top_MFE_structs(self, num):
@@ -235,14 +235,14 @@ class RestingSetStats(object):
       energy_gap += 0.5
     return struct_list
     
-  def get_temp_depletion_due_to(self, rxn, relative_error = 0.5, max_sims=500):
-    binding_polynomial = 1. / (1 - self.get_temp_depletion(relative_error, max_sims))
+  def get_temporary_depletion_due_to(self, rxn, relative_error = 0.5, max_sims=500):
+    binding_polynomial = 1. / (1 - self.get_temporary_depletion(relative_error, max_sims))
 
     other_reactant = rxn.reactants[0] if rxn.reactants[0]!=self.restingset else rxn.reactants[1]
     c_max = rxn.get_rs_stats(other_reactant).c_max
     if c_max is None or c_max == 0:  return 0
     return c_max * rxn.get_k1(max_sims = 0) / rxn.get_k2(max_sims = 0) / binding_polynomial
-  def get_temp_depletion(self, relative_error = 0.5, max_sims = 500):
+  def get_temporary_depletion(self, relative_error = 0.5, max_sims = 500):
     binding_polynomial = 1.0
 
     rxns = list(filter(lambda r: len(r.reactants)>1 and r.reactants == r.products, self.inter_rxns))
@@ -257,7 +257,7 @@ class RestingSetStats(object):
      
     return 1 - 1/binding_polynomial
 
-  def get_perm_depletion_due_to(self, rxn, relative_error, max_sims):
+  def get_permanent_depletion_due_to(self, rxn, relative_error, max_sims):
     conc = 1.0
     for reactant in rxn.reactants:
       c_max = rxn.get_rs_stats(reactant).c_max
@@ -265,12 +265,12 @@ class RestingSetStats(object):
         return 0.0
       conc *= c_max
     return conc * rxn.get_k1(relative_error, max_sims = max_sims) / self.c_max
-  def get_perm_depletion(self, relative_error = 0.5, max_sims = 500):
+  def get_permanent_depletion(self, relative_error = 0.5, max_sims = 500):
     """ Returns the rate in /s at which the given resting set is depleted due to spurious reactions """
     if self.c_max == None or self.c_max == 0:
       return 0.0
 
-    depletions = [self.get_perm_depletion_due_to(rxn, relative_error, max_sims) for rxn in self.spurious_rxns]
+    depletions = [self.get_permanent_depletion_due_to(rxn, relative_error, max_sims) for rxn in self.spurious_rxns]
     return sum(depletions)
   
   def add_inter_rxn(self, rxn):
