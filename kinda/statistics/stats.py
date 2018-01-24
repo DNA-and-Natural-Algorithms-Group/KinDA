@@ -175,7 +175,7 @@ class RestingSetStats(object):
     ## Store resting set
     self.restingset = restingset
     self.strands = list(restingset.complexes)[0].strands
-    self.strand_seqs = [s.constraints for s in self.strands]
+    self.strand_seqs = [s.sequence for s in self.strands]
     
     ## Set up NUPACK sampler (for conformation probabilities)
     self.sampler = NupackSampleJob(restingset)

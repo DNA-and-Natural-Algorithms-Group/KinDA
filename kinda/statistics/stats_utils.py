@@ -373,7 +373,7 @@ def export_data(sstats, filepath):
 
   ## Note: We destroy the domain hierarchy and only store "base" domains. This could be potentially bad.
   domain_to_id = {dom: 'dom{0}_{1}'.format(dom.id, dom.name) for dom in domains} # id #s are guaranteed to be unique within a Python session
-  domain_to_dict = {d_id: {'name': d.name, 'constraints': str(d.constraints)} for d,d_id in domain_to_id.iteritems()}
+  domain_to_dict = {d_id: {'name': d.name, 'sequence': str(d.sequence)} for d,d_id in domain_to_id.iteritems()}
 
   strand_to_id = {strand: 'strand{0}_{1}'.format(strand.id, strand.name) for strand in strands}
   strand_to_dict = {}
@@ -457,7 +457,7 @@ def import_data(filepath):
 
   domains = {}
   for domain_id, data in sstats_dict['domains'].iteritems():
-    domains[domain_id] = dna.Domain(name = data['name'], constraints = data['constraints'])
+    domains[domain_id] = dna.Domain(name = data['name'], sequence = data['sequence'])
 
   strands = {}
   for strand_id, data in sstats_dict['strands'].iteritems():

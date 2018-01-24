@@ -24,8 +24,8 @@ import dnaobjects as dna
 def to_Peppercorn_domain(domain):
   """ Converts a DNAObjects.Domain object to the equivalent Peppercorn
   construct. If the domain name ends in an asterisk (*) it is assumed
-  to be a complementary domain. Note that the sequence constraints of the
-  domain are lost in the conversion, as Peppercorn does not store this
+  to be a complementary domain. Note that the sequence of the
+  domain is lost in the conversion, as Peppercorn does not store this
   information. """
   
   # Return Peppercorn domain
@@ -129,16 +129,16 @@ def to_Peppercorn(*args, **kargs):
 
 def from_Peppercorn_domain(domain, seq = None):
   """ Converts a Peppercorn PepperDomain object to an equivalent
-  DNAObjects Domain object, with the given constraints. If no constraints
-  are supplied, the 'N' constraint is applied to all bases in the domain. """
+  DNAObjects Domain object, with the given sequence. If no sequence
+  is supplied, the 'N' constraint is applied to all bases in the domain. """
   
-  if seq is None:  constraints = dna.Constraints("N"* domain.length)
-  else:  constraints = dna.Constraints(seq)
+  if seq is None:  sequence = dna.Sequence("N"* domain.length)
+  else:  sequence = dna.Sequence(seq)
 
   if domain.is_complement:
-    return dna.Domain(name = domain.identity, constraints = constraints.complement).complement
+    return dna.Domain(name = domain.identity, sequence = sequence.complement).complement
   else:
-    return dna.Domain(name = domain.name, constraints = constraints)
+    return dna.Domain(name = domain.name, sequence = sequence)
  
 def from_Peppercorn_strand(strand, domains):
   """ Converts a Peppercorn 'strand' (i.e. a tuple of PepperDomain objects) into

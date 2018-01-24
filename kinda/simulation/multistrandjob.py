@@ -110,13 +110,6 @@ class MultistrandJob(object):
         simulation_mode =     kargs['mode'],
         boltzmann_sample =    boltzmann,
         stop_conditions =     [macrostates_dict[m] for m in stop_conditions]
-#        'dangles':            options.multistrand_params['dangles'],
-#        'simulation_time':    options.multistrand_params['sim_time'],
-#        'parameter_type':     options.multistrand_params['param_type'],
-#        'substrate_type':     options.multistrand_params['substrate_type'],
-#        'rate_method':        options.multistrand_params['rate_method'],
-#        'temperature':        options.multistrand_params['temp'],
-#        'join_concentration': options.multistrand_params['join_concentration']
     )
 
     return params

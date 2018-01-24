@@ -12,12 +12,12 @@ This module defines a simple dna `domain` object.
 """
 
 
-from constraints import Constraints
+from sequence import Sequence
 
 
 class Domain(object):
   """
-  Represents a DNA domain, a sequence of specified length with constraints
+  Represents a DNA domain, a sequence of specified length with constraint sequence
   on the allowed nucleotides at each position in the domain.
   """
   id_counter = 0
@@ -29,13 +29,13 @@ class Domain(object):
     Keyword Arguments:
     name [type=str]                   -- Name of this domain. If not given,
                                          an automatic one is generated.
-    constraints [type=str]            -- Sequence constraints on this domain.
+    sequence [type=str]               -- Sequence constraints on this domain.
                                          Specifiers may be any of
                                          A,T,C,G,R,Y,W,S,M,K,B,V,D,H,N.
-                                         Either constraints or subdomains
+                                         Either sequence or subdomains
                                          must be specified.
     subdomains [type=list of Domains] -- List of component Domain objects. Either
-                                         constraints or subdomains must be specified.
+                                         sequence or subdomains must be specified.
     """
     # Assign id
     self.id = Domain.id_counter
@@ -48,17 +48,17 @@ class Domain(object):
     if 'name' in kargs: self.name = kargs['name']
     else: self.name = 'domain_{0}'.format(self.id)
     
-    # Assign constraints or subdomain list
-    if 'constraints' in kargs and 'subdomains' not in kargs:
-      self._constraints = Constraints(kargs['constraints'])
-      self._length = len(self._constraints)
+    # Assign sequence or subdomain list
+    if 'sequence' in kargs and 'subdomains' not in kargs:
+      self._sequence = Sequence(kargs['sequence'])
+      self._length = len(self._sequence)
       self.is_composite = False
-    elif 'subdomains' in kargs and 'constraints' not in kargs:
+    elif 'subdomains' in kargs and 'sequence' not in kargs:
       self._subdomains = kargs['subdomains']
       self._length = sum([d.length for d in self._subdomains])
       self.is_composite = True
     else:
-      raise ValueError("Must pass one of 'constraints' or 'subdomains' keyword argument.")
+      raise ValueError("Must pass one of 'sequence' or 'subdomains' keyword argument.")
       
       
   ## Basic properties
@@ -68,26 +68,26 @@ class Domain(object):
     return self._length
     
   @property
-  def constraints(self):
+  def sequence(self):
     """Returns the Constraints object or concatenation of the constraint
     string of the subdomains."""
-    return Constraints("".join([d._constraints for d in self.base_domains()]))
-  @constraints.setter
-  def constraints(self, new_constraints):
-    """Sets the constraint string or sets the constraints of the subdomains.
-    If repeated domains are assigned different constraints, the result is
+    return Sequence("".join([d._sequence for d in self.base_domains()]))
+  @sequence.setter
+  def sequence(self, new_seq):
+    """Sets the sequence string or sets the sequence of the subdomains.
+    If repeated domains are assigned different sequences, the result is
     the intersection of those constraints."""
-    assert len(new_constraints) == self._length
+    assert len(new_seq) == self._length
     for d in self.base_domains():
-      d._constraints = Constraints("N" * d._length)
-    self.add_constraints(new_constraints)
-  def add_constraints(self, new_constraints):
-    """Applies the constraints on top of existing constraints on this domain."""
-    assert len(new_constraints) == self._length
+      d._sequence = Sequence("N" * d._length)
+    self.add_sequence(new_seq)
+  def restrict_sequence(self, constraints):
+    """Applies the sequence constraints on top of existing sequence constraints on this domain."""
+    assert len(constraints) == self._length
     i = 0
     for d in self.base_domains():
-      subconstraints = new_constraints[i : i+d._length]
-      d._constraints = d._constraints.intersection(subconstraints)
+      subsequence = constraints[i : i+d._length]
+      d._sequence = d._sequence.intersection(subsequence)
       i += d._length
 
       
@@ -164,7 +164,7 @@ class Domain(object):
     if self.is_composite:
       info = "[" + ", ".join([str(d.name) for d in self._subdomains]) + "]"
     else:
-      info = self._constraints
+      info = self._sequence
     return "Domain {0}: {1}".format(self.name, info)
   def __repr__(self):
     return str(self)
@@ -212,27 +212,27 @@ class ComplementaryDomain( Domain):
     return self._complement.length
 
   @property
-  def _constraints(self):
+  def _sequence(self):
     """ Returns the sequence constraints of this ComplementaryDomain.
     The constraints are the complementary-reverse of the constraints of
     this domain's complement."""
-    return self._complement.constraints.complement
+    return self._complement.sequence.complement
   @property
-  def constraints(self):
+  def sequence(self):
     """ Returns the sequence constraints of this ComplementaryDomain.
     The constraints are the complementary-reverse of the constraints of
     this domain's complement."""
-    return self._constraints
-  @constraints.setter
-  def constraints(self, new_constraints):
+    return self._sequence
+  @sequence.setter
+  def sequence(self, new_seq):
     """ Sets the sequence constraints of this ComplementaryDomain
     by setting the sequence constraints of its complement to the
     complement of the given constraints."""
-    self._complement.constraints = new_constraints.complement
-  def add_constraints(self, new_constraints):
+    self._complement.sequence = new_seq.complement
+  def restrict_sequence(self, constraints):
     """ Applies the given constraints on top of any existing sequence
     constraints on this ComplementaryDomain. """
-    self._complement.add_constraints(new_constraints.complement)
+    self._complement.add_sequence(constraints.complement)
     
       
   ## Equivalence and complementarity
@@ -286,7 +286,7 @@ class ComplementaryDomain( Domain):
     if self.is_composite:
       info = "[" + ",".join([d.name for d in self.subdomains]) + "]"
     else:
-      info = self.constraints
+      info = self.sequence
     return "ComplementaryDomain {0}: {1}".format(self.name, info)
   def __repr__(self):
     return str(self)

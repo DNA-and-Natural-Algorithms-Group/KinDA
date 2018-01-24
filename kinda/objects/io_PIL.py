@@ -85,7 +85,7 @@ def parseSequenceDirective(line):
     # print name, "=", nucleotides ####
     
     # Create/add the new Sequence to the Specification
-    domain = dna.Domain(name = name, constraints = nucleotides)
+    domain = dna.Domain(name = name, sequence = nucleotides)
     return domain
   else:
     print >> sys.stderr, "Invalid sequence directive:\n%s" % line

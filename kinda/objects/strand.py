@@ -13,7 +13,7 @@ This module defines a simple dna `strand` object.
 
 
 from domain import Domain
-from constraints import Constraints
+from sequence import Sequence
 
 class Strand(object):
   """
@@ -25,7 +25,7 @@ class Strand(object):
   def __init__(self, *args, **kargs ):
     """
     Initializes a new Strand object.  The following keyword arguments are
-    accepted: name, domains OR constraints.
+    accepted: name, domains OR sequence.
     
     If direct sequence constraints are specified, a new domain is defined
     with these constraints, and is assigned as the domain list for this
@@ -45,11 +45,11 @@ class Strand(object):
     
     # If sequence constraints were specified, create a dummy domain with
     # these constraints. Otherwise, assign the given list of domains.
-    if 'domains' in kargs and 'constraints' not in kargs:
+    if 'domains' in kargs and 'sequence' not in kargs:
       self._domains = kargs['domains']
-    elif 'constraints' in kargs and 'domains' not in kargs:
+    elif 'sequence' in kargs and 'domains' not in kargs:
       d = Domain(name = self.name + "_domain",
-                 constraints = kargs['constraints'])
+                 sequence = kargs['sequence'])
       self._domains = [d]
     else:
       raise ValueError("Must specify strand constraints or domain list.")
@@ -66,33 +66,33 @@ class Strand(object):
     return self._length
     
   @property
-  def constraints( self ):
+  def sequence( self ):
     """
     The sequence constraints associated with this strand, computing it as
     necessary from the domains.
     """
-    return Constraints("".join([d.constraints for d in self.base_domains()]))
-  @constraints.setter
-  def constraints( self, new_constraints ):
+    return Sequence("".join([d.sequence for d in self.base_domains()]))
+  @sequence.setter
+  def sequence( self, new_seq ):
     """
     Set the sequence constraints on this Strand. If repeated domains
     are assigned different constraints, the result is the intersection
     of all constraints assigned to the domain.
     """
-    assert len(new_constraints) == self._length
+    assert len(new_seq) == self._length
     for d in self.base_domains():
-      d._constraints = Constraints("N" * d._length)
-    self.add_constraints(new_constraints)
-  def add_constraints(self, new_constraints):
+      d._sequence = Sequence("N" * d._length)
+    self.restrict_sequence(new_seq)
+  def restrict_sequence(self, constraints):
     """
     Applies the given constraints on top of any existing constraints on the
     sequence of this strand.
     """
-    assert len(new_constraints) == self._length
+    assert len(constraints) == self._length
     i = 0
     for d in self.base_domains():
-      subconstraints = new_constraints[i : i+d._length]
-      d._constraints = d._constraints.intersection(subconstraints)
+      subconstraints = constraints[i : i+d._length]
+      d._sequence = d._sequence.intersection(subconstraints)
       i += d._length
   
    
@@ -186,19 +186,19 @@ class ComplementaryStrand( Strand ):
     return self._complement.length
     
   @property
-  def constraints(self):
-    """ Returns the Constraints object for this ComplementaryStrand. This
-    is the complementary-reverse of the constraints on its complement."""
-    return self._complement.constraints.complement
-  @constraints.setter
-  def constraints(self, new_constraints):
-    """ Sets the Constraints on this ComplementaryStrand by setting those
+  def sequence(self):
+    """ Returns the Sequence object for this ComplementaryStrand. This
+    is the complementary-reverse of the sequence on its complement."""
+    return self._complement.sequence.complement
+  @sequence.setter
+  def sequence(self, new_seq):
+    """ Sets the Sequence on this ComplementaryStrand by setting those
     of its complement to the complement of the input constraints."""
-    self._complement.constraints = new_constraints.complement
-  def add_constraints(self, new_constraints):
+    self._complement.sequence = new_seq.complement
+  def restrict_sequence(self, constraints):
     """ Applies the given constraints on top of this ComplementaryStrand by
     applying the complement of these constraints onto its complement. """
-    self._complement.add_constraints(new_constraints.complement)
+    self._complement.restrict_sequence(constraints.complement)
 
 
   ## Complementarity and equivalence

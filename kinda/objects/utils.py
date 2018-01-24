@@ -1,12 +1,12 @@
 
 ## Sequence utilities
                   
-def random_sequence(constraint, base_probs = None):
+def random_sequence(sequence, base_probs = None):
   import random
-  from constraints import base_group
+  from sequence import base_group
   def choose_base(bases, base_probs):
     prob_sum = sum([base_probs[b] for b in bases])
-    assert prob_sum > 0, "Cannot obtain sequence with constraint " + constraint
+    assert prob_sum > 0, "Cannot obtain sequence with constraint " + sequence
     
     n = random.uniform(0, prob_sum)
     for b in bases:
@@ -16,7 +16,7 @@ def random_sequence(constraint, base_probs = None):
   if base_probs == None:
     base_probs = {'A': 0.2, 'T': 0.2, 'C': 0.3, 'G': 0.3}
     
-  return "".join(map(lambda b: choose_base(base_group[b], base_probs), constraint))
+  return "".join(map(lambda b: choose_base(base_group[b], base_probs), sequence))
   
 ## Functions for Domain objects
 def split_domain(domain, pos):  
@@ -24,9 +24,9 @@ def split_domain(domain, pos):
   from domain import Domain
   
   section1 = Domain(name = domain.name + "[:{0}]".format(pos),
-                    constraints = domain.constraints[:pos])
+                    sequence = domain.sequence[:pos])
   section2 = Domain(name = domain.name + "[{0}:]".format(pos + 1),
-                    constraints = domain.constraints[pos:])
+                    sequence = domain.sequence[pos:])
       
   domain.subdomains = [section1, section2]
 
@@ -45,10 +45,10 @@ def equate_domains(domains):
   def equate_coincident_domains(domain1, domain2):
     assert domain1.length == domain2.length
     
-    # Make a new Domain with constraints from both domains
+    # Make a new Domain with sequence from both domains
     new_domain = Domain(name = "~(" + min(domain1.name, domain2.name) + ")",
-                        constraints = domain1.constraints)
-    new_domain.add_constraints(domain2.constraints)
+                        sequence = domain1.sequence)
+    new_domain.restrict_sequence(domain2.sequence)
     
     # Redirect domain1 and domain2 to point to new domain
     domain1.subdomains = [new_domain]

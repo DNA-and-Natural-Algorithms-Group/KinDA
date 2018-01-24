@@ -165,7 +165,7 @@ class EnumerateJob(object):
         complexes = e.complexes,
         reactions = e.reactions,
         restingsets = e.resting_sets,
-        domain_seqs = {d.name: str(d.constraints) for d in self.domains}
+        domain_seqs = {d.name: str(d.sequence) for d in self.domains}
     )
     rxns_dict = dict(dna_objects['reactions'])
     self._enumerated_complexes = [v for _, v in dna_objects['complexes']]

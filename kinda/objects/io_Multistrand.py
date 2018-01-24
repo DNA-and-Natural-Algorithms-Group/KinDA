@@ -17,7 +17,7 @@ def to_Multistrand_domains(domains):
   ## Create dict of Multistrand Domain objects
   ms_domains = {}
   for d in base_domains:
-    seq = utils.random_sequence(d.constraints)
+    seq = utils.random_sequence(d.sequence)
     ms_domains[d] = MS.Domain(name = d.name, sequence = seq, length = d.length)
     ms_domains[d.complement] = ms_domains[d].C
   return ms_domains

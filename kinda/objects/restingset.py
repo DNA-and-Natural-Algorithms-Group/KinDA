@@ -44,14 +44,14 @@ class RestingSet(object):
     
   @property
   def complexes(self):
-    """ Returns the set of Complex objects that define this RestingSet. """
-    return self._complexes
+    """ Returns a list of the Complex objects that define this RestingSet. """
+    return list(self._complexes)
   @property
   def strands(self):
     return next(iter(self._complexes)).strands
   @property
-  def constraints(self):
-    return [s.constraints for s in self.strands]
+  def sequence(self):
+    return [s.sequence for s in self.strands]
     
   def __contains__(self, complex):
     """ Returns True if the given complex is in this resting set. """

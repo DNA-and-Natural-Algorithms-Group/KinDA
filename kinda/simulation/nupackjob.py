@@ -136,7 +136,7 @@ class NupackSampleJob(object):
     material = options.nupack_params['material']
     dangles = options.nupack_params['dangles']
     strands = next(iter(self.restingset.complexes)).strands
-    strand_seqs = [strand.constraints
+    strand_seqs = [strand.sequence
                     for strand
                     in strands]
 
