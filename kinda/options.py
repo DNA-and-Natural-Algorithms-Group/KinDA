@@ -3,7 +3,8 @@ flags = {
 }
 
 general_params = {
-  'loose_complex_similarity': 0.7
+  'loose_complex_similarity': 0.7,
+  'material': 'DNA'
 }
 
 multistrand_params = {
