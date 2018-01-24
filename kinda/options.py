@@ -7,16 +7,19 @@ general_params = {
 }
 
 multistrand_params = {
-  'dangles': 'Some',
-  'sim_time': 1.00, 
-  'output_interval': 100,
-  'param_type': 'Nupack',
-  'substrate_type': 'DNA',
-  'rate_method': 'Metropolis',
-  'temp': 25,
-  'bimolecular_scaling': 0.5e5,
-  'multithreading': True,
-  'join_concentration': 1e-15
+  'multiprocessing': True,  # set to True to use multiple cores when running simulations
+  'options': {  # These options are given directly to Multistrand
+    'dangles': 'Some',
+    'sim_time': 1.00, 
+    'output_interval': 100,
+    'param_type': 'Nupack',
+    'substrate_type': 'DNA',
+    'rate_method': 'Metropolis',
+    'temp': 25,
+    'unimolecular_scaling': 5.0e6,
+    'bimolecular_scaling': 1.4e6,
+    'join_concentration': 1e-15
+  }
 }
 
 nupack_params = {

@@ -17,7 +17,7 @@ from .. import options
 
 import sim_utils
 
-if options.multistrand_params['multithreading']:
+if options.multistrand_params['multiprocessing']:
   try:
     import multiprocessing
     import signal
@@ -37,7 +37,7 @@ DISASSOC_MACROSTATE = 2
 LOOSE_MACROSTATE = 3
 COUNT_MACROSTATE = 4
 
-# Global function for performing a single simulation, used for multithreading
+# Global function for performing a single simulation, used for multiprocessing
 def run_sims_global(params):
   multijob = params[0]
   num_sims = params[1]
@@ -104,19 +104,20 @@ class MultistrandJob(object):
     else:
       start_state = [complexes_dict[c] for c in start_complexes]
 
-    params = {
-        'start_state':        start_state,
-        'dangles':            options.multistrand_params['dangles'],
-        'simulation_time':    options.multistrand_params['sim_time'],
-        'parameter_type':     options.multistrand_params['param_type'],
-        'substrate_type':     options.multistrand_params['substrate_type'],
-        'rate_method':        options.multistrand_params['rate_method'],
-        'simulation_mode':    kargs['mode'],
-        'temperature':        options.multistrand_params['temp'],
-        'boltzmann_sample':   boltzmann,
-        'stop_conditions':    [macrostates_dict[m] for m in stop_conditions],
-        'join_concentration': options.multistrand_params['join_concentration']
-    }
+    params = dict(
+        options.multistrand_params['options'],
+        start_state =         start_state,
+        simulation_mode =     kargs['mode'],
+        boltzmann_sample =    boltzmann,
+        stop_conditions =     [macrostates_dict[m] for m in stop_conditions]
+#        'dangles':            options.multistrand_params['dangles'],
+#        'simulation_time':    options.multistrand_params['sim_time'],
+#        'parameter_type':     options.multistrand_params['param_type'],
+#        'substrate_type':     options.multistrand_params['substrate_type'],
+#        'rate_method':        options.multistrand_params['rate_method'],
+#        'temperature':        options.multistrand_params['temp'],
+#        'join_concentration': options.multistrand_params['join_concentration']
+    )
 
     return params
     
@@ -133,29 +134,11 @@ class MultistrandJob(object):
 
   def create_ms_options(self, num_sims):
     """ Creates a fresh MS Options object using the arguments in self.ms_params. """
-      
-    o = MSOptions(
-        start_state     = self.ms_params['start_state'],
-        dangles         = self.ms_params['dangles'],
-        simulation_time = self.ms_params['simulation_time'],
-        parameter_type  = self.ms_params['parameter_type'],
-        substrate_type  = self.ms_params['substrate_type'],
-        rate_method     = self.ms_params['rate_method']
-    )
-    o.simulation_mode    = self.ms_params['simulation_mode']
-    o.temperature        = self.ms_params['temperature']
-    o.boltzmann_sample   = self.ms_params['boltzmann_sample']
-    o.stop_conditions    = self.ms_params['stop_conditions']
-    o.join_concentration = self.ms_params['join_concentration']
-    o.DNA23Metropolis()
-
-    o.num_simulations = num_sims
-    
-    return o
+    return MSOptions(**dict(self.ms_params, num_simulations = num_sims))
 
   def run_simulations(self, num_sims, sims_per_update = 1, status_func = lambda:None):
-    ## Run simulations using multithreading if specified
-    if options.multistrand_params['multithreading']:
+    ## Run simulations using multiprocessing if specified
+    if options.multistrand_params['multiprocessing']:
       self.run_sims_multithreaded(num_sims, sims_per_update, status_func)
     else:
       self.run_sims_singlethreaded(num_sims, sims_per_update, status_func)
@@ -186,6 +169,7 @@ class MultistrandJob(object):
     signal.signal(signal.SIGINT, sigint_handler)
 
     it = p.imap_unordered(run_sims_global, [(self, 2)] * num_sims)
+    p.close()
     
     try:
       sims_completed = 0
@@ -195,7 +179,6 @@ class MultistrandJob(object):
         sims_completed += 1
         if sims_completed % sims_per_update == 0:
           status_func(sims_completed)
-      p.close()
     except KeyboardInterrupt:
       # (More) gracefully handle SIGINT by terminating worker processes properly
       # and then allowing SIGINT to be handled normally
@@ -243,7 +226,7 @@ class MultistrandJob(object):
     if error <= goal or num_sims >= max_sims:
       return
 
-    if options.multistrand_params['multithreading']:
+    if options.multistrand_params['multiprocessing']:
       print "[MULTIPROCESSING ON] (with %d cores)" % multiprocessing.cpu_count()
     else:
       print "[MULTIPROCESSING OFF]"
