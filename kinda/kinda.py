@@ -8,6 +8,7 @@
 
 from .statistics import stats_utils
 from .objects import io_PIL
+import options
   
 
 ## GLOBALS
@@ -26,15 +27,21 @@ class System(object):
       A System object is instantiated with an EnumerateJob object, from which
       detailed and condensed reactions as well as resting sets and complexes are taken. """
 
-  def __init__(self, complexes, restingsets = [], detailed_reactions = [], condensed_reactions = [], enumeration = True, c_max = None):
+  def __init__(self, complexes, restingsets = [], detailed_reactions = [], condensed_reactions = [], enumeration = True, kinda_params = {}, peppercorn_params = {}, multistrand_params = {}, nupack_params = {}):
     """ Constructs a System object with the given complexes, restingsets, reactions, and condensed reactions.
     If enumeration is True (default), the Peppercorn enumerator is used to enumerate a detailed reaction network.
     System performs reaction condensation to produce the condensed reaction network. The given restingsets and
     reactions are added to the enumerated network. Detailed reactions are added to the network prior to condensation.
     If enumeration is False, then no enumeration is performed and only the given resting sets and reactions are
     used for analysis.
-    c_max defines a default max concentration for each resting set, used to compute the effect of spurious and
-    unproductive reactions on the effective concentrations of each complex available for intended reactions. """
+    """
+
+    ## Choose parameters for Peppercorn, Multistrand, and Nupack
+    ## GvR doesn't like the idiom  dict(d1, **d2)  but I do
+    self._kinda_params = dict(options.kinda_params, **kinda_params)
+    self._peppercorn_params = dict(options.peppercorn_params, **peppercorn_params)
+    self._multistrand_params = dict(options.multistrand_params, **multistrand_params)
+    self._nupack_params = dict(options.nupack_params, **nupack_params)
 
     # Store given data
     # We extract any resting sets and complexes from higher-order objects to maintain consistency
@@ -53,7 +60,11 @@ class System(object):
       from .enumeration.enumeratejob import EnumerateJob
 
       # Create enumeration object
-      self._enum_job = EnumerateJob(complexes = self.complexes, reactions = self.detailed_reactions)
+      self._enum_job = EnumerateJob(
+          complexes = self.complexes,
+          reactions = self.detailed_reactions,
+          peppercorn_params = self._peppercorn_params
+      )
 
       # Incorporate enumerated data
       self._complexes |= set(self._enum_job.get_complexes())
@@ -65,7 +76,15 @@ class System(object):
 
     # Create stats objects for reactions and resting sets
     # make_stats() will also make stats objects for potential spurious reactions and resting sets
-    self._rs_to_stats, self._rxn_to_stats = stats_utils.make_stats(list(self._complexes), list(self._restingsets), list(self._detailed_reactions), list(self._condensed_reactions))
+    self._rs_to_stats, self._rxn_to_stats = stats_utils.make_stats(
+        list(self._complexes),
+        list(self._restingsets),
+        list(self._detailed_reactions),
+        list(self._condensed_reactions),
+        kinda_params = self._kinda_params,
+        multistrand_params = self._multistrand_params,
+        nupack_params = self._nupack_params
+    )
 
     # Pull out spurious reactions/resting sets
     self._spurious_restingsets = set(self._rs_to_stats.keys()) - self._restingsets
@@ -73,7 +92,7 @@ class System(object):
 
     # Set default max concentration for each resting set
     for rs_stats in self._rs_to_stats.values():
-      rs_stats.c_max = c_max
+      rs_stats.c_max = self._kinda_params.get('max_concentration', 1e-7)
 
 
   ## Basic get functions for system objects

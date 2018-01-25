@@ -168,7 +168,7 @@ class RestingSetStats(object):
   """
   
   
-  def __init__(self, restingset):
+  def __init__(self, restingset, kinda_params = {}, nupack_params = {}):
     """ Initialize a RestingSetStats object from a DNAObjects.RestingSet
     object. The stats objects for reaction data should be added later
     with the add_XXX_rxn() functions. """
@@ -178,7 +178,11 @@ class RestingSetStats(object):
     self.strand_seqs = [s.sequence for s in self.strands]
     
     ## Set up NUPACK sampler (for conformation probabilities)
-    self.sampler = NupackSampleJob(restingset)
+    self.sampler = NupackSampleJob(
+        restingset,
+        similarity_threshold = kinda_params.get('similarity_threshold', None),
+        nupack_params = nupack_params
+    )
     
     ## Set up MFE structures list
     self.mfe_structs = []
@@ -301,7 +305,7 @@ class RestingSetStats(object):
 #     ## of deviation from the exact product complexes.
 #     if loose_products:
 #       if loose_cutoff == None:
-#         loose_cutoff = options.general_params['loose_complex_similarity']
+#         loose_cutoff = options.kinda_params['loose_complex_similarity']
 #       macrostates = [utils.similar_complex_macrostate(c, loose_cutoff) for c in products]
 #     else:
 #       macrostates = [utils.exact_complex_macrostate(c) for c in products]

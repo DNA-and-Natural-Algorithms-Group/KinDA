@@ -34,7 +34,7 @@ def listminuslist(minuend, subtrahend):
 # Utilities for making Stats objects #
 ######################################
 
-def make_RestingSetRxnStats(restingsets, detailed_rxns, condensed_rxns):
+def make_RestingSetRxnStats(restingsets, detailed_rxns, condensed_rxns, kinda_params = {}, multistrand_params = {}):
   """ A convenience function, creating a dict mapping
   reactions to stats objects such that all stats objects
   with the same reactants share a Multistrand job object
@@ -77,7 +77,8 @@ def make_RestingSetRxnStats(restingsets, detailed_rxns, condensed_rxns):
       ]
     
     # Make Multistrand job
-    job = FirstStepModeJob(r, stop_conditions)
+    multiprocessing = kinda_params.get('multistrand_multiprocessing', True)
+    job = FirstStepModeJob(r, stop_conditions, multiprocessing = multiprocessing, multistrand_params = multistrand_params)
     reactants_to_mjob[r] = job
     
   # Create RestingSetRxnStats object for each reaction
@@ -262,9 +263,9 @@ def create_macrostate(state, tag):
   Note that there is no way to represent a macrostate consisting of states with
   2 or more of a certain complex.
   """
-  loose_complexes = options.flags['loose_complexes']
-  loose_cutoff = options.general_params['loose_complex_similarity']
-      
+  loose_complexes = options.kinda_params['loose_complexes']
+  loose_cutoff = options.kinda_params['loose_complex_similarity']
+
   obj_to_mstate = {}
   for obj in set(state):
     if obj._object_type == 'resting-set':
@@ -281,25 +282,25 @@ def create_macrostate(state, tag):
   return macrostates
 
 
-def make_RestingSetStats(restingsets):
+def make_RestingSetStats(restingsets, kinda_params = {}, nupack_params = {}):
   """ A convenience function to make RestingSetStats objects for
   a list of given RestingSets. Returns a dict mapping the RestingSets
   to their corresponding stats objects. """
-  rs_to_stats = {rs: RestingSetStats(rs) for rs in restingsets}
+  rs_to_stats = {rs: RestingSetStats(rs, kinda_params = kinda_params, nupack_params = nupack_params) for rs in restingsets}
   return rs_to_stats
   
-def make_stats(complexes, restingsets, detailed_rxns, condensed_rxns):
+def make_stats(complexes, restingsets, detailed_rxns, condensed_rxns, kinda_params = {}, multistrand_params = {}, nupack_params = {}):
   """ Creates a RestingSetRxnStats object for each resting-set reaction
   and a RestingSetStats object for each resting set. """
 
   # Make RestingSetRxnStats objects for condensed reactions and predicted spurious reactions.
-  rxn_to_stats = make_RestingSetRxnStats(restingsets, detailed_rxns, condensed_rxns)
+  rxn_to_stats = make_RestingSetRxnStats(restingsets, detailed_rxns, condensed_rxns, kinda_params, multistrand_params)
 
   # Collect all resting sets, including spurious ones predicted by make_RestingSetRxnStats()
   # and make RestingSetStats for each.
   rs_rxns = rxn_to_stats.keys()
   restingsets = set(restingsets + [rs for rxn in rs_rxns for rs in rxn.reactants+rxn.products])
-  rs_to_stats = make_RestingSetStats(restingsets)
+  rs_to_stats = make_RestingSetStats(restingsets, kinda_params, nupack_params)
   
   condensed_rxns_set = set(condensed_rxns)
 

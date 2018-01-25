@@ -7,23 +7,16 @@
 
 import math
 
+import multiprocessing, signal
+
 # Import Multistrand
 import multistrand.objects as MSObjects
 from multistrand.options import Options as MSOptions
 from multistrand.system import SimSystem as MSSimSystem
 
 from ..objects import utils, io_Multistrand, Macrostate, RestingSet, Complex
-from .. import options
 
 import sim_utils
-
-if options.multistrand_params['multiprocessing']:
-  try:
-    import multiprocessing
-    import signal
-  except ImportError:
-    print "Could not import multiprocessing package. Try turning multiprocessing off in options.py"
-    raise
 
 # GLOBALS
 TRAJECTORY_MODE = 128
@@ -56,10 +49,13 @@ class MultistrandJob(object):
   This is the parent class to the more useful job classes that compile
   specific information for each job mode type."""
   
-  def __init__(self, start_state, stop_conditions, sim_mode):
-    self.ms_params = self.setup_ms_params(start_state = start_state,
+  def __init__(self, start_state, stop_conditions, sim_mode, multiprocessing = True, multistrand_params = {}):
+    self._multistrand_params = dict(multistrand_params)
+    self._ms_options_dict = self.setup_ms_params(start_state = start_state,
                                           stop_conditions = stop_conditions,
                                           mode = sim_mode)
+
+    self._multiprocessing = multiprocessing
     
     self._stats_funcs = {
         'time': (sim_utils.time_mean, sim_utils.time_std, sim_utils.time_error),
@@ -70,6 +66,16 @@ class MultistrandJob(object):
 
     self.total_sims = 0
 
+  @property
+  def multistrand_params(self):
+    return dict(self._multistrand_params)
+
+  @property
+  def multiprocessing(self):
+    return self._multiprocessing
+  @multiprocessing.setter
+  def multiprocessing(self, val):
+    self._multiprocessing = val
                                                 
   def setup_ms_params(self, *args, **kargs):
 
@@ -104,15 +110,15 @@ class MultistrandJob(object):
     else:
       start_state = [complexes_dict[c] for c in start_complexes]
 
-    params = dict(
-        options.multistrand_params['options'],
+    options_dict = dict(
+        self._multistrand_params,
         start_state =         start_state,
         simulation_mode =     kargs['mode'],
         boltzmann_sample =    boltzmann,
         stop_conditions =     [macrostates_dict[m] for m in stop_conditions]
     )
 
-    return params
+    return options_dict
     
   def get_statistic(self, reaction, stat = 'rate'):
     return self._stats_funcs[stat][0](reaction, self._ms_results)
@@ -126,17 +132,17 @@ class MultistrandJob(object):
   
 
   def create_ms_options(self, num_sims):
-    """ Creates a fresh MS Options object using the arguments in self.ms_params. """
-    return MSOptions(**dict(self.ms_params, num_simulations = num_sims))
+    """ Creates a fresh MS Options object using the arguments in self._ms_options_dict. """
+    return MSOptions(**dict(self._ms_options_dict, num_simulations = num_sims))
 
   def run_simulations(self, num_sims, sims_per_update = 1, status_func = lambda:None):
     ## Run simulations using multiprocessing if specified
-    if options.multistrand_params['multiprocessing']:
-      self.run_sims_multithreaded(num_sims, sims_per_update, status_func)
+    if self._multiprocessing:
+      self.run_sims_multiprocessing(num_sims, sims_per_update, status_func)
     else:
-      self.run_sims_singlethreaded(num_sims, sims_per_update, status_func)
+      self.run_sims_singleprocessing(num_sims, sims_per_update, status_func)
 
-  def run_sims_multithreaded(self, num_sims, sims_per_update = 1, status_func = lambda:None):
+  def run_sims_multiprocessing(self, num_sims, sims_per_update = 1, status_func = lambda:None):
     """
     Sets up a multiprocessing.Pool object to run simulations concurrently over multiple subprocesses.
     The Pool object has number of worker processes equal to the number of cpus, as given by
@@ -149,7 +155,6 @@ class MultistrandJob(object):
     main process would ignore SIGINT as well). Note that this workaround produces a short time interval in which
     all SIGINT signals are ignored.
     """
-
     # Temporarily remove the SIGINT event handler
     sigint_handler = signal.signal(signal.SIGINT, signal.SIG_IGN)
 
@@ -181,7 +186,7 @@ class MultistrandJob(object):
       raise KeyboardInterrupt
 
 
-  def run_sims_singlethreaded(self, num_sims, sims_per_update = 1, status_func = None):
+  def run_sims_singleprocessing(self, num_sims, sims_per_update = 1, status_func = None):
     sims_completed = 0
     while sims_completed < num_sims:
       sims_to_run = min(sims_per_update, num_sims - sims_completed)
@@ -219,7 +224,7 @@ class MultistrandJob(object):
     if error <= goal or num_sims >= max_sims:
       return
 
-    if options.multistrand_params['multiprocessing']:
+    if self._multiprocessing:
       print "[MULTIPROCESSING ON] (with %d cores)" % multiprocessing.cpu_count()
     else:
       print "[MULTIPROCESSING OFF]"
@@ -252,13 +257,14 @@ class MultistrandJob(object):
 
 class FirstPassageTimeModeJob(MultistrandJob):
   
-  def __init__(self, start_state, stop_conditions):
+  def __init__(self, start_state, stop_conditions, **kargs):
       
     super(FirstPassageTimeModeJob, self).__init__(start_state,
                                                   stop_conditions,
-                                                  FIRST_PASSAGE_MODE)
+                                                  FIRST_PASSAGE_MODE,
+                                                  **kargs)
       
-    self.tags = [sc.tag for sc in self.ms_params['stop_conditions']]
+    self.tags = [sc.tag for sc in self._ms_options_dict['stop_conditions']]
   
   def process_results(self, ms_options):
     results = ms_options.interface.results
@@ -273,7 +279,7 @@ class FirstPassageTimeModeJob(MultistrandJob):
       
 class TransitionModeJob(MultistrandJob):
   
-  def __init__(self, start_state, macrostates, stop_states):
+  def __init__(self, start_state, macrostates, stop_states, **kargs):
     stop_conditions = macrostates[:]
     
     # This actually modifies the stop macrostates in place, so this could be bad
@@ -281,9 +287,9 @@ class TransitionModeJob(MultistrandJob):
       sc.name = "stop:" + sc.name
       stop_conditions.append(sc)
       
-    super(TransitionModeJob, self).__init__(start_complex, stop_conditions, TRANSITION_MODE)
+    super(TransitionModeJob, self).__init__(start_complex, stop_conditions, TRANSITION_MODE, **kargs)
       
-    self.states = [sc.tag for sc in self.ms_params['stop_conditions']]
+    self.states = [sc.tag for sc in self._ms_options_dict['stop_conditions']]
   
   def get_statistic(self, start_states, end_states, stat = 'rate'):
     tag = self.get_tag(start_states, end_states)
@@ -340,11 +346,11 @@ class TransitionModeJob(MultistrandJob):
 
 class FirstStepModeJob(MultistrandJob):
   
-  def __init__(self, start_state, stop_conditions):
+  def __init__(self, start_state, stop_conditions, **kargs):
   
-    super(FirstStepModeJob, self).__init__(start_state, stop_conditions, FIRST_STEP_MODE)
+    super(FirstStepModeJob, self).__init__(start_state, stop_conditions, FIRST_STEP_MODE, **kargs)
       
-    self.tags = [sc.tag for sc in self.ms_params['stop_conditions']]
+    self.tags = [sc.tag for sc in self._ms_options_dict['stop_conditions']]
     self.tags.append("None")
 
     self._stats_funcs['prob'] = (sim_utils.bernoulli_mean, sim_utils.bernoulli_std, sim_utils.bernoulli_error)

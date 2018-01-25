@@ -6,69 +6,6 @@ import peppercornenumerator as enum
 from .. import objects as dna
 from .. import options
 
-## GLOBALS
-# The follow_fast_reactions function is copied shamelessly from KinD's
-# utilities.py.
-def follow_fast_reactions(complexes, all_fast_reactions, restingsets, inprogress, products_dict = dict()):
-  """Returns a list containing lists of resting states. Each of the inner lists
-  represents a set of products that can result from fast reactions starting 
-  from the given complex.
-  An important optimization would be to add memoization. [NOTE: memoization added but untested]"""
-
-  products_dict_temp = {}
-  for i, cmplx in enumerate(complexes):
-  
-    # If the complex is currently being processed, you've entered a cycle, so stop enumerating
-    if cmplx in inprogress:
-      return []
-
-    # If the complex has already been processed, don't reprocess it!
-    if cmplx in products_dict_temp:
-      continue
-    elif cmplx in products_dict:
-      products_dict_temp[cmplx] = products_dict[cmplx]
-      continue
-    
-    # If the complex is in a resting state, the resting state is the only product
-    rs = dna.utils.get_containing_set(restingsets, cmplx)
-    if rs is not None:
-      #visited[cmplx] = [[rs]]
-      products_dict_temp[cmplx] = [[rs]]
-      continue
-    
-    # Mark the complex as being processed to avoid reaction cycles
-    inprogress.add(cmplx)
-
-    # Initialize list of possible products from this complex
-    prods = []
-    
-    # Otherwise, check all fast reactions with cmplx as the reactant
-    fast_reactions = filter(lambda x: x.is_reactant(cmplx), all_fast_reactions)
-    for rxn in fast_reactions:
-      # Find the product sets of each of rxn's products
-      rxn_results = follow_fast_reactions(rxn.products, all_fast_reactions, restingsets, inprogress, products_dict)
-      #rxn_results = follow_fast_reactions(rxn.products, all_fast_reactions, restingsets, inprogress, dict())
-      
-      # Add this reaction's product sets to the cumulative list
-      prods.extend(rxn_results)
-
-    # Unmark the complex as being processed
-    inprogress.remove(cmplx)
-
-    # Store products that could result from cmplx
-    products_dict_temp[cmplx] = prods
-    
-    # Memoize the enumerated products, but only if inprogress is empty (otherwise some paths may be unchecked)
-    if len(inprogress) == 0:
-      products_dict[cmplx] = prods
-    #if len(inprogress) % 25 == 0: print len(inprogress)
-    
-  # Calculate combinatorial fates
-  complex_products = [products_dict_temp[cmplx] for cmplx in complexes]
-  all_products = [sum(p, []) for p in it.product(*complex_products)]
-  return all_products
-
-
 ## CLASSES
 class EnumerateJob(object):
   def __init__(self, *args, **kargs):
@@ -96,6 +33,9 @@ class EnumerateJob(object):
     self._enumerated_slow_reactions = []
     self._enumerated_fast_reactions = []
     self._condensed_reactions = []
+
+    # Pull out enumeration options
+    self._peppercorn_params = kargs.get('peppercorn_params', {})
       
   @property
   def reactions(self):
@@ -132,6 +72,10 @@ class EnumerateJob(object):
   @property
   def condensed(self):
     return self._condensed
+
+  @property
+  def peppercorn_params(self):
+    return dict(self._peppercorn_params)
     
   def enumerate(self):
     ## Convert to Peppercorn objects
@@ -147,10 +91,12 @@ class EnumerateJob(object):
         initial_reactions = [v for _,v in enum_objects['reactions']]
     )
     # Set peppercorn options
-    if '--release-cutoff-1-1' in options.peppercorn_params:
-      e.RELEASE_CUTOFF_1_1 = options.peppercorn_params['--release-cutoff-1-1']
-    if '--release-cutoff-1-n' in options.peppercorn_params:
-      e.RELEASE_CUTOFF_1_N = options.peppercorn_params['--release-cutoff-1-n']
+    for k,v in self._peppercorn_params.iteritems():
+      setattr(e, k, v)
+#    if '--release-cutoff-1-1' in options.peppercorn_params:
+#      e.RELEASE_CUTOFF_1_1 = options.peppercorn_params['--release-cutoff-1-1']
+#    if '--release-cutoff-1-n' in options.peppercorn_params:
+#      e.RELEASE_CUTOFF_1_N = options.peppercorn_params['--release-cutoff-1-n']
 
     # Perform enumeration
     print "KinDA: Performing reaction enumeration with Peppercorn...",

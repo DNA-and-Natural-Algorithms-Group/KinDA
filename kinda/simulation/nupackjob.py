@@ -25,10 +25,13 @@ class NupackSampleJob(object):
   The similarity threshold may be changed with set_similarity_threshold().
   """
 
-  def __init__(self, restingset, similarity_threshold = None):
+  def __init__(self, restingset, similarity_threshold = None, nupack_params = {}):
     """ Constructs a NupackSampleJob object with the given resting set and similarity threshold.
-    If similarity threshold is not given, the value in options.py (general_params['loose_complex_similarity'])
+    If similarity threshold is not given, the value in options.py (kinda_params['loose_complex_similarity'])
     is used. """
+
+    # Store nupack params
+    self._nupack_params = dict(nupack_params)
 
     # Store resting set and relevant complex information
     self._restingset = restingset
@@ -39,7 +42,7 @@ class NupackSampleJob(object):
     self._data = {tag: [] for tag in self._complex_tags if tag is not None}
 
     # Set similarity threshold, using default value in options.py if none specified
-    if similarity_threshold == None:  similarity_threshold = options.general_params['loose_complex_similarity']
+    if similarity_threshold == None:  similarity_threshold = options.kinda_params['loose_complex_similarity']
     self.set_similarity_threshold(similarity_threshold)
 
     self.total_sims = 0
@@ -125,23 +128,18 @@ class NupackSampleJob(object):
     """ Queries Nupack for num_samples secondary structures, sampled from the Boltzmann distribution
     of secondary structures for this resting set. The sampled secondary structures are automatically
     processed to compute new estimates for each conformation probability.
-    Uses the following parameters from options.py:
-      nupack_params['temp'] (the temperature given to Nupack)
-      nupack_params['material'] ('rna' or 'dna')
-      nupack_params['dangles'] (dangles specifier given to Nupack)
+    The nupack_params dict that was given to this job during initialization is passed along to the
+    Nupack Python interface.
     """
 
     ## Set up arguments/options for Nupack call
-    T = options.nupack_params['temp']
-    material = options.nupack_params['material']
-    dangles = options.nupack_params['dangles']
     strands = next(iter(self.restingset.complexes)).strands
     strand_seqs = [strand.sequence
                     for strand
                     in strands]
 
     ## Call Nupack
-    structs = nupack.sample(num_samples, strand_seqs, T, material, dangles)
+    structs = nupack.sample(num_samples, strand_seqs, **self._nupack_params)
 
     ## Convert each Nupack sampled structure (a dot-paren string) into a DNAObjects Complex object and process.
     sampled = [Complex(strands = strands, structure = s) for s in structs]
