@@ -189,9 +189,9 @@ def k2_mean(success_tag, ms_results):
   unimolecular step of a resting-set reaction. """
   tags = ms_results['tags']
   success_t2s = [1/k2 for tag,k2 in zip(tags, ms_results['k2']) if success_tag in tag]
-  n_s = len(success_t2s)
-  if n_s > 0:
-    return n_s / sum(success_t2s)
+  success_kcolls = [kcoll for tag,kcoll in zip(tags, ms_results['kcoll']) if success_tag in tag]
+  if len(success_t2s) > 0:
+    return sum(success_kcolls) / sum([kcoll*t2 for kcoll,t2 in zip(success_kcolls, success_t2s)])
   else:
     return float('nan')
 def k2_std(success_tag, ms_results):

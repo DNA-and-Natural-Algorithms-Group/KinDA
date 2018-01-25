@@ -77,7 +77,7 @@ class Domain(object):
     """Sets the sequence string or sets the sequence of the subdomains.
     If repeated domains are assigned different sequences, the result is
     the intersection of those constraints."""
-    assert len(new_seq) == self._length
+    assert len(new_seq) == self._length, "KinDA: ERROR: Cannot change domain length after initialization"
     for d in self.base_domains():
       d._sequence = Sequence("N" * d._length)
     self.add_sequence(new_seq)

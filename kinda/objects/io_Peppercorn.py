@@ -179,11 +179,23 @@ def from_Peppercorn_restingset(restingset, complexes):
   """ Converts a Peppercorn RestingSet object to an equivalent DNAObjects
   RestingSet object. This function requires as an argument a dict mapping
   Peppercorn Complexes to their equivalent DNAObjects complexes. """
-  import dnaobjects as dna
   
   rs_complexes = [complexes[c] for c in restingset.complexes]
   return dna.RestingSet(name = restingset.name, complexes = rs_complexes)
                      
+def from_Peppercorn_restingset_reaction(reaction, restingsets):
+  """ Converts a condensed Peppercorn PepperReaction object to an equivalent
+  DNAObjects RestingSetReaction object. This function requires as an argument a
+  dict mapping Peppercorn RestingSet objects to equivalent DNAObject RestingSets.
+  """
+  
+  if reaction.rtype != 'condensed':
+    print "KinDA: WARNING: Attempted to convert non-condensed Peppercorn reaction into a RestingSetReaction"
+  
+  reactants = [restingsets[r] for r in reaction.reactants]
+  products = [restingsets[p] for p in reaction.products]
+  return dna.RestingSetReaction(reactants = reactants, products=products)
+
 def from_Peppercorn(*args, **kargs):
   """ Converts a system of Peppercorn objects to the equivalent DNAObject
   counterparts. The following objects are recognized in the key arguments
@@ -192,6 +204,7 @@ def from_Peppercorn(*args, **kargs):
     - complexes
     - reactions
     - restingsets
+    - restingsetreactions
   Other arguments are ignored. Note that Peppercorn does not currently
   have a representation for strands, so we do not handle them here. 
   In addition, because Peppercorn domains do not store sequences, we
@@ -200,7 +213,9 @@ def from_Peppercorn(*args, **kargs):
 
  
   ## Extract all objects to be converted
-  restingsets = set(kargs.get('restingsets', []))
+  restingsetreactions = set(kargs.get('restingsetreactions', []))
+  restingsets = set(kargs.get('restingsets', [])
+                    + sum([r.reactants + r.products for r in restingsetreactions], []))
   reactions = set(kargs.get('reactions', []))
   complexes = set(sum([r.reactants + r.products for r in reactions], [])
                   + sum([rs.complexes for rs in restingsets], [])
@@ -231,6 +246,10 @@ def from_Peppercorn(*args, **kargs):
   dna_restingsets = {}
   for rs in restingsets:
     dna_restingsets[rs] = from_Peppercorn_restingset(rs, dna_complexes)
+
+  dna_restingsetreactions = {}
+  for rs_rxn in restingsetreactions:
+    dna_restingsetreactions[rs_rxn] = from_Peppercorn_restingset_reaction(rs_rxn, dna_restingsets)
     
   ## Make return value
   result = dict()
@@ -238,4 +257,5 @@ def from_Peppercorn(*args, **kargs):
   result['complexes'] = dna_complexes.items()
   result['reactions'] = dna_reactions.items()
   result['restingsets'] = dna_restingsets.items()
+  result['restingsetreactions'] = dna_restingsetreactions.items()
   return result
