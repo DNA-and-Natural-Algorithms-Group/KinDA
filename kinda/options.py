@@ -18,6 +18,7 @@ multistrand_params = {
   'temperature': 25,
   'unimolecular_scaling': 5.0e6,
   'bimolecular_scaling': 1.4e6,
+  'join_concentration': 1e-15
 }
 
 # These defaults are given directly to the Nupack Python interface, unless

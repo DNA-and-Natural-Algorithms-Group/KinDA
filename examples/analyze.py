@@ -19,7 +19,7 @@ pilpath=sys.argv[1]
 ##   The c_max parameter is the default maximum concentration for any resting set, used
 ##   for calculating overall unproductive and spurious scores for the system.
 ##   c_max can be set manually for particular resting sets (see below) [TODO: Show example]
-kinda_obj = kinda.from_pil(pilpath, c_max = 1e-7)
+kinda_obj = kinda.from_pil(pilpath, kinda_params = {'max_concentration': 1e-7})
 
 
 #### To analyze a reaction in detail...

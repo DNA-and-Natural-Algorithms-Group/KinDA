@@ -1,6 +1,9 @@
 # Ignore pre-compiled Python files
 *.pyc
 
+# Ignore temporary vim files
+*.swp
+
 # Ignore build files
 build/
 dist/
