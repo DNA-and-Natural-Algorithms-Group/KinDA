@@ -207,7 +207,7 @@ class MultistrandJob(object):
 
     self.total_sims = self.total_sims + len(results)
 
-  def reduce_error_to(self, rel_goal, max_sims, reaction = 'overall', stat = 'rate', max_batch_size = 500):
+  def reduce_error_to(self, rel_goal, max_sims, reaction = 'overall', stat = 'rate', init_batch_size = 50, min_batch_size = 50, max_batch_size = 500):
     """Runs simulations to reduce the error to rel_goal*mean or until max_sims is reached."""
     def status_func(batch_sims_done):
       table_update_func([calc_mean(), calc_error(), goal, "", "%d/%d"%(batch_sims_done,num_trials), "%d/%d"%(num_sims+batch_sims_done,num_sims+exp_add_sims), str(100*(num_sims+batch_sims_done)/(num_sims+exp_add_sims))+"%"])
@@ -237,12 +237,12 @@ class MultistrandJob(object):
       # Estimate additional trials based on inverse square root relationship
       # between error and number of trials
       if error == float('inf'):
-        num_trials = 10
-        exp_add_sims = max_sims
+        num_trials = init_batch_size
+        exp_add_sims = max_sims - num_sims
       else:
         reduction = error / goal
         exp_add_sims = int(self.total_sims * (reduction**2 - 1) + 1)
-        num_trials = min(exp_add_sims, max_batch_size, max_sims - num_sims, self.total_sims + 1)
+        num_trials = max(min(exp_add_sims, max_batch_size, max_sims - num_sims, self.total_sims + 1), min_batch_size)
         
       self.run_simulations(num_trials, sims_per_update = 1, status_func = status_func)
       status_func(num_trials)
@@ -328,9 +328,9 @@ class TransitionModeJob(MultistrandJob):
     return filter(lambda x: sum(x[1])>0, transition_path)
     
   
-  def reduce_error_to(self, rel_goal, max_sims, start_states, end_states, stat = 'rate'):
+  def reduce_error_to(self, rel_goal, max_sims, start_states, end_states, stat = 'rate', **kwargs):
     super(TransitionModeJob, self).reduce_error_to(rel_goal, max_sims,
-        self.get_tag(start_states, end_states), stat)
+        self.get_tag(start_states, end_states), stat, **kwargs)
     
   def get_tag(self, start_states, end_states):
     assert all([s in self.states for s in start_states]), "Unknown start state given in %s" % start_states

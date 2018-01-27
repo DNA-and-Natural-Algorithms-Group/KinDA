@@ -46,7 +46,7 @@ rxn = rxns[0] # Select the first reaction (you can choose a different one if you
 rxn_stats = kinda_obj.get_stats(rxn)
 
 ##   6) Use the Stats object to get data!
-k1 = rxn_stats.get_k1(0.5) # Get an estimate for k1 with 50% error
+k1 = rxn_stats.get_k1(0.5, init_batch_size = 200) # Get an estimate for k1 with 50% error
 k2 = rxn_stats.get_k2(0.25, max_sims = 500) # Get an estimate for k2 with 25% error
 # prob = rxn_stats.get_prob(0.25) # Estimate the probability that a random Multistrand trajectory will follow this reaction (not necessarily physically significant)
 # k_coll = rxn_stats.get_kcoll(0.25) # Estimate k_coll with 25% error

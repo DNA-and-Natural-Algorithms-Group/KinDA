@@ -142,11 +142,11 @@ class EnumerateJob(object):
    
   def get_complexes(self):
     if not self.enumerated: self.enumerate()
-    return self.enumerated_complexes[:]
+    return list(self.enumerated_complexes)
 
   def get_restingsets(self):
     if not self.enumerated: self.enumerate()
-    return self.enumerated_restingsets[:]
+    return list(self.enumerated_restingsets)
     
   def get_reactions(self):
     if not self.enumerated:  self.enumerate()

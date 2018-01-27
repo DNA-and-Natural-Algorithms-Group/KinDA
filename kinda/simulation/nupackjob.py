@@ -172,7 +172,7 @@ class NupackSampleJob(object):
     self.total_sims += len(sampled)
         
     
-  def reduce_error_to(self, rel_goal, max_sims, complex_name = None):
+  def reduce_error_to(self, rel_goal, max_sims, complex_name = None, init_batch_size = 50, min_batch_size = 50, max_batch_size = 1000):
     """ Continue querying Nupack for secondary structures sampled from the Boltzmann distribution
     until the standard error of the estimated probability for the given complex_name
     is at most rel_goal*complex_prob, or max_sims conformations have been sampled.
@@ -199,12 +199,12 @@ class NupackSampleJob(object):
       # Estimate additional trials based on inverse square root relationship
       # between error and number of trials
       if error == float('inf'):
-        num_trials = 10
+        num_trials = init_batch_size
         update_func([complex_name, prob, error, goal, "", "--/--", "--"])
       else:
         reduction = error / goal
         exp_add_sims = int(self.total_sims * (reduction**2 - 1) + 1)
-        num_trials = min(500, exp_add_sims, max_sims - num_sims, self.total_sims + 1)
+        num_trials = max(min(max_batch_size, exp_add_sims, max_sims - num_sims, self.total_sims + 1), min_batch_size)
         update_func([complex_name, prob, error, goal, "", "%d/%d"%(num_sims,num_sims+exp_add_sims), str(100*num_sims/(num_sims+exp_add_sims))+'%']) 
         
       # Query Nupack

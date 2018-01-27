@@ -73,54 +73,54 @@ class RestingSetRxnStats(object):
     k1 = (raw_k1*rate_fraction, raw_k1_err*rate_fraction)
     return k1
 
-  def get_reduced_k1(self, relative_error = 0.50, max_sims = 5000):
+  def get_reduced_k1(self, relative_error = 0.50, max_sims = 5000, **kwargs):
     """ Returns the net k1 value, calculated by taking into account temporary
     reactant depletion that reduces the effective rate of this reaction. 
     Additional simulations are run until the fractional error is
     below the given relative_error threshold. """
-    return self._get_reduced_k1_stats(relative_error, max_sims)[0]
-  def get_k1(self, relative_error = 0.50, max_sims = 5000):
+    return self._get_reduced_k1_stats(relative_error, max_sims, **kwargs)[0]
+  def get_k1(self, relative_error = 0.50, max_sims = 5000, **kwargs):
     """ Returns the raw k1 value calculated from Multistrand trajectory
     simulations. The relative_error is the fractional error allowed in
     the return value. Additional trials are simulated until this error
     threshold is achieved. """
-    return self.get_raw_stat('k1',relative_error, max_sims)[0]
-  def get_k2(self, relative_error = 0.50, max_sims = 5000):
+    return self.get_raw_stat('k1',relative_error, max_sims, **kwargs)[0]
+  def get_k2(self, relative_error = 0.50, max_sims = 5000, **kwargs):
     """ Returns the k2 folding rate on successful Multistrand trajectories. 
     Additional simulations are run until the fractional error is
     below the given relative_error threshold. """
     if len(self.reactants) > len(self.products):
       print "WARNING: k2 rates are currently not correctly computed for reactions that don't end with a dissociation reaction"
-    return self.get_raw_stat('k2', relative_error, max_sims)[0]
-  def get_kcoll(self, relative_error = 0.50, max_sims = 5000):
+    return self.get_raw_stat('k2', relative_error, max_sims, **kwargs)[0]
+  def get_kcoll(self, relative_error = 0.50, max_sims = 5000, **kwargs):
     """ Returns the average kcoll value calculated over successful Multistrand
     trajectories. Additional simulations are run until the fractional error is
     below the given relative_error threshold. """
-    return self.get_raw_stat('kcoll', relative_error, max_sims)[0]
-  def get_prob(self, relative_error = 0.50, max_sims = 5000):
+    return self.get_raw_stat('kcoll', relative_error, max_sims, **kwargs)[0]
+  def get_prob(self, relative_error = 0.50, max_sims = 5000, **kwargs):
     """ Returns the fraction of Multistrand trajectories that ended
     in the product states given to this Stats object. This may not be
     a meaningful value. Additional simulations are run until the fractional
     error is below the given relative_error threshold. """
-    return self.get_raw_stat('prob', relative_error, max_sims)[0]
+    return self.get_raw_stat('prob', relative_error, max_sims, **kwargs)[0]
 
-  def get_reduced_k1_error(self, relative_error = 0.50, max_sims = 5000):
+  def get_reduced_k1_error(self, relative_error = 0.50, max_sims = 5000, **kwargs):
     """ Returns the standard error on the net k1 value """
-    return self._get_reduced_k1_stats(relative_error, max_sims)[1]
-  def get_k1_error(self, relative_error = 0.50, max_sims = 5000):
+    return self._get_reduced_k1_stats(relative_error, max_sims, **kwargs)[1]
+  def get_k1_error(self, relative_error = 0.50, max_sims = 5000, **kwargs):
     """ Returns the standard error on the raw k1 value """
-    return self.get_raw_stat('k1', relative_error, max_sims)[1]
-  def get_k2_error(self, relative_error = 0.50, max_sims = 5000):
+    return self.get_raw_stat('k1', relative_error, max_sims, **kwargs)[1]
+  def get_k2_error(self, relative_error = 0.50, max_sims = 5000, **kwargs):
     """ Returns the standard error on k2 """
     if len(self.reactants) > len(self.products):
       print "WARNING: k2 rates are currently not correctly computed for reactions that don't end with a dissociation reaction"
-    return self.get_raw_stat('k2', relative_error, max_sims)[1]
-  def get_kcoll_error(self, relative_error = 0.50, max_sims = 5000):
+    return self.get_raw_stat('k2', relative_error, max_sims, **kwargs)[1]
+  def get_kcoll_error(self, relative_error = 0.50, max_sims = 5000, **kwargs):
     """ Returns the standard error on kcoll """
-    return self.get_raw_stat('kcoll', relative_error, max_sims)[1]
-  def get_prob_error(self, relative_error = 0.50, max_sims = 5000):
+    return self.get_raw_stat('kcoll', relative_error, max_sims, **kwargs)[1]
+  def get_prob_error(self, relative_error = 0.50, max_sims = 5000, **kwargs):
     """ Returns the standard error on the probability """
-    return self.get_raw_stat('prob', relative_error, max_sims)[1]
+    return self.get_raw_stat('prob', relative_error, max_sims, **kwargs)[1]
 
   def get_simulation_data(self):
     return self.multijob.get_simulation_data()
@@ -128,12 +128,12 @@ class RestingSetRxnStats(object):
   def get_num_sims(self):
     return self.get_multistrandjob().total_sims
     
-  def get_raw_stat(self, stat, relative_error, max_sims):
+  def get_raw_stat(self, stat, relative_error, max_sims, **kwargs):
     """ General function to reduce the error on the given statistic
     to below the given threshold and return the value and standard
     error of the statistic. """
     # Reduce error to threshold
-    self.multijob.reduce_error_to(relative_error, max_sims, reaction = self.multijob_tag, stat = stat)
+    self.multijob.reduce_error_to(relative_error, max_sims, reaction = self.multijob_tag, stat = stat, **kwargs)
     # Calculate and return statistic
     val = self.multijob.get_statistic(self.multijob_tag, stat)
     error = self.multijob.get_statistic_error(self.multijob_tag, stat)
@@ -194,25 +194,25 @@ class RestingSetStats(object):
     self.inter_rxns = []
     self.spurious_rxns = []
     
-  def get_conformation_prob(self, complex_name, relative_error = 0.50, max_sims = 100000):
+  def get_conformation_prob(self, complex_name, relative_error = 0.50, max_sims = 100000, **kwargs):
     """ Returns the probability and probability error
     of the given conformation based on the current number of samples.
     Use None as a complex name to get the probability of
     conformations that do not match up with any of the expected
     conformations. """
-    self.sampler.reduce_error_to(relative_error, max_sims, complex_name)
+    self.sampler.reduce_error_to(relative_error, max_sims, complex_name, **kwargs)
     prob = self.sampler.get_complex_prob(complex_name)
     return prob
-  def get_conformation_prob_error(self, complex_name, relative_error = 0.50, max_sims = 100000):
-    self.sampler.reduce_error_to(relative_error, max_sims, complex_name)
+  def get_conformation_prob_error(self, complex_name, relative_error = 0.50, max_sims = 100000, **kwargs):
+    self.sampler.reduce_error_to(relative_error, max_sims, complex_name, **kwargs)
     error = self.sampler.get_complex_prob_error(complex_name)
     return error
-  def get_conformation_probs(self, relative_error = 0.50, max_sims = 100000):
+  def get_conformation_probs(self, relative_error = 0.50, max_sims = 100000, **kwargs):
     """ Returns the probability and probability error for all
     conformations in the resting set as a dictionary. """
     names = [c.name for c in self.restingset.complexes] + [None]
     for n in names:
-      self.sampler.reduce_error_to(relative_error, max_sims, n)
+      self.sampler.reduce_error_to(relative_error, max_sims, n, **kwargs)
     return {name: self.get_conformation_prob(name, max_sims = 0) for name in names}
   def get_similarity_threshold(self):
     return self.sampler.similarity_threshold
