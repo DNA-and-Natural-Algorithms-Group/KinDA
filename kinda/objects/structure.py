@@ -243,3 +243,5 @@ class Structure(object):
   def __repr__(self):
     return self.to_dotparen()
     
+  def __eq__(self, other):
+    return self.to_dotparen() == other.to_dotparen()
