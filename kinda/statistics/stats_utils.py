@@ -16,6 +16,8 @@ import sys
 
 import itertools as it
 
+import numpy as np
+
 from .. import objects as dna
 from .. import options
 from ..simulation.multistrandjob import FirstStepModeJob
@@ -421,18 +423,19 @@ def export_data(sstats, filepath):
     for c in rs.complexes:
       rsstats_to_dict[rs_to_id[rs]][complex_to_id[c]] = {
         'prob': '{0} +/- {1}'.format(stats.get_conformation_prob(c.name, 1, max_sims=0), stats.get_conformation_prob_error(c.name, max_sims=0)),
-        'similarity_data': stats.get_conformation_prob_data(c.name)
+        'similarity_data': list(stats.get_conformation_prob_data(c.name))
       }
 
   rsrxnstats_to_dict = {}
   for rsrxn in rs_reactions:
     stats = sstats.get_stats(rsrxn)
+    sim_data = {key: list(d) for key,d in stats.get_simulation_data().iteritems()}
     rsrxnstats_to_dict[rsrxn_to_id[rsrxn]] = {
       'prob': '{0} +/- {1}'.format(stats.get_prob(1, max_sims = 0), stats.get_prob_error(max_sims=0)),
       'kcoll': '{0} +/- {1}'.format(stats.get_kcoll(1, max_sims = 0), stats.get_kcoll_error(max_sims=0)),
       'k1': '{0} +/- {1}'.format(stats.get_k1(1, max_sims = 0), stats.get_k1_error(max_sims=0)),
       'k2': '{0} +/- {1}'.format(stats.get_k2(1, max_sims = 0), stats.get_k2_error(max_sims=0)),
-      'simulation_data': stats.get_simulation_data(),
+      'simulation_data': sim_data,
       'tag': stats.multijob_tag
     }
 
@@ -494,7 +497,7 @@ def import_data(filepath):
     rs_reactions[rsrxn_id] = dna.RestingSetReaction(name = data['name'], reactants = reactants, products = products)
     
   from .. import kinda
-  sstats = kinda.KinDA(complexes = complexes.values(), restingsets = restingsets.values(), detailed_reactions = reactions.values(), condensed_reactions = rs_reactions.values(), enumeration = False)
+  sstats = kinda.System(complexes = complexes.values(), restingsets = restingsets.values(), detailed_reactions = reactions.values(), condensed_reactions = rs_reactions.values(), enumeration = False)
   
   for rs_id, data in sstats_dict['resting-set-stats'].iteritems():
     stats = sstats.get_stats(restingsets[rs_id])
@@ -508,10 +511,10 @@ def import_data(filepath):
         threshold = val
       else:
         c = complexes[key]
-        nupackjob.set_complex_prob_data(c.name, val['similarity_data'])
+        nupackjob.set_complex_prob_data(c.name, np.array(val['similarity_data']))
         num_sims = len(val['similarity_data'])
     nupackjob.total_sims = num_sims
-    stats.set_similarity_threshold(val)
+    stats.set_similarity_threshold(threshold)
 
   for rsrxn_id, data in sstats_dict['resting-set-reaction-stats'].iteritems():
     stats = sstats.get_stats(rs_reactions[rsrxn_id])
@@ -521,7 +524,8 @@ def import_data(filepath):
     multijob = stats.get_multistrandjob()
     stats.multijob_tag = data['tag']
     num_sims = len(data['simulation_data']['tags'])
-    multijob.set_simulation_data(data['simulation_data'])
+    sim_data = {key:np.array(d) for key,d in data['simulation_data'].iteritems()}
+    multijob.set_simulation_data(sim_data)
     multijob.total_sims = num_sims
     
   return sstats

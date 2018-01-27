@@ -8,6 +8,7 @@
 
 import sys
 import math
+import numpy as np
 
 from ..objects import utils, Complex
 from .. import nupack, options
@@ -39,13 +40,13 @@ class NupackSampleJob(object):
     self._complex_counts = [0] * len(self._complex_tags)
     
     # Data structure for storing raw sampling data
-    self._data = {tag: [] for tag in self._complex_tags if tag is not None}
+    self._data = {tag: np.array([]) for tag in self._complex_tags if tag is not None}
+
+    self.total_sims = 0
 
     # Set similarity threshold, using default value in options.py if none specified
     if similarity_threshold == None:  similarity_threshold = options.kinda_params['loose_complex_similarity']
     self.set_similarity_threshold(similarity_threshold)
-
-    self.total_sims = 0
 
   @property
   def restingset(self):
@@ -90,13 +91,13 @@ class NupackSampleJob(object):
     """ Returns raw sampling data for the given complex_name.
     Data is returned as a list consisting of float values, where each float value is 1 minus the
     maximum fractional defect for any domain in that sampled secondary structure. """
-    return self._data[complex_name][:]
+    return self._data[complex_name]
   def set_complex_prob_data(self, complex_name, data):
     """ Set the raw sampling data for the given complex_name.
     Should be used only when importing an old KinDA session to restore state. """
-    self._data[complex_name] = data[:]
+    self._data[complex_name] = np.array(data)
 
-  def get_num_sims():
+  def get_num_sims(self):
     """ Returns the total number of sampled secondary structures. """
     return self.total_sims
 
@@ -111,18 +112,16 @@ class NupackSampleJob(object):
 
     ## Recalculate complex counts
     self._complex_counts = [0] * len(self._complex_tags)
-    all_similarities = []
+    spurious_similarities = np.full(self.total_sims, True)
     for c in self.restingset.complexes:
       similarities = self._data[c.name]
-      num_similar = map(lambda v: v >= self.similarity_threshold, similarities).count(True)
+      num_similar = np.sum(similarities >= self.similarity_threshold)
       self._complex_counts[self.get_complex_index(c.name)] = num_similar
-      all_similarities.append(similarities)
+      spurious_similarities *= similarities < self.similarity_threshold
 
     ## Update complex counts
     spurious_idx = self.get_complex_index(None)
-    for complex_similarities in zip(*all_similarities):
-      if all(map(lambda v: v < self.similarity_threshold, complex_similarities)):
-        self._complex_counts[spurious_idx] += 1
+    self._complex_counts[spurious_idx] = np.sum(spurious_similarities)
 
   def sample(self, num_samples):
     """ Queries Nupack for num_samples secondary structures, sampled from the Boltzmann distribution
@@ -151,22 +150,20 @@ class NupackSampleJob(object):
 
     ## For each complex in the resting set, add the number of sampled secondary structures
     ## that satisfy the similarity threshold to the running complex count.
-    all_similarities = []
+    spurious_similarities = np.full(len(sampled), True)
     for c in self.restingset.complexes:
-      similarities = [1-utils.max_domain_defect(s, c.structure) for s in sampled]
-      num_similar = map(lambda v: v >= self.similarity_threshold, similarities).count(True)
+      similarities = np.array([1-utils.max_domain_defect(s, c.structure) for s in sampled])
+      num_similar = np.sum(similarities >= self.similarity_threshold)
       self._complex_counts[self.get_complex_index(c.name)] += num_similar
 
-      self._data[c.name].extend(similarities)
-      all_similarities.append(similarities)
+      self._data[c.name] = np.concatenate((self._data[c.name], similarities))
+      spurious_similarities *= similarities < self.similarity_threshold
 
     ## Update complex count for the spurious complex
     ## A conformation is considered spurious if it does not satisfy the similarity threshold
     ## for any of the predicted conformations in the resting set.
     spurious_idx = self.get_complex_index(None)
-    for complex_similarities in zip(*all_similarities):
-      if all(map(lambda v: v < self.similarity_threshold, complex_similarities)):
-        self._complex_counts[spurious_idx] += 1
+    self._complex_counts[spurious_idx] += np.sum(spurious_similarities)
         
     ## Update running count of number of samples
     self.total_sims += len(sampled)

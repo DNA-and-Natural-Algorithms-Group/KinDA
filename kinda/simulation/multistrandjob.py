@@ -6,8 +6,9 @@
 # and processing data relevant to each mode.
 
 import math
-
 import multiprocessing, signal
+
+import numpy as np
 
 # Import Multistrand
 import multistrand.objects as MSObjects
@@ -62,7 +63,9 @@ class MultistrandJob(object):
         'rate': (sim_utils.rate_mean, sim_utils.rate_std, sim_utils.rate_error)
     }
 
-    self._ms_results = {'tags': [], 'times': []}
+    self._tag_id_dict = {None: 0, 'overall': 1}
+    self._ms_results = {'tags': np.array([]), 'times': np.array([])}
+    self._ms_results_buff = {'tags': np.array([]), 'times': np.array([])}
 
     self.total_sims = 0
 
@@ -121,9 +124,9 @@ class MultistrandJob(object):
     return options_dict
     
   def get_statistic(self, reaction, stat = 'rate'):
-    return self._stats_funcs[stat][0](reaction, self._ms_results)
+    return self._stats_funcs[stat][0](self._tag_id_dict[reaction], self._ms_results)
   def get_statistic_error(self, reaction, stat = 'rate'):
-    return self._stats_funcs[stat][2](reaction, self._ms_results)
+    return self._stats_funcs[stat][2](self._tag_id_dict[reaction], self._ms_results)
 
   def get_simulation_data(self):
     return self._ms_results
@@ -166,7 +169,7 @@ class MultistrandJob(object):
     if sigint_handler is None:  sigint_handler = signal.SIG_DFL
     signal.signal(signal.SIGINT, sigint_handler)
 
-    it = p.imap_unordered(run_sims_global, [(self, 2)] * num_sims)
+    it = p.imap_unordered(run_sims_global, [(self, 1)] * num_sims)
     p.close()
     
     try:
@@ -198,23 +201,32 @@ class MultistrandJob(object):
 
       status_func(sims_completed)
 
+  def preallocate_batch(self, batch_size):
+    self._ms_results_buff['tags'].resize(self.total_sims + batch_size, refcheck=False)
+    self._ms_results_buff['times'].resize(self.total_sims + batch_size, refcheck=False)
+
   def process_results(self, ms_options):
     results = ms_options.interface.results
+    n = len(results)
+
     times = [r.time for r in results]
+    tags = [self._tag_id_dict['overall']]*n
 
-    self._ms_results['tags'].extend([('overall',)*len(times)])
-    self._ms_results['times'].extend(times)
+    self._ms_results_buff['tags'][self.total_sims:self.total_sims+n] = tags
+    self._ms_results_buff['times'][self.total_sims:self.total_sims+n] = times
 
-    self.total_sims = self.total_sims + len(results)
+    self.total_sims = self.total_sims + n
+    for k in self._ms_results:
+      self._ms_results[k] = self._ms_results_buff[k][:self.total_sims]
 
   def reduce_error_to(self, rel_goal, max_sims, reaction = 'overall', stat = 'rate', init_batch_size = 50, min_batch_size = 50, max_batch_size = 500):
     """Runs simulations to reduce the error to rel_goal*mean or until max_sims is reached."""
     def status_func(batch_sims_done):
       table_update_func([calc_mean(), calc_error(), goal, "", "%d/%d"%(batch_sims_done,num_trials), "%d/%d"%(num_sims+batch_sims_done,num_sims+exp_add_sims), str(100*(num_sims+batch_sims_done)/(num_sims+exp_add_sims))+"%"])
     def calc_mean():
-      return self._stats_funcs[stat][0](reaction, self._ms_results)
+      return self._stats_funcs[stat][0](self._tag_id_dict[reaction], self._ms_results)
     def calc_error():  
-      return self._stats_funcs[stat][2](reaction, self._ms_results)
+      return self._stats_funcs[stat][2](self._tag_id_dict[reaction], self._ms_results)
 
     num_sims = 0
     error = calc_error()
@@ -244,6 +256,7 @@ class MultistrandJob(object):
         exp_add_sims = int(self.total_sims * (reduction**2 - 1) + 1)
         num_trials = max(min(exp_add_sims, max_batch_size, max_sims - num_sims, self.total_sims + 1), min_batch_size)
         
+      self.preallocate_batch(num_trials)
       self.run_simulations(num_trials, sims_per_update = 1, status_func = status_func)
       status_func(num_trials)
 
@@ -265,20 +278,29 @@ class FirstPassageTimeModeJob(MultistrandJob):
                                                   **kargs)
       
     self.tags = [sc.tag for sc in self._ms_options_dict['stop_conditions']]
+    self._tag_id_dict = {t:i for i,t in zip(range(1,len(self.tags)+1), sorted(self.tags))}
+    self._tag_id_dict[None] = 0
   
   def process_results(self, ms_options):
     results = ms_options.interface.results
+    n = len(results)
     
-    tags = [('overall', x.tag) if x.tag!=None else ('None',) for x in results]
+    tags = [self._tag_id_dict[r.tag] for r in results]
     times = [r.time for r in results]
-    self._ms_results['tags'].extend(tags)
-    self._ms_results['times'].extend(times)
 
-    self.total_sims = self.total_sims + len(results)
+    start_ind, end_ind = self.total_sims, self.total_sims+n
+    self._ms_results_buff['tags'][start_ind:end_ind] = tags
+    self._ms_results_buff['times'][start_ind:end_ind] = times
+
+    self.total_sims = self.total_sims + n
+    for k in self._ms_results:
+      self._ms_results[k] = self._ms_results_buff[k][:self.total_sims]
       
       
 class TransitionModeJob(MultistrandJob):
-  
+  ## Warning: this class is largely untested  
+
+
   def __init__(self, start_state, macrostates, stop_states, **kargs):
     stop_conditions = macrostates[:]
     
@@ -290,24 +312,23 @@ class TransitionModeJob(MultistrandJob):
     super(TransitionModeJob, self).__init__(start_complex, stop_conditions, TRANSITION_MODE, **kargs)
       
     self.states = [sc.tag for sc in self._ms_options_dict['stop_conditions']]
+    self._tag_id_dict = {t:i for i,t in zip(range(1,len(self.states)+1), sorted(self.states))}
+    self._tag_id_dict[None] = 0
   
   def get_statistic(self, start_states, end_states, stat = 'rate'):
     tag = self.get_tag(start_states, end_states)
-    return self._stats_funcs[stat][0](tag, self._ms_results)
+    return self._stats_funcs[stat][0](self._tag_id_dict[tag], self._ms_results)
   def get_statistic_error(self, start_states, end_states, stat = 'rate'):
     tag = self.get_tag(start_states, end_states)
-    return self._stats_funcs[stat][2](tag, self._ms_results)
+    return self._stats_funcs[stat][2](self._tag_id_dict[tag], self._ms_results)
   
   def process_results(self, ms_options):
     results = ms_options.interface.results
     transition_paths = ms_options.interface.transition_lists
     
-    tags = [('overall', r.tag) if r.tag!=None else ('None',) for r in results]
+    tags = [self._tag_id_dict[r.tag] for r in results]
     times = [r.time for r in results]
-    self._ms_results['tags'].extend(tags)
-    self._ms_results['times'].extend(times)
    
-    new_data = {}
     for path in transition_paths:
       collapsed_path = collapse_transition_path(path)
       for start, end in zip(collapsed_path[0:-1], collapsed_path[1:]):
@@ -315,10 +336,19 @@ class TransitionModeJob(MultistrandJob):
         key_start = ",".join(filter(lambda x: x[1], enumerate(start[1])))
         key_end = ",".join(filter(lambda x: x[1], enumerate(end[1])))
         key = key_start + "->" + key_end
-        self._ms_results['tags'].append(key)
-        self._ms_results['times'].append(time_diff)
+        if key not in self._tag_id_dict:  self._tag_id_dict[key] = len(self._tag_id_dict)
+        tags.append(self._tag_id_dict[key])
+        times.append(time_diff)
+
+    # Make sure there's enough space
+    self.preallocate_batch(self.total_sims+len(tags) - len(self._ms_results_buff['tags']))
+
+    self._ms_results_buff['tags'][self.total_sims:self.total_sims+len(tags)] = tags
+    self._ms_results_buff['times'][self.total_sims:self.total_sims+len(times)] = times
 
     self.total_sims += len(results)
+    for k in self._ms_results:
+      self._ms_results[k] = self._ms_results_buff[k][:self.total_sims]
     
   def collapse_transition_path(transition_path):
     """transition path is a list of the form
@@ -350,28 +380,36 @@ class FirstStepModeJob(MultistrandJob):
   
     super(FirstStepModeJob, self).__init__(start_state, stop_conditions, FIRST_STEP_MODE, **kargs)
       
-    self.tags = [sc.tag for sc in self._ms_options_dict['stop_conditions']]
-    self.tags.append("None")
+    self.tags = [None] + [sc.tag for sc in self._ms_options_dict['stop_conditions']]
+    self._tag_id_dict = {t:i for i,t in enumerate(sorted(self.tags))}
 
     self._stats_funcs['prob'] = (sim_utils.bernoulli_mean, sim_utils.bernoulli_std, sim_utils.bernoulli_error)
     self._stats_funcs['kcoll'] = (sim_utils.kcoll_mean, sim_utils.kcoll_std, sim_utils.kcoll_error)
     self._stats_funcs['k1'] = (sim_utils.k1_mean, sim_utils.k1_std, sim_utils.k1_error)
     self._stats_funcs['k2'] = (sim_utils.k2_mean, sim_utils.k2_std, sim_utils.k2_error)
 
-    self._ms_results['kcoll'] = []
-    self._ms_results['k2'] = []
+    self._ms_results['kcoll'] = np.array([])
+    self._ms_results_buff['kcoll'] = np.array([])
+
+  def preallocate_batch(self, batch_size):
+    self._ms_results_buff['tags'].resize(self.total_sims+batch_size, refcheck=False)
+    self._ms_results_buff['times'].resize(self.total_sims+batch_size, refcheck=False)
+    self._ms_results_buff['kcoll'].resize(self.total_sims+batch_size, refcheck=False)
 
   def process_results(self, ms_options):
     results = ms_options.interface.results
-    
-    tags = [('overall', r.tag) if r.tag!=None else ('None',) for r in results]
+    n=len(results)
+
+    tags = [self._tag_id_dict[r.tag] for r in results]
     times = [r.time for r in results]
     kcolls = [r.collision_rate for r in results]
-    self._ms_results['tags'].extend(tags)
-    self._ms_results['times'].extend(times)
-    self._ms_results['kcoll'].extend(kcolls)
-    self._ms_results['k2'].extend([1.0/t if t!=0 else float('inf') for t in times])
-
-    self.total_sims += len(results)
-      
     
+    assert len(self._ms_results_buff['tags']) >= self.total_sims+n
+    self._ms_results_buff['tags'][self.total_sims:self.total_sims+n] = tags
+    self._ms_results_buff['times'][self.total_sims:self.total_sims+n] = times
+    self._ms_results_buff['kcoll'][self.total_sims:self.total_sims+n] = kcolls
+
+    self.total_sims += n
+    for k in self._ms_results:
+      self._ms_results[k] = self._ms_results_buff[k][:self.total_sims]
+      
