@@ -20,7 +20,9 @@ setup(
     license=license,
     classifiers=['Programming Language :: Python :: 2'],
     test_suite='tests',
-    install_requires=['peppercornenumerator==0.5'],
+    install_requires=[
+      'peppercornenumerator==0.5',
+      'numpy'],
     dependency_links=['http://github.com/DNA-and-Natural-Algorithms-Group/peppercornenumerator/tarball/master#egg=peppercornenumerator-0.5'],
     packages=find_packages()
 )
