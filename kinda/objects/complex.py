@@ -101,11 +101,13 @@ class Complex(object):
     and stored to save time in the future. """
     if self._canonical_form is not None:  return self._canonical_form
 
+    canonical_domains = [d.name for d in self.base_domains()]
     canonical_strandlist = self.strands
     canonical_structure = self.structure
     for rot_amt in range(len(self.strands)):
       self.rotate_strands()
-      if [hash(s) for s in canonical_strandlist] > [hash(s) for s in self.strands] or canonical_strandlist==self.strands and canonical_structure.to_dotparen() > self.structure.to_dotparen():
+      if canonical_domains > [d.name for d in self.base_domains()] or canonical_strandlist==self.strands and canonical_structure.to_dotparen() > self.structure.to_dotparen():
+        canonical_domains = [d.name for d in self.base_domains()]
         canonical_strandlist = self.strands
         canonical_structure = self.structure
 
