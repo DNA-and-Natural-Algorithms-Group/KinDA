@@ -123,14 +123,10 @@ class EnumerateJob(object):
     rs_rxns_dict = dict(dna_objects['restingsetreactions'])
     rxns_dict = dict(dna_objects['reactions'])
     self._enumerated_complexes = [v for _, v in dna_objects['complexes']]
-    ## Note: the following two lines are extremely slow for some reason.
-    ##       Because they are not used by KinDA's code anymore, I'm removing them
-    ##       so that self.enumerated_slow_reactions and self.enumerated_fast_reactions
-    ##       will always return [].
-    # self._enumerated_slow_reactions = set(rxns_dict[rxn] for c in e.complexes for rxn in e.get_slow_reactions(c) if rxn in rxns_dict)
-    # self._enumerated_fast_reactions = set(rxns_dict[rxn] for c in e.complexes for rxn in e.get_fast_reactions(c))
-    self._enumerated_restingsets = [v for _, v in dna_objects['restingsets']]
-    self._condensed_reactions = set([v for _, v in dna_objects['restingsetreactions']])
+    self._enumerated_slow_reactions = set(rxns_dict[rxn] for rxn in e.reactions if rxn.rtype == 'bind21')
+    self._enumerated_fast_reactions = set(rxns_dict[rxn] for rxn in e.reactions if rxn.rtype != 'bind21')
+    self._enumerated_restingsets = set(v for _, v in dna_objects['restingsets'])
+    self._condensed_reactions = set(v for _, v in dna_objects['restingsetreactions'])
 
     ## Make sure the reverse reaction between every pair of reactants is included
     ## This is an important difference between our enumeration and Peppercorn enumeration,

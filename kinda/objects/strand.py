@@ -11,6 +11,7 @@ This module defines a simple dna `strand` object.
     A nucleic acid strand, logically composed of either `domain` objects or nucleic acid bases; physically composed of a connected sequence of nucleic acid bases.
 """
 
+import itertools as it
 
 from domain import Domain
 from sequence import Sequence
@@ -128,7 +129,11 @@ class Strand(object):
   def base_domains(self):
     """ Returns the unique list of non-composite domains that compose
     this strand."""
-    return sum([d.base_domains() for d in self._domains], [])
+    return list(self.base_domains_iter())
+  def base_domains_iter(self):
+    """ Returns an interator for the unique list of non-composite domains
+    composing this strand."""
+    return iter(based for d in self._domains for based in d.base_domains())
 
   ## (In)equality
   def __eq__(self, other):
@@ -136,16 +141,15 @@ class Strand(object):
     ## NOTE: Because Peppercorn no longer preserves strand names, this is not a reliable way to
     ## check for equality. Instead, we have to check if the list of domains is the same...
     ## Change this back if Peppercorn is modified.
-    # return self._object_type == other._object_type and self.name == other.name
-    return self._object_type == other._object_type and self.base_domains() == other.base_domains()
+    return self._object_type == other._object_type and \
+        (self.name==other.name or
+        all(a==b for a,b in it.izip_longest(self.base_domains_iter(), other.base_domains_iter(), fillvalue=None)))
   def __ne__(self, other):
     """ Returns True iff the two strands are not equal."""
     return not self.__eq__(other)
   def __hash__(self):
     """ Returns a hash value on Strands."""
-    return sum([ord(c) * pow(2,i)
-      for i, c
-      in enumerate(self._object_type + self.name)])
+    return hash(self._object_type + self.name)
   
   ## Output
   def __str__(self):

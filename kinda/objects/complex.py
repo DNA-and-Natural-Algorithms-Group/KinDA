@@ -57,6 +57,8 @@ class Complex(object):
     # Assign structure
     if 'structure' in kargs: self.structure = kargs['structure']
     else: self.structure = '+'.join(['*'*s.length for s in self.strands])
+
+    self._canonical_form = None
   
   
   ## Basic properties
@@ -78,6 +80,7 @@ class Complex(object):
     or strand-list notation. """
     self._structure = Structure(structure = new_struct,
                                 strands = self._strands)
+    self._canonical_form = None
   def bound_to(self, strand_num, index):
     """ Returns the (strand_num, index) pair of the nucleotide bound to
     the specified nucleotide, or None if the specified nucleotide
@@ -90,20 +93,32 @@ class Complex(object):
     representation. This corresponds to pseudoknottedness with this
     strand-ordering if there are no unspecified bonds in the structure."""
     return self._structure.pseudoknotted
+
+  @property
+  def canonical_form(self):
+    """ Returns a strandlist-structure pair of the complex's canonical form,
+    which can be used to compare two complexes. This is computed as needed
+    and stored to save time in the future. """
+    if self._canonical_form is not None:  return self._canonical_form
+
+    canonical_strandlist = self.strands
+    canonical_structure = self.structure
+    for rot_amt in range(len(self.strands)):
+      self.rotate_strands()
+      if [hash(s) for s in canonical_strandlist] > [hash(s) for s in self.strands] or canonical_strandlist==self.strands and canonical_structure.to_dotparen() > self.structure.to_dotparen():
+        canonical_strandlist = self.strands
+        canonical_structure = self.structure
+
+    self._canonical_form = (canonical_strandlist, canonical_structure)
+    return self._canonical_form
     
-  ## Equivalence
+    
+  ## Mutators
   def rotate_strands(self, amount = 1):
     amount = amount % len(self._strands)
     self._strands = self._strands[amount:] + self._strands[:amount]
     self._structure.rotate_strands(amount)
 
-  def equivalent_to(self, other):
-    """ Returns True if the two complexes are equivalent. Two complexes
-    are equivalent if there is a strand rotation under which the lists of
-    strands are equivalent and the structure is the same."""
-    ### This is important but non-trivial to code...
-    raise NotImplementedError("Cannot compare complexes for equivalence yet...")
-    
     
   ## DNA object hierarchy
   @property
@@ -118,29 +133,18 @@ class Complex(object):
   
   ## (In)equality
   def __eq__(self, other): 
-    """ Returns True if the two complexes have the same name. """
+    """ Returns True if the two complexes have the same canonical representation. """
     if type(self) != type(other):
       return False
-    if len(self.strands) != len(other.strands):
-      return False
-
-    for rot_amt in range(len(self.strands)):
-      if self.strands == other.strands and self.structure.to_dotparen() == other.structure.to_dotparen():
-        return True
-      self.rotate_strands()
-
+    if self.canonical_form == other.canonical_form:
+      return True
     return False
   def __ne__(self, other):
     """ Returns True if the complexes are not equal. """
     return not self.__eq__(other)
   def __hash__(self):
     """ Returns a hash value for this Complex. """
-    struct_str_list = self.structure.to_dotparen().split('+')
-    return (sum([sum([0 if c=='?' else 1 if c=='.' else 2 * pow(3,i)
-      for i, c in enumerate(struct_str)])
-      for struct_str in struct_str_list])
-      + sum([ord(c) * pow(2,i) for i, c in enumerate(self._object_type)]))
-  
+    return hash(self.canonical_form[1].to_dotparen())
   
   ## Output
   def __str__(self):

@@ -12,6 +12,8 @@
 
 ## IMPORTS
 
+import sys
+
 import itertools as it
 
 from .. import objects as dna
@@ -40,6 +42,9 @@ def make_RestingSetRxnStats(restingsets, detailed_rxns, condensed_rxns, kinda_pa
   with the same reactants share a Multistrand job object
   for improved efficiency. """
 
+  print "KinDA: Constructing RestingSetRxnStats objects...\r",
+  sys.stdout.flush()
+
   # Initialize set of spurious reactions
   spurious_rxns = set([]); # a list of all spurious reactions possible between any reactant pair
   
@@ -52,7 +57,7 @@ def make_RestingSetRxnStats(restingsets, detailed_rxns, condensed_rxns, kinda_pa
   
   # Make a Multistrand simulation job for each reactant group
   reactants_to_mjob = {}
-  for r in reactants:
+  for i, r in enumerate(reactants):
     # Group all products coming from these reactants together
     enum_prods = [list(rxn.products) for rxn in condensed_rxns if rxn.reactants_equal(r)]
 
@@ -80,6 +85,9 @@ def make_RestingSetRxnStats(restingsets, detailed_rxns, condensed_rxns, kinda_pa
     multiprocessing = kinda_params.get('multistrand_multiprocessing', True)
     job = FirstStepModeJob(r, stop_conditions, multiprocessing = multiprocessing, multistrand_params = multistrand_params)
     reactants_to_mjob[r] = job
+
+    print "KinDA: Constructing RestingSetRxnStats objects... {}%\r".format(100*i/len(reactants)),
+    sys.stdout.flush()
     
   # Create RestingSetRxnStats object for each reaction
   rxn_to_stats = {}
@@ -103,6 +111,8 @@ def make_RestingSetRxnStats(restingsets, detailed_rxns, condensed_rxns, kinda_pa
         tag = '_spurious({0})'.format(str(rxn))
     )
     rxn_to_stats[rxn] = stats
+
+  print "KinDA: Constructing RestingSetRxnStats objects... Done!"
 
   return rxn_to_stats
   
@@ -195,7 +205,6 @@ def get_spurious_products(reactants, reactions, stop_states):
 
     return strands_to_restingsets
     
-    
   # Convert to strandlist-level objects
   strandlist_reactants = hashable_state([tuple(r.strands) for r in reactants])
   strandlist_reactions = [[[hashable_strand_rotation(r.strands) for r in rxn.reactants],
@@ -224,10 +233,10 @@ def get_spurious_products(reactants, reactions, stop_states):
   spurious_states = set([])
   for state in valid_intermediates:
     spurious_states |= dissociation_spurious_states(state, valid_states)
-    
+
   # Create RestingSet objects given the strands
-  valid_objects = set(sum([list(rxn.reactants + rxn.products) for rxn in reactions], []))
-  spurious_strandlists = set(sum([list(state) for state in spurious_states], []))
+  valid_objects = set(obj for rxn in reactions for obj in rxn.reactants + rxn.products)
+  spurious_strandlists = set(obj for state in spurious_states for obj in state)
   strands_to_restingsets = create_restingsets(valid_objects, spurious_strandlists)
 
   # Convert back to RestingSet objects

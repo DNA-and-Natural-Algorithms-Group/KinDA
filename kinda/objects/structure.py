@@ -106,6 +106,9 @@ class Structure(object):
     self._strand_order = range(len(self._strands))
     
     self.structure = kargs['structure']
+
+    self._dotparen = None
+    self._strandlist = None
       
   @property
   def strands(self):
@@ -120,6 +123,9 @@ class Structure(object):
   def structure(self, struct):
     """ Sets this structure with a dot-paren string or strand-list
     representation. """
+    self._dotparen = None # reset these as they are no longer valid
+    self._strandlist = None
+
     domains_per_strand = [len(s.base_domains()) for s in self.strands]
     nucleos_per_strand = [s.length for s in self.strands]
     if isinstance(struct, list):  ## Assume strand-list notation
@@ -173,6 +179,8 @@ class Structure(object):
     If the structure does not have a valid dot-paren representation (e.g.
     because of pseudoknots), it will fail. """
     assert not self._pseudoknotted, "Cannot express pseudoknotted structure with dot-paren."
+    if self._dotparen is not None:  return self._dotparen
+
     dotparen = ""
     for strand_num, strand in enumerate(self.strands):
       for i in range(strand.length):
@@ -186,16 +194,22 @@ class Structure(object):
         else:
           dotparen += ')'
       dotparen += '+'
-    return dotparen[:-1]
+
+    self._dotparen = dotparen[:-1]
+    return self._dotparen
     
   def to_strandlist(self):
     """ Returns a representation of this structure in strand-list notation. """
+    if self._strandlist is not None:  return self._strandlist
+
     strandlist = []
     for strand_num, strand in enumerate(self.strands):
       strand_struct = []
       for i in range(strand.length):
         strand_struct.append(self.bound_to(strand_num, i))
       strandlist.append(strand_struct)
+
+    self._strandlist = strandlist
     return strandlist
     
   def check_pseudoknotted(self):
@@ -221,6 +235,8 @@ class Structure(object):
     this structure will use the new strand ordering. """
     amount = amount % len(self._strands)
     self._strand_order = self._strand_order[amount:] + self._strand_order[:amount]
+    self._dotparen = None
+    self._strandlist = None
 
   def __str__(self):
     return self.to_dotparen()
