@@ -88,7 +88,7 @@ structure Intermediate = OB + C + LB : .(+((+)).)
 The file `kinda/options.py` contains optional arguments that may be modified to change the behavior of Multistrand, Peppercorn, Nupack, and KinDA.
 
 ## Version
-0.5
+0.1
 
 ## Authors
 Joseph Berleant, Chris Berlind, and Erik Winfree

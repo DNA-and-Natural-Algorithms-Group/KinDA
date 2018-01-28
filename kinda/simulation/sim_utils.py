@@ -184,7 +184,9 @@ def k2_error(success_tag, ms_results):
   success_kcolls = np.ma.array(ms_results['kcoll'], mask=(ms_results['tags']!=success_tag))
   success_t2s = np.ma.array(ms_results['times'], mask=(ms_results['tags']!=success_tag))
   n_s = np.sum(~success_t2s.mask)
-  if n_s > 0:
-    return math.sqrt(n_s) / np.sum(success_t2s)
+  if n_s > 1:
+    time_mean = np.sum(success_kcolls*success_t2s) / np.sum(success_kcolls)
+    time_std = math.sqrt(np.sum(success_kcolls * (success_t2s - time_mean)**2) / (np.sum(success_kcolls)-1))
+    return time_std / math.sqrt(n_s)
   else:
     return float('inf')
