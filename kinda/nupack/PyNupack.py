@@ -539,8 +539,8 @@ def sample(count, strands, T, material, dangles):
   f.close()
   os.remove(tmp.name) # was created by us [NamedTemporaryFile] and
                         # used by the sampler, thus we need to clean it up.
-  if not "NUPACK 3.0" in lines[0]:
+  if not "NUPACK 3." in lines[0]:
     raise IOError("Boltzmann sample function is not up to date. NUPACK 3.0.2 or greater needed.")
 
-  sampled = [l.strip() for l in lines[14:]]
+  sampled = [l.strip() for l in lines[-count:]]
   return sampled
