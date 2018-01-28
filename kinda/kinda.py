@@ -67,10 +67,10 @@ class System(object):
       )
 
       # Incorporate enumerated data
-      self._complexes |= set(self._enum_job.get_complexes())
-      self._restingsets |= set(self._enum_job.get_restingsets())
-      self._detailed_reactions |= set(self._enum_job.get_reactions())
-      self._condensed_reactions |= set(self._enum_job.get_restingset_reactions())
+      self._complexes = set(self._enum_job.get_complexes())
+      self._restingsets = set(self._enum_job.get_restingsets())
+      self._detailed_reactions = set(self._enum_job.get_reactions())
+      self._condensed_reactions = set(self._enum_job.get_restingset_reactions())
     else:
       self._enum_job = None
 

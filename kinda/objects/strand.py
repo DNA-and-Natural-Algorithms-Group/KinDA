@@ -141,15 +141,13 @@ class Strand(object):
     ## NOTE: Because Peppercorn no longer preserves strand names, this is not a reliable way to
     ## check for equality. Instead, we have to check if the list of domains is the same...
     ## Change this back if Peppercorn is modified.
-    return self._object_type == other._object_type and \
-        (self.name==other.name or
-        all(a==b for a,b in it.izip_longest(self.base_domains_iter(), other.base_domains_iter(), fillvalue=None)))
+    return self._object_type == other._object_type and self.base_domains()==other.base_domains()
   def __ne__(self, other):
     """ Returns True iff the two strands are not equal."""
     return not self.__eq__(other)
   def __hash__(self):
     """ Returns a hash value on Strands."""
-    return hash(self._object_type + self.name)
+    return hash(self._object_type + ''.join(d.name for d in self.base_domains()))
   
   ## Output
   def __str__(self):
