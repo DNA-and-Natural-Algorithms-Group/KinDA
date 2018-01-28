@@ -187,6 +187,7 @@ def k2_error(success_tag, ms_results):
   if n_s > 1:
     time_mean = np.sum(success_kcolls*success_t2s) / np.sum(success_kcolls)
     time_std = math.sqrt(np.sum(success_kcolls * (success_t2s - time_mean)**2) / (np.sum(success_kcolls)-1))
-    return time_std / math.sqrt(n_s)
+    time_err = time_std / math.sqrt(n_s)
+    return time_err / time_mean**2
   else:
     return float('inf')

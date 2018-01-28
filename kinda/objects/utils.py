@@ -109,9 +109,9 @@ def domain_defect(complex, strand_num, domain_num, structure):
   The defect is calculated as a fraction of the domain's length."""
   from structure import Structure
   
-  strandlist = structure.structure[:]
+  strandlist = [lst[:] for lst in structure.to_strandlist()]
   strands = structure.strands
-  
+
   domain_start = sum([d.length
                         for d
                         in strands[strand_num].domains[:domain_num]])
