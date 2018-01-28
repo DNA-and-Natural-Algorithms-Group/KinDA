@@ -219,7 +219,7 @@ class MultistrandJob(object):
     for k in self._ms_results:
       self._ms_results[k] = self._ms_results_buff[k][:self.total_sims]
 
-  def reduce_error_to(self, rel_goal, max_sims, reaction = 'overall', stat = 'rate', init_batch_size = 50, min_batch_size = 50, max_batch_size = 500):
+  def reduce_error_to(self, rel_goal, max_sims, reaction = 'overall', stat = 'rate', init_batch_size = 50, min_batch_size = 50, max_batch_size = 500, sims_per_update = 1):
     """Runs simulations to reduce the error to rel_goal*mean or until max_sims is reached."""
     def status_func(batch_sims_done):
       table_update_func([calc_mean(), calc_error(), goal, "", "%d/%d"%(batch_sims_done,num_trials), "%d/%d"%(num_sims+batch_sims_done,num_sims+exp_add_sims), str(100*(num_sims+batch_sims_done)/(num_sims+exp_add_sims))+"%"])
@@ -257,7 +257,7 @@ class MultistrandJob(object):
         num_trials = max(min(exp_add_sims, max_batch_size, max_sims - num_sims, self.total_sims + 1), min_batch_size)
         
       self.preallocate_batch(num_trials)
-      self.run_simulations(num_trials, sims_per_update = 1, status_func = status_func)
+      self.run_simulations(num_trials, sims_per_update = sims_per_update, status_func = status_func)
       status_func(num_trials)
 
       num_sims += num_trials

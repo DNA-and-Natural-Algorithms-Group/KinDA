@@ -35,8 +35,8 @@ peppercorn_params = {
 #  'max_complex_size': 6,
 #  'max_reaction_count': 1000,
 #  'max_complex_count': 200,
-  'release_cutoff_1_1': 8,
-  'release_cutoff_1_N': 8
+#  'release_cutoff_1_1': 8,
+#  'release_cutoff_1_N': 8
 #  'remote_migration': True,
 #  'max_helix_migration': True
 }
