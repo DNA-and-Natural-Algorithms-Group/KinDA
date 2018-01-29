@@ -139,14 +139,14 @@ class MultistrandJob(object):
     """ Creates a fresh MS Options object using the arguments in self._ms_options_dict. """
     return MSOptions(**dict(self._ms_options_dict, num_simulations = num_sims))
 
-  def run_simulations(self, num_sims, sims_per_update = 1, status_func = lambda:None):
+  def run_simulations(self, num_sims, sims_per_update = 1, sims_per_worker=1, status_func = lambda:None):
     ## Run simulations using multiprocessing if specified
     if self._multiprocessing:
-      self.run_sims_multiprocessing(num_sims, sims_per_update, status_func)
+      self.run_sims_multiprocessing(num_sims, sims_per_update, sims_per_worker, status_func)
     else:
       self.run_sims_singleprocessing(num_sims, sims_per_update, status_func)
 
-  def run_sims_multiprocessing(self, num_sims, sims_per_update = 1, status_func = lambda:None):
+  def run_sims_multiprocessing(self, num_sims, sims_per_update = 1, sims_per_worker = 1, status_func = lambda:None):
     """
     Sets up a multiprocessing.Pool object to run simulations concurrently over multiple subprocesses.
     The Pool object has number of worker processes equal to the number of cpus, as given by
@@ -170,7 +170,7 @@ class MultistrandJob(object):
     if sigint_handler is None:  sigint_handler = signal.SIG_DFL
     signal.signal(signal.SIGINT, sigint_handler)
 
-    it = p.imap_unordered(run_sims_global, [(self, 1)] * num_sims)
+    it = p.imap_unordered(run_sims_global, [(self, sims_per_worker)] * num_sims)
     p.close()
     
     try:
@@ -220,7 +220,7 @@ class MultistrandJob(object):
     for k in self._ms_results:
       self._ms_results[k] = self._ms_results_buff[k][:self.total_sims]
 
-  def reduce_error_to(self, rel_goal, max_sims, reaction = 'overall', stat = 'rate', init_batch_size = 50, min_batch_size = 50, max_batch_size = 500, sims_per_update = 1):
+  def reduce_error_to(self, rel_goal, max_sims, reaction = 'overall', stat = 'rate', init_batch_size = 50, min_batch_size = 50, max_batch_size = 500, sims_per_update = 1, sims_per_worker = 1):
     """Runs simulations to reduce the error to rel_goal*mean or until max_sims is reached."""
     def status_func(batch_sims_done):
       table_update_func([calc_mean(), calc_error(), goal, "", "%d/%d"%(batch_sims_done,num_trials), "%d/%d"%(num_sims+batch_sims_done,num_sims+exp_add_sims), str(100*(num_sims+batch_sims_done)/(num_sims+exp_add_sims))+"%"])
@@ -258,7 +258,7 @@ class MultistrandJob(object):
         num_trials = max(min(exp_add_sims, max_batch_size, max_sims - num_sims, self.total_sims + 1), min_batch_size)
         
       self.preallocate_batch(num_trials)
-      self.run_simulations(num_trials, sims_per_update = sims_per_update, status_func = status_func)
+      self.run_simulations(num_trials, sims_per_update = sims_per_update, sims_per_worker = sims_per_worker, status_func = status_func)
       status_func(num_trials)
 
       num_sims += num_trials
