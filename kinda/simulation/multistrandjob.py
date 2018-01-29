@@ -170,7 +170,9 @@ class MultistrandJob(object):
     if sigint_handler is None:  sigint_handler = signal.SIG_DFL
     signal.signal(signal.SIGINT, sigint_handler)
 
-    it = p.imap_unordered(run_sims_global, [(self, sims_per_worker)] * num_sims)
+    args = [(self, sims_per_worker)] * (num_sims/sims_per_worker)
+    if num_sims%sims_per_worker > 0: [(self, num_sims%sim_per_worker)]
+    it = p.imap_unordered(run_sims_global, args)
     p.close()
     
     try:
