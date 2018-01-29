@@ -132,7 +132,7 @@ class MultistrandJob(object):
     return self._ms_results
   def set_simulation_data(self, ms_results):
     self._ms_results = ms_results
-    self._ms_results_buff = ms_results
+    self._ms_results_buff = {k:np.array(v) for k,v in ms_results.iteritems()}
   
 
   def create_ms_options(self, num_sims):
