@@ -127,12 +127,8 @@ def k1_mean(success_tag, ms_results):
   the bimolecular step of a resting-set reaction. """
   success_kcolls = np.ma.array(ms_results['kcoll'], mask=(ms_results['tags']!=success_tag))
   n = len(success_kcolls)
-  n_s = np.sum(~success_kcolls.mask)
   tags = ms_results['tags']
-  if n_s >= 1:
-    return success_kcolls.mean() * (n_s + 1.0) / (n + 2.0)
-  else:
-    return float('nan')
+  return np.sum(success_kcolls) / (n + 2.0)
 def k1_std(success_tag, ms_results):
   """ The standard deviation for k1 is the
   same as the standard error reported by k1_error() """
@@ -143,9 +139,10 @@ def k1_error(success_tag, ms_results):
   success_kcolls = np.ma.array(ms_results['kcoll'], mask=(ms_results['tags']!=success_tag))
   n = len(success_kcolls)
   n_s = np.sum(~success_kcolls.mask)
-  if n_s > 1:
+  if n_s > 0:
     gamma = np.sum(success_kcolls)
-    return gamma * math.sqrt((n_s+1.) / (n_s * (n+2.)) * ( (n_s+2.)/((n_s-1.)*(n+3.)) - (n_s+1.)/(n_s*(n+2.)) ))
+    print gamma, n, n_s
+    return gamma/(n+2.) * math.sqrt((2.*n - n_s + 1.) / (n_s * (n+3.)))
   else:
     return float('inf')
 

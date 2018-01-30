@@ -180,7 +180,7 @@ class MultistrandJob(object):
       for res in it:
         self.process_results(res)
 
-        sims_completed += 1
+        sims_completed += len(res.interface.results)
         if sims_completed % sims_per_update == 0:
           status_func(sims_completed)
     except KeyboardInterrupt:

@@ -11,6 +11,8 @@
 
 ## IMPORTS
 
+import math
+
 from ..simulation.multistrandjob import FirstPassageTimeModeJob, \
     TransitionModeJob, FirstStepModeJob
 from ..simulation.nupackjob import NupackSampleJob
@@ -268,7 +270,8 @@ class RestingSetStats(object):
       if c_max == None:
         return 0.0
       conc *= c_max
-    return conc * rxn.get_k1(relative_error, max_sims = max_sims) / self.c_max
+    dep = conc * rxn.get_k1(relative_error, max_sims = max_sims) / self.c_max
+    return dep if not math.isnan(dep) else 0.0
   def get_permanent_depletion(self, relative_error = 0.5, max_sims = 500):
     """ Returns the rate in /s at which the given resting set is depleted due to spurious reactions """
     if self.c_max == None or self.c_max == 0:
