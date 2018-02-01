@@ -183,6 +183,7 @@ class RestingSetStats(object):
     self.sampler = NupackSampleJob(
         restingset,
         similarity_threshold = kinda_params.get('similarity_threshold', None),
+        multiprocessing = kinda_params.get('nupack_multiprocessing', True),
         nupack_params = nupack_params
     )
     

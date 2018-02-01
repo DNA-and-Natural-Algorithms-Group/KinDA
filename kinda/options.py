@@ -3,6 +3,7 @@ kinda_params = {
   'loose_complex_similarity': 0.7,
   'material': 'DNA',
   'multistrand_multiprocessing': True,
+  'nupack_multiprocessing': True,
   'max_concentration': 1e-7  # Provides a default max concentration for each resting set, used for system-level scores
 }
 

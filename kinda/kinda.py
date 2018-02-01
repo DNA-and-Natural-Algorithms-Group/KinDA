@@ -3,7 +3,6 @@
 #
 # Defines the System class, encapsulating statistics calculations for DNA strand-displacement system properties.
 
-
 ## IMPORTS
 
 from .statistics import stats_utils

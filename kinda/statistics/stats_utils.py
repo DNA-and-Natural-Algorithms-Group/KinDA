@@ -123,12 +123,14 @@ def get_spurious_products(reactants, reactions, stop_states):
   when interacting complexes have deviated so much from expected
   trajectories that any calculated reaction times actually
   include undesired interactions.
-  This is done here by calculating all ways of combining the
-  (at most 2) reactants and removing ones that are expected.
   Complexes along expected reaction trajectories are split up
   in all possible ways, and expected complexes are disregarded.
   This produces all unexpected complexes produced 'one step' away
-  from the expected reaction trajectories."""
+  from the expected reaction trajectories. Note that complexes 
+  produced by binding of the two reactants in unexpected ways
+  are not included as spurious unless they dissociate into an
+  unenumerated strand-level complex. Otherwise, the reaction will be
+  classified as unproductive. """
   def hashable_strand_rotation(strands):
     index = 0
     poss_starts = range(len(strands))

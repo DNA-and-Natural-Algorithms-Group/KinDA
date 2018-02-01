@@ -141,7 +141,6 @@ def k1_error(success_tag, ms_results):
   n_s = np.sum(~success_kcolls.mask)
   if n_s > 0:
     gamma = np.sum(success_kcolls)
-    print gamma, n, n_s
     return gamma/(n+2.) * math.sqrt((2.*n - n_s + 1.) / (n_s * (n+3.)))
   else:
     return float('inf')
