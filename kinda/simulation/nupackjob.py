@@ -79,7 +79,7 @@ class NupackSampleJob(object):
     return self._restingset
   @property
   def complex_names(self):
-    return sorted([c.name for c in restingset.complexes], key = lambda k: self._complex_tags[k])
+    return sorted([c.name for c in self.restingset.complexes], key = lambda k: self._complex_tags[k])
   @property
   def complex_counts(self):
     return self._complex_counts[:]
@@ -136,18 +136,8 @@ class NupackSampleJob(object):
     ## Change internal similarity threshold
     self.similarity_threshold = similarity_threshold
 
-    ## Recalculate complex counts
-    self._complex_counts = [0] * len(self._complex_tags)
-    spurious_similarities = np.full(self.total_sims, True)
-    for c in self.restingset.complexes:
-      similarities = self._data[c.name]
-      num_similar = np.sum(similarities >= self.similarity_threshold)
-      self._complex_counts[self.get_complex_index(c.name)] = num_similar
-      spurious_similarities *= similarities < self.similarity_threshold
-
-    ## Update complex counts
-    spurious_idx = self.get_complex_index(None)
-    self._complex_counts[spurious_idx] = np.sum(spurious_similarities)
+    ## Recalculate complex counts for new similarity threshold
+    self.update_complex_counts()
 
   def sample(self, **params):
     """ Calls sample_multiprocessing or sample_singleprocessing depending on the value of
@@ -231,7 +221,21 @@ class NupackSampleJob(object):
         
     ## Update running count of number of samples
     self.total_sims += len(sampled)
-        
+
+  def update_complex_counts(self):
+    ## Recalculate complex counts
+    self._complex_counts = [0] * len(self._complex_tags)
+    spurious_similarities = np.full(self.total_sims, True)
+    for c in self.restingset.complexes:
+      similarities = self._data[c.name]
+      num_similar = np.sum(similarities >= self.similarity_threshold)
+      self._complex_counts[self.get_complex_index(c.name)] = num_similar
+      spurious_similarities *= similarities < self.similarity_threshold
+
+    ## Update complex counts
+    spurious_idx = self.get_complex_index(None)
+    self._complex_counts[spurious_idx] = np.sum(spurious_similarities)
+      
     
   def reduce_error_to(self, rel_goal, max_sims, complex_name = None, init_batch_size = 50, min_batch_size = 50, max_batch_size = 1000):
     """ Continue querying Nupack for secondary structures sampled from the Boltzmann distribution
@@ -249,12 +253,7 @@ class NupackSampleJob(object):
       else:
         update_func([complex_name, prob, error, goal, "", "%d/%d"%(num_sims + batch_sims_done,num_sims+exp_add_sims), str(100*(num_sims+batch_sims_done)/(num_sims+exp_add_sims))+'%']) 
       
-    if self._multiprocessing:
-      print '[MULTIPROCESSING ON] (over %d cores)'%multiprocessing.cpu_count()
-    else:
-      print '[MULTIPROCESSING OFF]'
-
-
+    
     # Get initial values
     num_sims = 0
     prob = self.get_complex_prob(complex_name)
@@ -263,6 +262,11 @@ class NupackSampleJob(object):
 
     # Check if simulations are needed, return if not
     if error <= goal or num_sims >= max_sims:  return
+
+    if self._multiprocessing:
+      print '[MULTIPROCESSING ON] (over %d cores)'%multiprocessing.cpu_count()
+    else:
+      print '[MULTIPROCESSING OFF]'
 
     # Prepare progress table
     update_func = print_progress_table(
