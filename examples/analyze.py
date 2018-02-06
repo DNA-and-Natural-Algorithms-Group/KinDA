@@ -89,9 +89,3 @@ for i,s in enumerate(mfe_structs):
 # stats_utils.calc_unproductive_rxn_score(kinda_obj)
 # stats_utils.calc_spurious_rxn_score(kinda_obj, t_max = 1.0)
 
-
-#### In options.py, there are some options you might try changing as well:
-####  sim_time for Multistrand simulations
-####  multithreading if things are too slow (for some reason, Python doesn't always quit well with multithreading... still working on this)
-####  loose_complex_similarity if you want to have different standards for matching domain-level conformations
-#### You can change the other parameters as well, if you want.

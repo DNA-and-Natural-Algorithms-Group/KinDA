@@ -34,7 +34,7 @@ $ python setup.py install --user
 
 ## Quickstart using the example script "analyze.py"
 
-### Quickstart
+### Quickstart: PIL files
 Load the file `Zhang_etal_Science2007.pil` in an interactive KinDA session, and 
 begin querying basic data.
 
@@ -42,6 +42,46 @@ For example, run the following from within the `examples` subdirectory of KinDA.
 
 ```sh
 $ python -i analyze.py Zhang_etal_Science2007.pil
+```
+
+### Quickstart: Pure Python scripts
+KinDA objects can be created directly in a Python script using the `kinda.objects` package. For example:
+```
+# simple.py
+#
+# This Python file creates a simple toehold-exchange system.
+# The objects are identical to those described in KinDA/examples/simple.pil
+
+# Import kinda and kinda.objects
+import kinda
+import kinda.objects
+
+# Create domains
+t1 = kinda.objects.Domain(name = 't1', sequence = 'AAAGAT')
+d2 = kinda.objects.Domain(name = 'd2', sequence = 'AGCTGACTTA')
+t3 = kinda.objects.Domain(name = 't3', sequence = 'TCCCTT')
+
+# Create strands
+strand_top1 = kinda.objects.Strand(name = 'strand_top1', domains = [t1, d2])
+strand_top2 = kinda.objects.Strand(name = 'strand_top2', domains = [d2, t3])
+strand_base = kinda.objects.Strand(name = 'strand_base', domains = [t3.complement, d2.complement, t1.complement])
+
+# Create complexes
+T1Bound = kinda.objects.Complex(name = 'T1Bound', strands = [strand_top1, strand_base], structure = '((+.))')
+T3Intruder = kinda.objects.Complex(name = 'T3Intruder', strands = [strand_top2], structure = '..')
+T3Bound = kinda.objects.Complex(name = 'T3Bound', strands = [strand_top2, strand_base], structure = '((+)).')
+T1Intruder = kinda.objects.Complex(name = 'T1Intruder', strands = [strand_top1], structure = '..')
+
+# Create System object
+system = kinda.System(complexes = [T1Bound, T3Intruder, T3Bound, T1Intruder])
+
+# Get statistics about productive condensed reactions
+reactions = system.get_reactions(spurious=False, unproductive=False)
+reaction = reactions[0]
+system.get_stats(reaction).get_k1(relative_error = 0.5, max_sims = 500)
+system.get_stats(reaction).get_k2(relative_error = 0.5, max_sims = 500)
+
+# Similar functions can be used to get information about resting sets (i.e. resting macrostates)
 ```
 
 ### Input format
@@ -85,7 +125,15 @@ structure Intermediate = OB + C + LB : .(+((+)).)
 ```
 
 ## Configuration Options
-The file `kinda/options.py` contains optional arguments that may be modified to change the behavior of Multistrand, Peppercorn, Nupack, and KinDA.
+The file `kinda/options.py` contains optional arguments that may be modified to change the default behavior of Multistrand, Peppercorn, Nupack, and KinDA. This file must be modified prior to installation to set the default behavior.
+
+`kinda/options.py` contains four `dict` objects:
+* `kinda_params`: General parameters for KinDA and its interactions with Multistrand, NUPACK, and Peppercorn
+* `multistrand_params`: Parameters for Multistrand, given directly to Multistrand when constructing a Multistrand.Options object
+* `nupack_params`: Parameters for NUPACK, given directly to NUPACK when calling its `sample` executable.
+* `peppercorn_params`: Parameters for Peppercorn enumeration, given to the enumerator just prior to enumeration
+
+The initialization function for the `System` object accepts an optional keyword argument for each of these `dict`s. Each keyword argument should be supplied as a `dict` object, whose key-value pairs will override the defaults in `kinda/options.py`. 
 
 ## Version
 0.1
