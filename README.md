@@ -14,7 +14,7 @@ and may be computed at a desired level of precision using KinDA.
 ## Dependencies
 Prior to installing KinDA, make sure you have the following packages installed:
 * Multistrand (https://github.com/DNA-and-Natural-Algorithms-Group/multistrand)
-* Nupack
+* Nupack 3.2.2+
 
 In addition, ensure the environment variable `NUPACKHOME` is set to the base directory
 of your Nupack files.
@@ -139,6 +139,6 @@ The initialization function for the `System` object accepts an optional keyword 
 0.1
 
 ## Authors
-Joseph Berleant, Chris Berlind, and Erik Winfree
+Joseph Berleant, Chris Berlind, Joseph Schaeffer, and Erik Winfree
 
 
