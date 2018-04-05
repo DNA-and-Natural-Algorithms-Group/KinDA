@@ -6,6 +6,7 @@
 # and processing data relevant to each mode.
 
 import math
+import itertools as it
 import multiprocessing, signal
 
 import numpy as np
@@ -118,7 +119,7 @@ class MultistrandJob(object):
         start_state =         start_state,
         simulation_mode =     kargs['mode'],
         boltzmann_sample =    boltzmann,
-        stop_conditions =     [macrostates_dict[m] for m in stop_conditions]
+        stop_conditions = list(it.chain(*[macrostates_dict[m] for m in stop_conditions]))
     )
 
     return options_dict

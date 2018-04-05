@@ -1,3 +1,4 @@
+import itertools as it
 
 ## Sequence utilities
                   
@@ -152,10 +153,65 @@ def get_dependent_complexes(macrostate):
   Macrostate depends. """
   from macrostate import Macrostate
   
-  if macrostate.type == Macrostate.types['conjunction']:
+  if macrostate.type == Macrostate.types['conjunction'] or macrostate.type == Macrostate.types['disjunction']:
     return list(set(sum([get_dependent_complexes(m) for m in macrostate.macrostates], [])))
   else:
     return [macrostate.complex]
+def macrostate_to_dnf(macrostate, simplify = True):
+  """ Returns a macrostate in disjunctive normal form (i.e. an OR of ANDs).
+  Note that this may lead to exponential explosion in the number of terms.
+  However it is necessary when creating Multistrand Macrostates, which can
+  only be represented in this way. Also, we don't try to simplify much 
+  so the expressions may be inefficient/redundant. Adding simplifications of the
+  logical expression using (e.g.) De Morgan's laws is a future optimization. """
+  from macrostate import Macrostate
+
+  if macrostate.type != Macrostate.types['conjunction'] and macrostate.type != Macrostate.types['disjunction']:
+    dnf_macrostates = [Macrostate(type='conjunction', macrostates=[macrostate])]
+  elif macrostate.type == Macrostate.types['conjunction']:
+    clauses = [macrostate_to_dnf(m, simplify=False) for m in macrostate.macrostates]
+    dnf_macrostates = clauses[0].macrostates
+    for clause in clauses[1:]:
+      # multiply two dnf clauses
+      dnf_macrostates = [Macrostate(type='conjunction', macrostates=m1.macrostates+m2.macrostates) for m1,m2 in it.product(dnf_macrostates, clause.macrostates)]
+  elif macrostate.type == Macrostate.types['disjunction']:
+    clauses = [macrostate_to_dnf(m, simplify=False) for m in macrostate.macrostates]
+    dnf_macrostates = []
+    for clause in clauses:
+      # add two dnf clauses
+      dnf_macrostates += clause.macrostates
+
+  # The most basic simplification. We just subsitute AND/OR expressions with only one operand
+  # with just that operand.
+  if simplify:
+    for i,m in enumerate(dnf_macrostates):
+      if len(m.macrostates) == 1:  dnf_macrostates[i]=m.macrostates[0]
+  if simplify and len(dnf_macrostates)==1:
+    dnf = dnf_macrostates[0]
+  else:
+    dnf = Macrostate(type='disjunction', macrostates=dnf_macrostates)
+
+  return dnf
+def print_macrostate_tree(m, prefix=''):
+  from macrostate import Macrostate
+
+  print "{}|".format(prefix)
+  print "{}|".format(prefix)
+
+  if m.type != Macrostate.types['conjunction'] and m.type != Macrostate.types['disjunction']:
+    print "{}{}".format(prefix, str(m))
+    print prefix
+    return
+  
+  char = '*' if m.type==Macrostate.types['conjunction'] else '+'
+  for i,v in enumerate(m.macrostates):
+    print "{}{}-- ".format(prefix, char)
+    if i < len(m.macrostates)-1:
+      print_macrostate_tree(v, prefix+"|  ")
+    else:
+      print_macrostate_tree(v, prefix+"   ")
+
+
     
 ## Complex -> Macrostate functions
 def exact_complex_macrostate(complex):
@@ -164,6 +220,16 @@ def exact_complex_macrostate(complex):
   return Macrostate(name = "macrostate_" + complex.name,
                     type = 'exact',
                     complex = complex)
+def count_by_complex_macrostate(complex, cutoff):
+  """ Creates a macrostate corresponding to secondary structures that
+  match the binding of the given complex, within the given cutoff.
+  cutoff is a fractional defect over the entire complex. """
+  from macrostate import Macrostate
+
+  return Macrostate(name = "macrostate_{}_{}".format(complex.name, cutoff),
+                    type = "count",
+                    complex = complex,
+                    cutoff = cutoff)
 def loose_domain_macrostate(complex, strand_num, domain_num, cutoff):
   """ Creates a loose macrostate with the given domain as the region
   of interest. The cutoff is a fractional defect within this domain. The
@@ -200,7 +266,7 @@ def loose_domain_macrostate(complex, strand_num, domain_num, cutoff):
                     complex = ms_complex,
                     cutoff = int(cutoff * n))
         
-def similar_complex_macrostate(complex, cutoff):
+def count_by_domain_macrostate(complex, cutoff):
   """ Returns a Macrostate that matches a complex such that every domain
   matches the given complex's structure to within the cutoff fraction. """
   from macrostate import Macrostate
@@ -213,6 +279,26 @@ def similar_complex_macrostate(complex, cutoff):
                     type = 'conjunction',
                     macrostates = macrostates)
                     
+## RestingSet -> Macrostate functions
+def restingset_count_by_complex_macrostate(restingset, cutoff):
+  """ Creates a macrostate corresponding to secondary structures that
+  match the binding of one of the complexes in the given resting set, within the given cutoff.
+  cutoff is a fractional defect over the entire complex. """
+  from macrostate import Macrostate
+
+  macrostates = [count_by_complex_macrostate(complex, cutoff) for complex in restingset.complexes]
+  return Macrostate(name        = "macrostate_{}".format(restingset.name),
+                    type        = "disjunction",
+                    macrostates = macrostates)
+def restingset_count_by_domain_macrostate(restingset, cutoff):
+  print "WARNING: Multistrand may not support macrostates that are defined as a per-domain p-approximation"
+  from macrostate import Macrostate
+
+  macrostates = [count_by_domain_macrostate(complex, cutoff) for complex in restingset.complexes]
+  return Macrostate(name        = "macrostate_{}".format(restingset.name),
+                    type        = "disjunction",
+                    macrostates = macrostates)
+
 ## Functions on RestingSets
 def get_containing_set(restingsets, complex):
   for rs in restingsets:

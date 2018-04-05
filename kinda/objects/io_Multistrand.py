@@ -1,5 +1,6 @@
 ### TODO: Add conversion from Multistrand objects to DNAObjects objects
 
+import itertools as it
 import utils
 ##################
 ## Use to_Multistrand() to convert a system of domains, strands, complexes, resting sets, and
@@ -57,7 +58,7 @@ def to_Multistrand_restingstates(resting_sets, ms_complexes):
 def to_Multistrand_macrostates(macrostates, ms_complexes):
   import multistrand.objects as MS
   from macrostate import Macrostate
-  from utils import num_wildcards
+  from utils import num_wildcards, macrostate_to_dnf
   
   EXACT = 0
   BOUND = 1
@@ -66,35 +67,41 @@ def to_Multistrand_macrostates(macrostates, ms_complexes):
   COUNT = 4
   ms_macrostates = {}
   for m in macrostates:
-    if m.type == Macrostate.types['exact']:
-      c = ms_complexes[m.complex]
-      ms_macrostates[m] = MS.Macrostate(m.name, [(c, EXACT, 0)])
-    elif m.type == Macrostate.types['disassoc']:
-      c = ms_complexes[m.complex]
-      ms_macrostates[m] = MS.Macrostate(m.name, [(c, DISASSOC, 0)])
-    elif m.type == Macrostate.types['bound']:
-      c = ms_complexes[m.complex]
-      ms_macrostates[m] = MS.Macrostate(m.name, [(c, BOUND, 0)])
-    elif m.type == Macrostate.types['count']:
-      c = ms_complexes[m.complex]
-      if isinstance(m.cutoff, float):
-        cutoff = int(m.cutoff * (len(c.structure) - c.structure.count('*')))
+    m_dnf = macrostate_to_dnf(m)
+
+    if m_dnf.type == Macrostate.types['exact']:
+      c = ms_complexes[m_dnf.complex]
+      ms_macrostates[m] = [MS.Macrostate(m.name, [(c, EXACT, 0)])]
+    elif m_dnf.type == Macrostate.types['disassoc']:
+      c = ms_complexes[m_dnf.complex]
+      ms_macrostates[m] = [MS.Macrostate(m.name, [(c, DISASSOC, 0)])]
+    elif m_dnf.type == Macrostate.types['bound']:
+      c = ms_complexes[m_dnf.complex]
+      ms_macrostates[m] = [MS.Macrostate(m.name, [(c, BOUND, 0)])]
+    elif m_dnf.type == Macrostate.types['count']:
+      c = ms_complexes[m_dnf.complex]
+      if isinstance(m_dnf.cutoff, float):
+        cutoff = int(m_dnf.cutoff * (len(c.structure) - c.structure.count('*')))
       else:
-        cutoff = m.cutoff
-      ms_macrostates[m] = MS.Macrostate(m.name, [(c, COUNT, cutoff)])
-    elif m.type == Macrostate.types['loose']:
-      c = ms_complexes[m.complex]
-      if isinstance(m.cutoff, float):
-        cutoff = int(m.cutoff * (len(c.structure) - c.structure.count('*')))
+        cutoff = m_dnf.cutoff
+      ms_macrostates[m] = [MS.Macrostate(m.name, [(c, COUNT, cutoff)])]
+    elif m_dnf.type == Macrostate.types['loose']:
+      c = ms_complexes[m_dnf.complex]
+      if isinstance(m_dnf.cutoff, float):
+        cutoff = int(m_dnf.cutoff * (len(c.structure) - c.structure.count('*')))
       else:
-        cutoff = m.cutoff
-      ms_macrostates[m] = MS.Macrostate(m.name, [(c, LOOSE, cutoff)])
-    elif m.type == Macrostate.types['conjunction']:
-      for ms in m.macrostates:
+        cutoff = m_dnf.cutoff
+      ms_macrostates[m] = [MS.Macrostate(m.name, [(c, LOOSE, cutoff)])]
+    elif m_dnf.type == Macrostate.types['conjunction']:
+      for ms in m_dnf.macrostates:
+        assert(ms.type != Macrostate.types['conjunction'] and ms.type != Macrostate.types['disjunction'])
         if ms not in ms_macrostates:
           ms_macrostates[ms] = to_Multistrand_macrostates([ms], ms_complexes).values()[0]
-      states = sum([ms_macrostates[s].complex_items for s in m.macrostates], [])
-      ms_macrostates[m] = MS.Macrostate(m.name, states)
+      states = sum([ms_macrostates[s][0].complex_items for s in m_dnf.macrostates], [])
+      ms_macrostates[m] = [MS.Macrostate(m.name, states)]
+    elif m_dnf.type == Macrostate.types['disjunction']:
+      ms_macrostates[m] = list(it.chain(*to_Multistrand_macrostates(m_dnf.macrostates, ms_complexes).values()))
+      for ms in ms_macrostates[m]:  ms.tag = m.name
   return ms_macrostates
   
 def to_Multistrand(*args, **kargs):

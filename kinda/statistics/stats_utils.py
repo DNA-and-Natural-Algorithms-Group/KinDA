@@ -75,12 +75,13 @@ def make_RestingSetRxnStats(restingsets, detailed_rxns, condensed_rxns, kinda_pa
     # Make product tags for each product group so data can be pulled out later
     tags = [str(rxn) for rxn in condensed_rxns if rxn.reactants_equal(r)]
     tags = tags + ['_spurious({})'.format(str(rxn)) for rxn in new_spurious_rxns]
+    spurious_flags = [False]*len(enum_prods) + [True]*len(spurious_prods)
     
     # Make Macrostates for Multistrand stop conditions
     stop_conditions = [
-      create_macrostate(state, tag)
-        for state, tag
-        in zip(enum_prods + spurious_prods, tags)
+      create_stop_macrostate(state, tag, spurious = spurious_flag, options = kinda_params)
+        for state, tag, spurious_flag
+        in zip(enum_prods + spurious_prods, tags, spurious_flags)
       ]
     
     # Make Multistrand job
@@ -201,12 +202,6 @@ def get_spurious_products(reactants, reactions, stop_states):
       c = dna.Complex(name = "cpx_" + name, strands = strands)
       strands_to_restingsets[strands] = dna.RestingSet(name = "rs_" + name, complexes = [c])
 
-    for obj in valid_objects:
-      if obj._object_type == "complex":
-        strands_to_restingsets[tuple(obj.strands)] = dna.RestingSet(complexes = [obj])
-      else:
-        strands_to_restingsets[tuple(obj.strands)] = obj
-
     return strands_to_restingsets
     
   # Convert to strandlist-level objects
@@ -251,24 +246,20 @@ def get_spurious_products(reactants, reactions, stop_states):
     
   return spurious_restingsets
   
-def create_macrostate(state, tag):
+def create_stop_macrostate(state, tag, spurious, options):
   """ For most simulations, there is a specific way to produce a macrostate
   from a given system state consisting of a list of complexes/resting sets.
   This procedure is as follows:
-    1. For each resting set, create a DISASSOC Macrostate corresponding to the
-       strands of the resting set. This is in line with our assumption that
-       no two resting sets share the same list of ordered strands.
-    2. For each complex, create a LOOSE or EXACT macrostate corresonding to the
-       given complex.
-       If the 'loose_complex' flag is set, then a LOOSE Macrostate
-       is used corresponding to a p-approximation of the domain-level complex.
-       For an exact definition of p-approximation, see the paper.
-       Note that this usage is currently unsupported by Multistrand but may
-       be supported in a future update.
-       If the 'loose_complex' flag is not set, then an EXACT macrostate
-       is used corresponding to the exact domain-level conformation.
-    3. Create a CONJUNCTION macrostate corresponding to the conjunction
-       of the Macrostate for each complex/resting set in the system state.
+    1. For each resting set, create a Macrostate corresponding to the value of 'stop_macrostate_mode':
+       a) 'disassoc': Create a DISSASSOC Macrostate corresponding to the strands of the resting set.
+          Because we assume that no two resting sets share the same list of ordered strands, this
+          is often sufficient. This is also the fastest mode for Multistrand simulations.
+       b) 'count-by-complex': Create a DISJUNCTION macrostate of COUNT macrostates, where each
+          COUNT macrostate uses a fractional cutoff of options['multistrand_similarity_threshold'].
+       c) 'count-by-domain': Create a DISJUNCTION macrostate of LOOSE macrostates corresponding to
+          p-approximations of each domain-level complex in the resting set.
+    2. Create a CONJUNCTION macrostate corresponding to the conjunction
+       of the Macrostate for each resting set in the system state.
   One way to optimize this procedure would be to allow the creation of many
   macrostates from a list of system states, where each CONJUNCTION Macrostate
   could share the underlying DISASSOC/LOOSE/EXACT Macrostates. It's not clear
@@ -276,17 +267,25 @@ def create_macrostate(state, tag):
   Note that there is no way to represent a macrostate consisting of states with
   2 or more of a certain complex.
   """
-  loose_complexes = options.kinda_params['loose_complexes']
-  loose_cutoff = options.kinda_params['loose_complex_similarity']
+  from kinda.objects.utils import restingset_count_by_complex_macrostate, restingset_count_by_domain_macrostate
+
+  mode = options['stop_macrostate_mode']
+
+  if mode not in ['disassoc', 'count-by-complex', 'count-by-domain']:
+    print "WARNING: Unknown stop_condition_mode '{}'. Assuming 'disassoc'.".format(mode)
+    mode = 'disassoc'
 
   obj_to_mstate = {}
   for obj in set(state):
-    if obj._object_type == 'resting-set':
+    assert(obj._object_type == 'resting-set')
+    if mode == 'disassoc' or spurious:
       obj_to_mstate[obj] = dna.Macrostate(type = 'disassoc', complex = next(iter(obj.complexes)))
-    elif loose_complexes:
-      obj_to_mstate[obj] = utils.similar_complex_macrostate(obj, loose_cutoff)
-    else:
-      obj_to_mstate[obj] = utils.exact_complex_macrostate(obj)
+    elif mode == 'count-by-complex':
+      cutoff = options['multistrand_similarity_threshold']
+      obj_to_mstate[obj] = restingset_count_by_complex_macrostate(obj, cutoff)
+    elif mode == 'count-by-domain':
+      cutoff = options['multistrand_similarity_threshold']
+      obj_to_mstate[obj] = restingset_count_by_domain_macrostate(obj, cutoff)
           
   macrostates = dna.Macrostate(
     name        = tag,

@@ -6,8 +6,8 @@ Coded by: Joseph Berleant (jberleant@dna.caltech.edu)
 
 This module defines a dna `macrostate`, with structure inspired by
 the Multistrand macrostate. Currently, macrostates may only be
-formed as the conjunction of five macrostate types (see Joseph Schaeffer's
-PhD thesis on Multistrand for more details):
+formed as a (nested) conjunction or disjunction of five base macrostate types
+(see Joseph Schaeffer's PhD thesis on Multistrand for more details):
   EXACT_MACROSTATE        Given a complex of specific structure, this
                           corresponds to all system microstates in which
                           this exact complex exists.
@@ -47,7 +47,8 @@ class Macrostate(object):
            'disassoc': 2,
            'loose': 3,
            'count': 4,
-           'conjunction': 5}
+           'conjunction': 5,
+           'disjunction': 6}
   
   def __init__(self, *args, **kargs):
     """
@@ -59,18 +60,20 @@ class Macrostate(object):
                                               this is ommitted.
     type [type=str]                        -- Macrostate type. One of
                                               'exact', 'disassoc', 'bound',
-                                              'count', 'loose', or
-                                              'conjunction'. The first 5
+                                              'count', 'loose', 
+                                              'conjunction', or 'disjunction'.
+                                              The first 5
                                               are described in Schaeffer's
                                               PhD thesis. The conjunction type
                                               represents a conjunction of
-                                              a list of Macrostates.
+                                              a list of Macrostates. Disjunction is
+                                              defined analogously.
     complex [type=str]                     -- Required for all but the
-                                              'conjunction' macrostate.
+                                              'conjunction' and 'disjunction' macrostates.
     cutoff [type=int OR float]             -- Required for 'count' and 'loose'
                                               macrostates.
-    macrostates [type=list of Macrostates] -- Required for the 'conjunction'
-                                              macrostate.
+    macrostates [type=list of Macrostates] -- Required for the 'conjunction' and 'disjunction'
+                                              macrostates.
     """
     # Assign id
     self.id = Macrostate.id_counter
@@ -99,6 +102,8 @@ class Macrostate(object):
       self._cutoff = kargs['cutoff']
     elif self._macrostate_type == Macrostate.types['conjunction']:
       self._macrostates = kargs['macrostates']
+    elif self._macrostate_type == Macrostate.types['disjunction']:
+      self._macrostates = kargs['macrostates']
   
   @property
   def type(self):
@@ -106,7 +111,7 @@ class Macrostate(object):
     
   @property
   def complex(self):
-    if self._macrostate_type != Macrostate.types['conjunction']:
+    if self._macrostate_type != Macrostate.types['conjunction'] and self._macrostate_type != Macrostate.types['disjunction']:
       return self._complex
     else:
       raise ValueError("Macrostate lacks a 'complex' field.")
@@ -121,7 +126,25 @@ class Macrostate(object):
       
   @property
   def macrostates(self):
-    if self._macrostate_type == Macrostate.types['conjunction']:
+    if self._macrostate_type == Macrostate.types['conjunction'] or self._macrostate_type == Macrostate.types['disjunction']:
       return self._macrostates
     else:
       raise ValueError("Macrostate lacks a 'macrostates' field.")
+
+  def __str__(self):
+    if self._macrostate_type == Macrostate.types['exact']:
+      return "Macrostate({}, {})".format('EXACT', str(self._complex))
+    elif self._macrostate_type == Macrostate.types['disassoc']:
+      return "Macrostate({}, {})".format('DISASSOC', str(self._complex))
+    elif self._macrostate_type == Macrostate.types['bound']:
+      return "Macrostate({}, {})".format('BOUND', str(self._complex))
+    elif self._macrostate_type == Macrostate.types['count']:
+      return "Macrostate({}, {}, {})".format('COUNT', str(self._complex), self._cutoff)
+    elif self._macrostate_type == Macrostate.types['loose']:
+      return "Macrostate({}, {}, {})".format('LOOSE', str(self._complex), self._cutoff)
+    elif self._macrostate_type == Macrostate.types['conjunction']:
+      return "Macrostate({}, {})".format('CONJUNCTION', self._macrostates)
+    elif self._macrostate_type == Macrostate.types['disjunction']:
+      return "Macrostate({}, {})".format('DISJUNCTION', self._macrostates)
+    else:
+      return "Macrostate({}, ???)".format(self._macrostate_type)

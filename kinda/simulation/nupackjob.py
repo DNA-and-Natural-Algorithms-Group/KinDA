@@ -51,7 +51,7 @@ class NupackSampleJob(object):
 
   def __init__(self, restingset, similarity_threshold = None, multiprocessing = True, nupack_params = {}):
     """ Constructs a NupackSampleJob object with the given resting set and similarity threshold.
-    If similarity threshold is not given, the value in options.py (kinda_params['loose_complex_similarity'])
+    If similarity threshold is not given, the value in options.py (kinda_params['nupack_similarity_threshold'])
     is used. """
 
     # Store options
@@ -71,7 +71,7 @@ class NupackSampleJob(object):
     self.total_sims = 0
 
     # Set similarity threshold, using default value in options.py if none specified
-    if similarity_threshold == None:  similarity_threshold = options.kinda_params['loose_complex_similarity']
+    if similarity_threshold == None:  similarity_threshold = options.kinda_params['nupack_similarity_threshold']
     self.set_similarity_threshold(similarity_threshold)
 
   @property
