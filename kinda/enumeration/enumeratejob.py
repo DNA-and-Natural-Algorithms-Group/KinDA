@@ -93,10 +93,6 @@ class EnumerateJob(object):
     # Set peppercorn options
     for k,v in self._peppercorn_params.iteritems():
       setattr(e, k, v)
-#    if '--release-cutoff-1-1' in options.peppercorn_params:
-#      e.RELEASE_CUTOFF_1_1 = options.peppercorn_params['--release-cutoff-1-1']
-#    if '--release-cutoff-1-n' in options.peppercorn_params:
-#      e.RELEASE_CUTOFF_1_N = options.peppercorn_params['--release-cutoff-1-n']
 
     # Perform enumeration
     print "KinDA: Performing reaction enumeration with Peppercorn...",
@@ -113,12 +109,15 @@ class EnumerateJob(object):
     self._enumerator_condensor = enumc
   
     ## Convert enumerated results back to DNAObjects objects
+    domain_info = {d.name: [('seq', str(d.sequence))] for d in self.domains}
+    strand_info = {tuple([d.name for d in s.base_domains()]): [('name', s.name)] for s in self.strands}
     dna_objects = dna.io_Peppercorn.from_Peppercorn(
         complexes = e.complexes,
         reactions = e.reactions,
         restingsets = e.resting_sets,
         restingsetreactions = enumc.condensed_reactions,
-        domain_seqs = {d.name: str(d.sequence) for d in self.domains}
+        domain_info = domain_info,
+        strand_info = strand_info
     )
     rs_rxns_dict = dict(dna_objects['restingsetreactions'])
     rxns_dict = dict(dna_objects['reactions'])

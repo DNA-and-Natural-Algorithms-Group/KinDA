@@ -140,13 +140,16 @@ def from_Peppercorn_domain(domain, seq = None):
   else:
     return dna.Domain(name = domain.name, sequence = sequence)
  
-def from_Peppercorn_strand(strand, domains):
+def from_Peppercorn_strand(strand, domains, name = None):
   """ Converts a Peppercorn 'strand' (i.e. a tuple of PepperDomain objects) into
   an equivalent DNAObjects Strand object. Note that because Peppercorn no longer
   implements an object representing strands, this tuple representation is the closest
   we have. This means that strand names are not preserved when converting 
   to Peppercorn and back. """
-  return dna.Strand(domains = [domains[d] for d in strand])
+  if name is None:
+    return dna.Strand(domains = [domains[d] for d in strand])
+  else:
+    return dna.Strand(name = name, domains = [domains[d] for d in strand])
 
 def from_Peppercorn_complex(complex, strands):
   """ Converts a Peppercorn PepperComplex object to an equivalent DNAObjects Complex.
@@ -207,9 +210,12 @@ def from_Peppercorn(*args, **kargs):
     - restingsetreactions
   Other arguments are ignored. Note that Peppercorn does not currently
   have a representation for strands, so we do not handle them here. 
-  In addition, because Peppercorn domains do not store sequences, we
-  allow an additional dict to be included as kargs['domain_seqs']
-  that maps domain names to domain sequences. """
+  Because the conversion to Peppercorn objects is lossy (in particular, domains
+  lose sequence information and strands lose name information), we
+  allow two additional parameters:
+    - domain_info:  a dict mapping domain names to dict item lists of additional domain info
+    - strand_info:  a dict mapping tuples of domain names to dict item lists of strand info
+  """
 
  
   ## Extract all objects to be converted
@@ -223,17 +229,20 @@ def from_Peppercorn(*args, **kargs):
   strands = set([tuple(strand) for c in complexes for nick,strand in it.groupby(c.sequence, lambda v:v=='+') if not nick])
   domains = set([d for strand in strands for d in strand]
                 + kargs.get('domains', []))
-  domain_seqs = kargs.get('domain_seqs', {})
+  domain_info = kargs.get('domain_info', {})
+  strand_info = kargs.get('strand_info', {})
                 
   ## Convert objects
   dna_domains = {}
   for d in domains:
-    seq = domain_seqs.get(d.name, None)
-    dna_domains[d] = from_Peppercorn_domain(d, seq = seq)
+    d_info = dict(domain_info.get(d.name, []))
+    dna_domains[d] = from_Peppercorn_domain(d, **d_info)
 
   dna_strands = {}
   for s in strands:
-    dna_strands[s] = from_Peppercorn_strand(s, dna_domains)
+    s_key = tuple([dna_domains[d].name for d in s])
+    s_info = dict(strand_info.get(s_key, []))
+    dna_strands[s] = from_Peppercorn_strand(s, dna_domains, **s_info)
 
   dna_complexes = {}
   for c in complexes:
