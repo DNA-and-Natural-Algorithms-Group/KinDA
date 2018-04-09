@@ -420,7 +420,7 @@ def export_data(sstats, filepath):
   rsstats_to_dict = {}
   for rs in restingsets:
     stats = sstats.get_stats(rs)
-    rsstats_to_dict[rs_to_id[rs]] = {'similarity_threshold': stats.get_similarity_threshold()}
+    rsstats_to_dict[rs_to_id[rs]] = {'similarity_threshold': stats.get_similarity_threshold(), 'c_max': stats.c_max}
     for c in rs.complexes:
       rsstats_to_dict[rs_to_id[rs]][complex_to_id[c]] = {
         'prob': '{0} +/- {1}'.format(stats.get_conformation_prob(c.name, 1, max_sims=0), stats.get_conformation_prob_error(c.name, max_sims=0)),
@@ -510,6 +510,8 @@ def import_data(filepath):
     for key, val in data.iteritems():
       if key == 'similarity_threshold':
         threshold = val
+      elif key == 'c_max':
+        stats.c_max = val
       else:
         c = complexes[key]
         nupackjob.set_complex_prob_data(c.name, np.array(val['similarity_data']))
