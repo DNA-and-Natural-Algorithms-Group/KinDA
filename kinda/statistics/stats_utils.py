@@ -89,7 +89,7 @@ def make_RestingSetRxnStats(restingsets, detailed_rxns, condensed_rxns, kinda_pa
     job = FirstStepModeJob(r, stop_conditions, multiprocessing = multiprocessing, multistrand_params = multistrand_params)
     reactants_to_mjob[r] = job
 
-    print "KinDA: Constructing RestingSetRxnStats objects... {}%\r".format(100*i/len(reactants)),
+    print "KinDA: Constructing internal KinDA objects... {}%\r".format(100*i/len(reactants)),
     sys.stdout.flush()
     
   # Create RestingSetRxnStats object for each reaction
@@ -115,7 +115,7 @@ def make_RestingSetRxnStats(restingsets, detailed_rxns, condensed_rxns, kinda_pa
     )
     rxn_to_stats[rxn] = stats
 
-  print "KinDA: Constructing RestingSetRxnStats objects... Done!"
+  print "KinDA: Constructing internal KinDA objects... Done!"
 
   return rxn_to_stats
   
