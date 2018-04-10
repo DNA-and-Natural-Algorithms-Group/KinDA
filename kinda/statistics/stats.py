@@ -182,7 +182,7 @@ class RestingSetStats(object):
     ## Set up NUPACK sampler (for conformation probabilities)
     self.sampler = NupackSampleJob(
         restingset,
-        similarity_threshold = kinda_params.get('similarity_threshold', None),
+        similarity_threshold = kinda_params.get('nupack_similarity_threshold', None),
         multiprocessing = kinda_params.get('nupack_multiprocessing', True),
         nupack_params = nupack_params
     )
