@@ -44,7 +44,7 @@ def make_RestingSetRxnStats(restingsets, detailed_rxns, condensed_rxns, kinda_pa
   with the same reactants share a Multistrand job object
   for improved efficiency. """
 
-  print "KinDA: Constructing RestingSetRxnStats objects...\r",
+  print "KinDA: Constructing internal KinDA objects...\r",
   sys.stdout.flush()
 
   # Initialize set of spurious reactions
