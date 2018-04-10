@@ -1,6 +1,6 @@
 kinda_params = {
-  'stop_macrostate_mode': 'count-by-complex', # may be 'dissoc', 'count-by-complex', 'count-by-domain'
-  'start_macrostate_mode': 'disassoc', # may be 'dissoc', 'count-by-complex', 'count-by-domain'
+  'stop_macrostate_mode': 'disassoc', # may be 'disassoc', 'count-by-complex', 'count-by-domain'
+  'start_macrostate_mode': 'disassoc', # may be 'disassoc', 'count-by-complex', 'count-by-domain'
   'multistrand_similarity_threshold': 0.7,
   'nupack_similarity_threshold': 0.7,
   'material': 'DNA',
