@@ -257,8 +257,8 @@ class MultistrandJob(object):
         exp_add_sims = max_sims - num_sims
       else:
         reduction = error / goal
-        exp_add_sims = int(self.total_sims * (reduction**2 - 1) + 1)
-        num_trials = max(min(exp_add_sims, max_batch_size, max_sims - num_sims, self.total_sims + 1), min_batch_size)
+        exp_add_sims = max(min_batch_size, int(self.total_sims * (reduction**2 - 1) + 1))
+        num_trials = min(exp_add_sims, max_batch_size, max_sims - num_sims, self.total_sims + 1)
         
       self.preallocate_batch(num_trials)
       self.run_simulations(num_trials, sims_per_update = sims_per_update, sims_per_worker = sims_per_worker, status_func = status_func)
@@ -268,6 +268,11 @@ class MultistrandJob(object):
       error = calc_error()
       goal = rel_goal * calc_mean()
 
+    if error == float('inf'):
+      exp_add_sims = 0
+    else:
+      exp_add_sims = max(0, int(self.total_sims * ((error/goal)**2 - 1) + 1))
+    table_update_func([calc_mean(), error, goal, "", "--/--", "%d/%d"%(num_sims, num_sims+exp_add_sims), str(100*num_sims/(num_sims+exp_add_sims))+"%"])
     print
 
     

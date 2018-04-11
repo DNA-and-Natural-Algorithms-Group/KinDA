@@ -91,8 +91,6 @@ class RestingSetRxnStats(object):
     """ Returns the k2 folding rate on successful Multistrand trajectories. 
     Additional simulations are run until the fractional error is
     below the given relative_error threshold. """
-    if len(self.reactants) > len(self.products):
-      print "WARNING: k2 rates are currently not correctly computed for reactions that don't end with a dissociation reaction"
     return self.get_raw_stat('k2', relative_error, max_sims, **kwargs)[0]
   def get_kcoll(self, relative_error = 0.50, max_sims = 5000, **kwargs):
     """ Returns the average kcoll value calculated over successful Multistrand
@@ -114,8 +112,6 @@ class RestingSetRxnStats(object):
     return self.get_raw_stat('k1', relative_error, max_sims, **kwargs)[1]
   def get_k2_error(self, relative_error = 0.50, max_sims = 5000, **kwargs):
     """ Returns the standard error on k2 """
-    if len(self.reactants) > len(self.products):
-      print "WARNING: k2 rates are currently not correctly computed for reactions that don't end with a dissociation reaction"
     return self.get_raw_stat('k2', relative_error, max_sims, **kwargs)[1]
   def get_kcoll_error(self, relative_error = 0.50, max_sims = 5000, **kwargs):
     """ Returns the standard error on kcoll """
