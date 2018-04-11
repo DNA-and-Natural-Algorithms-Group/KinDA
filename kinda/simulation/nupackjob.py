@@ -249,9 +249,9 @@ class NupackSampleJob(object):
       error = self.get_complex_prob_error(complex_name)
       goal = rel_goal * prob
       if exp_add_sims is None:
-        update_func([complex_name, prob, error, goal, "", "%d/--"%(num_sims+batch_sims_done), "--"])
+        update_func([complex_name, prob, error, goal, "", "%d/%d"%(batch_sims_done,num_trials), "%d/--"%(num_sims+batch_sims_done), "--"])
       else:
-        update_func([complex_name, prob, error, goal, "", "%d/%d"%(num_sims + batch_sims_done,num_sims+exp_add_sims), str(100*(num_sims+batch_sims_done)/(num_sims+exp_add_sims))+'%']) 
+        update_func([complex_name, prob, error, goal, "", "%d/%d"%(batch_sims_done,num_trials), "%d/%d"%(num_sims + batch_sims_done,num_sims+exp_add_sims), str(100*(num_sims+batch_sims_done)/(num_sims+exp_add_sims))+'%']) 
       
     
     # Get initial values
@@ -270,9 +270,9 @@ class NupackSampleJob(object):
 
     # Prepare progress table
     update_func = print_progress_table(
-        ["complex", "prob", "error", "err goal", "", "sims done", "progress"],
-        [10, 10, 10, 10, 10, 17, 10])
-    update_func([complex_name, prob, error, goal, "", "--/--", "--"])
+        ["complex", "prob", "error", "err goal", "", "batch sims", "overall sims", "progress"],
+        [11, 10, 10, 10, 6, 17, 17, 10])
+    update_func([complex_name, prob, error, goal, "", "--/--", "--/--", "--"])
 
     # Run simulations
     while not error <= goal and num_sims < max_sims:
@@ -295,4 +295,9 @@ class NupackSampleJob(object):
       error = self.get_complex_prob_error(complex_name)
       goal = rel_goal * prob
 
+    if error == float('inf'):
+      exp_add_sims = 0
+    else:
+      exp_add_sims = max(0, int(self.total_sims * ((error/goal)**2 - 1) + 1))
+    update_func([complex_name, prob, error, goal, "", "--/--", "%d/%d"%(num_sims,num_sims+exp_add_sims), str(100*num_sims/(num_sims+exp_add_sims))+'%'])
     print

@@ -494,6 +494,8 @@ def dotParen2PairList(structure):
 
 def sample(count, strands, T, material, dangles):
    
+  if count == 0:  return [] # special case
+
   import subprocess, tempfile, os
   
   tmp = tempfile.NamedTemporaryFile(delete=False,suffix=".sample")
