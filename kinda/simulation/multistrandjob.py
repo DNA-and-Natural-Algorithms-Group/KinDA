@@ -138,7 +138,7 @@ class MultistrandJob(object):
 
   def create_ms_options(self, num_sims):
     """ Creates a fresh MS Options object using the arguments in self._ms_options_dict. """
-    return MSOptions(**dict(self._ms_options_dict, num_simulations = num_sims))
+    return MSOptions(**dict(self._ms_options_dict, num_simulations = num_sims, verbosity = 0))
 
   def run_simulations(self, num_sims, sims_per_update = 1, sims_per_worker=1, status_func = lambda:None):
     ## Run simulations using multiprocessing if specified

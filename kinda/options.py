@@ -3,7 +3,6 @@ kinda_params = {
   'start_macrostate_mode': 'disassoc', # may be 'disassoc', 'count-by-complex', 'count-by-domain'
   'multistrand_similarity_threshold': 0.51,
   'nupack_similarity_threshold': 0.51,
-  'material': 'DNA',
   'multistrand_multiprocessing': True,
   'nupack_multiprocessing': True,
   'max_concentration': 1e-7  # Provides a default max concentration for each resting set, used for system-level scores
@@ -12,6 +11,7 @@ kinda_params = {
 # These defaults are given directly to Multistrand, unless overridden
 # while initializing a System object
 multistrand_params = {
+  'verbosity': 0,
   'dangles': 'Some',
   'simulation_time': 1.00, 
   'output_interval': 100,

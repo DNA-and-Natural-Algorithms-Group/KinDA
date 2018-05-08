@@ -452,6 +452,7 @@ def export_data(sstats, filepath):
     'resting-set-reactions': rsrxn_to_dict,
     'resting-set-stats': rsstats_to_dict,
     'resting-set-reaction-stats': rsrxnstats_to_dict,
+    'initialization_params': sstats.initialization_params
   }
   
   import json
@@ -497,8 +498,13 @@ def import_data(filepath):
     products = [restingsets[rs_id] for rs_id in data['products']]
     rs_reactions[rsrxn_id] = dna.RestingSetReaction(name = data['name'], reactants = reactants, products = products)
     
+  kinda_params = sstats_dict['initialization_params']['kinda_params']
+  multistrand_params = sstats_dict['initialization_params']['multistrand_params']
+  nupack_params = sstats_dict['initialization_params']['nupack_params']
+  peppercorn_params = sstats_dict['initialization_params']['peppercorn_params']
+
   from .. import kinda
-  sstats = kinda.System(complexes = complexes.values(), restingsets = restingsets.values(), detailed_reactions = reactions.values(), condensed_reactions = rs_reactions.values(), enumeration = False)
+  sstats = kinda.System(complexes = complexes.values(), restingsets = restingsets.values(), detailed_reactions = reactions.values(), condensed_reactions = rs_reactions.values(), enumeration = False, kinda_params = kinda_params, multistrand_params = multistrand_params, nupack_params = nupack_params, peppercorn_params = peppercorn_params)
   
   for rs_id, data in sstats_dict['resting-set-stats'].iteritems():
     stats = sstats.get_stats(restingsets[rs_id])

@@ -23,19 +23,9 @@ rna_base_complement = {"A": "U",   "U": "A",   "C": "G",   "G": "C",
                   
 
 # Check for material type (DNA vs. RNA) so we use the right nucleotide dictionaries
-from .. import options
-material = options.kinda_params.get('material', None)
-if material!='RNA' and material!='DNA':
-  print "KinDA: WARNING: Please specify material type in options.py::kinda_params, for example, with"
-  print "         kinda_params['material'] = 'DNA'"
-  print "       Assuming DNA for now."
-  material = 'DNA'
-if material == 'RNA':
-  base_group = rna_base_group
-  base_complement = rna_base_complement
-elif material == 'DNA':
-  base_group = dna_base_group
-  base_complement = dna_base_complement
+## NOTE: RNA is not implemented. Always uses DNA.
+base_group = dna_base_group
+base_complement = dna_base_complement
 
 
 
