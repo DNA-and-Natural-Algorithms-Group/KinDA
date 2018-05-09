@@ -1,0 +1,475 @@
+#!/usr/bin/env python
+
+"""
+--------------------------
+KinDA executable workflow:
+--------------------------
+
+cat kotan.pil | peppercorn -c -d [--options] | kinda [--options] --backup kotan.db
+
+  - looks if the file kotan.db exists
+      - if it exists, it loads the database and continues
+      - if it doesn't it starts from scratch
+  -> writes simulation output to kotan.db
+
+  Problems: 
+  ---------
+    *) it is (still) possible to load a database that was produced using
+        different parameters, e.g. temperature, k_uni, k_bi, etc.
+    *) it is not possible to load and extend a database, or to read out just
+        the relevant parts. (e.g. reporter systems might be redundant between
+        experiments, so why calculate them every time new?)
+    *) I have not found a way to quickly assess if the pipeline works.
+        (s) need better error handling if simulations don't finish in time and
+            if values are missing. It is OK to print Nan if a rate is missing,
+            or to default back to the peppercorn reaction rates.
+----------
+Questions:
+----------
+
+overall sims: total number of simulations run from this call devided by an
+    estimate of the number of simulations needed, based on the previously
+    collected data. Except if:
+
+    a) If you have not collected enough simulations to estimate the error, then
+    the denominator will always be the value of the "max_sims" keyword arg
+
+    b) If "min_batch_size" forces the number of simulations run to be greater
+    than estimated need, then the "progress" percentage may exceed 100%
+        (?) usually, progress refers to something that is finished.
+
+    c) If "max_sims" forces the simulation process to end before enough
+    simulations have been run, then the "progress" percentage will be below
+    100% (this occurs in your sample output) 
+
+    (s) make this progress bar optional for verbose mode
+        "batch sims" "overall sims" and "progress" is misleading...
+        ../..
+
+        "batch sims" "curr-sims" "est-sims" "max-sims" "progress"
+
+    (s) add timeouts and no-initial-step sims
+
+How can we set a reasonable default simulation-time threshold?
+    - What about using Peppercorn reaction rates?
+
+Does KinDA care if complementary domains have complementary sequences?
+Does it handle non-WC complementarity, mismatches, etc.?
+
+None in Complex probabilities?
+  What is None exactly? and why do probabilities of RM not sum up to 1?
+  # Why does pobability of complex in RS + None do not add up to one?
+
+Get conformation probs returns 0.5 and some error if it has never been called
+
+-----------------
+Batch size:
+    A larger batch size makes it faster to compute things in parallel. If you
+    have only single jobs distributed over several cores, then you have to (?)
+    wait for all of them to finish before you submit the next batch. So it is
+    better to submit bigger batches. However, if you submit too many simulations
+    at once, you might end up with a lot of excess work, even if your error bars 
+    would get satisfied with a smaller number of simulations.
+    *) Appears as if there are issues with parallel Multistrand runs
+        seems to work as soon as I have a k1 estimate for small examples, 
+        but before that there is only a single core used?
+
+
+Divide by zero warning: 
+    - happens related to temporary depletion 
+        (?) possibly if you don't have k1 for an unproductive reaction.
+        - first case, if you do not calculate unproductive reactions
+        - second, simple.py: No initial moves for this first step simulation x352
+            it is impossible to calculate temporary depletion.
+
+    - Multistrand: 
+        rather than printing an error, raise the Error, then KinDA can catch it.
+
+"""
+
+import os
+import sys
+import argparse
+
+import kinda
+import peppercornenumerator
+from kinda.input import read_pil
+
+def init_parameter_dicts(args):
+    """Initialize kinda's parameter format.
+    
+    When using the kinda library, parameter defaults are set during
+    installation in kinda.options. Here, we want to keep an overview
+    and control parameters at runtime.
+
+    Not all parameters can set via commandline arguments, time will tell...
+    """
+
+    kparams = {
+        # System Parameters
+        'start_macrostate_mode': 'NotImplemented',
+        'stop_macrostate_mode': args.stop_macrostate_mode,
+        'material': args.material,
+        'multistrand_similarity_threshold': args.similarity_threshold,
+        'nupack_similarity_threshold': args.similarity_threshold,
+
+        # Session Parameters
+        'multistrand_multiprocessing': not args.no_multiprocessing,
+        'nupack_multiprocessing': not args.no_multiprocessing,
+        'max_concentration': args.max_concentration,
+    }
+    
+    mparams = {
+        # System Parameters
+        'dangles': args.dangles.title(), # first letter uppercase # Some, None, All
+        'substrate_type': args.material,
+        'temperature': args.temperature,
+        'unimolecular_scaling': 2.41686715e+06,
+        'bimolecular_scaling': 8.01171383e+05,
+        'simulation_time': args.multistrand_timeout,
+        'output_interval': 0,
+        'parameter_type': 'Nupack',
+        'rate_method': 'Metropolis',
+        'join_concentration': 1e-15  # collition rate of complexes. ([] * k_bi)
+        # This must be low enough to ensure that no bind reactions occur after
+        # the first step of a simulation.
+    }
+
+    nparams = {
+        'dangles': args.dangles,
+        'material': args.material.lower(),
+        'T': args.temperature,
+    }
+
+    # More Session parameters
+    rate_params = {
+        'relative_error':  args.rate_error_goal,
+        'init_batch_size': args.rate_batch_size[0],
+        'max_batch_size':  args.rate_batch_size[1],
+        'max_sims':        args.rate_max_sims
+    }
+
+    prob_params = {
+        'relative_error':  args.prob_error_goal,
+        'init_batch_size': args.prob_batch_size[0],
+        'max_batch_size':  args.prob_batch_size[1],
+        'max_sims':        args.prob_max_sims
+    }
+
+    return kparams, mparams, nparams, rate_params, prob_params
+ 
+
+def calculate_all_complex_probabilities(KindaSystem, verbose, **kwargs):
+    """ TODO
+
+    Args:
+        KindaSystem():
+        verbose (int):
+        kwargs (dict): Arguments that are passed on to ?.get_conformation_probs()
+
+    Doublecheck: Probability of the spurious conformation None.
+    """
+    ## Get resting sets from database, but don't do nothing yet
+    restingsets = KindaSystem.get_restingsets()
+
+    ## Analyze each resting set
+    for e, rms in enumerate(restingsets, 1):
+        if verbose:
+            print("# Analyzing resting set {}/{}: {}".format(e, len(restingsets), rms))
+    
+        # Get present stats object
+        rms_stats = KindaSystem.get_stats(rms)
+
+        # Query/calculate probabilities for all conformations 
+        # (including the spurious conformation, denoted as None)
+        rms_stats.get_conformation_probs(**kwargs)
+
+        if verbose:
+            for c in rms.complexes:
+                print("# {}, {} +/- {}".format(c.name, 
+                        rms_stats.get_conformation_prob(c.name, max_sims=0), 
+                        rms_stats.get_conformation_prob_error(c.name, max_sims=0)))
+
+def calculate_all_reaction_rates(KindaSystem, verbose, **kwargs):
+    """Calculates reaction rates and error bars.
+
+    There are three types of reactions:
+        a) the regular reactions enumerated using peppercorn (and more?)
+        b) unproductive reactions
+
+    """
+    rxns = KindaSystem.get_reactions(spurious = False, unproductive=False)
+
+    ## Simulate each reaction
+    for e, rxn in enumerate(rxns, 1):
+        if verbose :
+            print("Analyzing reaction {}/{}: {}".format(e, len(rxns), rxn))
+    
+        # Get stats object
+        rxn_stats = KindaSystem.get_stats(rxn)
+    
+        # Query/calculate k1 and k2 reaction rates to requested precision
+        rxn_stats.get_k1(**kwargs)
+        rxn_stats.get_k2(**kwargs)
+        
+        if verbose:
+            print("k1: {} +/- {}".format(
+                    rxn_stats.get_k1(max_sims=0), rxn_stats.get_k1_error(max_sims=0)))
+            print("k2: {} +/- {}".format(
+                    rxn_stats.get_k2(max_sims=0), rxn_stats.get_k2_error(max_sims=0)))
+ 
+
+def main(args):
+    """Calculate DSD system parameters using Mulstistrand and NUPACK.
+
+    KinDA.System is essentially a lazy database. It stores Nupack/Multistrand
+    derived parameters from every calculation so far, and updates them whenever
+    new values or smaller error bars are requested.
+
+    We destinguish "system paramters", which have to be consisten when
+    restoring data from a previously created database file (e.g. temperatur,
+    material, etc.) and "session parameters", which can be changed freely (e.g.
+    error goals, parallelization, etc.).
+
+    # There are multiple points of entry:
+    #   1) Use a *.pil file as produced by peppercorn v0.6 or greater.
+    #   2) Use a *.pil file and enumerate using KinDA
+    #   3) Use --restore file.db to restore a System 
+    #   4) Use --database file.db to search data from previous simulations
+
+    """
+
+    # INPUT processing...
+    systeminput = args.input_filename
+    if not systeminput :
+        systeminput = ''
+        for l in sys.stdin:
+            systeminput += l
+
+    kparams, mparams, nparams, rparams, pparams = init_parameter_dicts(args)
+
+    if args.restore and os.path.exists(args.restore):
+        # Restore a backup file from a previous analysis. This mode ignores any
+        # form of *.pil input. Sanity checks ensure that the system parameters
+        # match those of the restored database.
+        if systeminput :
+            raise SystemExit('Cannot handle system input.')
+
+        if args.verbose:
+            print('# Importing options and parameters from {}.'.format(args.restore))
+        raise NotImplementedError('need to merge updates')
+        KindaSystem = kinda.statistics.stats_utils.import_data(args.restore,
+              kparams = kparams, mparams = mparams, nparams = nparams)
+
+    else :
+        cxs, det, rss, con = read_pil(systeminput)
+        if cxs == []:
+            raise SystemExit('ERROR: No complexes found.')
+
+        if not (det and rss and con): 
+            if args.verbose:
+                print('# Enumerating using built-in peppercorn version.')
+            KindaSystem = kinda.System(cxs, enumeration = True,
+                  kinda_params = kparams, multistrand_params = mparams, nupack_params = nparams)
+        else :
+            if args.verbose:
+                print('# Loading peppercorn output.')
+            KindaSystem = kinda.System(cxs, rss, det, con, enumeration = False, 
+                  kinda_params = kparams, multistrand_params = mparams, nupack_params = nparams)
+
+        if args.database and os.path.exists(args.database):
+            # Always needs to load the full database, independent on which
+            # reactions have been specified as input. If less reactions are given,
+            # then we need to make sure that only these reactions are actually
+            # quried later.  If more reactions are given, then that just means we
+            # extend the database.
+            if args.verbose:
+                print('# Importing data from {}.'.format(args.database))
+            kinda.statistics.stats_utils.import_system(KindaSystem, args.database)
+
+    # Now that we have the Kinda System setup, we can do two things:
+    #   1) calculate probabilites of being in a particular resting complex using Nupack
+    #   2) calculate reaction rates using Multistrand
+
+    # let's do 1)
+    calculate_all_complex_probabilities(KindaSystem, args.verbose, **pparams)
+   
+    if args.backup: ## Export all collected data (just in case...)
+        #kinda.statistics.stats_utils.export_data(KindaSystem, args.backup)
+        kinda.statistics.stats_utils.export_system(KindaSystem, args.backup)
+
+    # let's do 2)
+    calculate_all_reaction_rates(KindaSystem, args.verbose, **rparams)
+   
+    if args.backup: ## Export all collected data
+        #kinda.statistics.stats_utils.export_data(KindaSystem, args.backup)
+        kinda.statistics.stats_utils.export_system(KindaSystem, args.backup)
+    
+    if args.backup:
+        print("# Done. Results backed-up in {}\n".format(args.backup))
+    
+
+    ######################
+    # Print the results: #
+    ######################
+    print('# Condensed reactions')
+    for rxn in KindaSystem.get_reactions(spurious=False, unproductive=True):
+        stats = KindaSystem.get_stats(rxn)
+
+        k_1 = stats.get_k1(max_sims=0)
+        k_1_err = stats.get_k1_error(max_sims=0)
+        k_2 = stats.get_k2(max_sims=0)
+        k_2_err = stats.get_k2_error(max_sims=0)
+
+        reactants = map(lambda x:x.name, rxn.reactants)
+        products  = map(lambda x:x.name, rxn.products)
+
+        print('reaction [k1 = {:12g} +/- {:12g} {:4s}] {} -> {}'.format(
+            float(k_1), float(k_1_err),
+            '/M/s',
+            ' + '.join(reactants), 'something'))
+
+        print('reaction [k2 = {:12g} +/- {:12g} {:4s}] {} -> {}'.format(
+            float(k_2), float(k_2_err),
+            '/M/s',
+            'something', ' + '.join(products)))
+
+    print('\n# Resting Macrostates')
+    restingsets = KindaSystem.get_restingsets(spurious = False)
+    for rms in restingsets:
+        stats = KindaSystem.get_stats(rms)
+    
+        p = 1 - stats.get_conformation_prob(None, max_sims=0)
+        p_err = stats.get_conformation_prob_error(None, max_sims=0)
+        temp_dep = stats.get_temporary_depletion(max_sims=0)
+
+        print ('{} [Prob = {:12g} +/- {:12g}; Depletion = {}]'.format(rms.name, p, p_err, temp_dep))
+
+    # In a table, print out temporary depletion levels for each pairwise combination of resting sets.
+    #print('\n# Temporary Depletion')
+    #for rms1 in restingsets:
+    #    rms_stats = KindaSystem.get_stats(rms1)
+
+    #    unprod_rxns = [KindaSystem.get_reactions(unproductive=True, 
+    #        reactants=[rms1,rms2])[0] for rms2 in restingsets]
+
+    #    rxn_stats = [KindaSystem.get_stats(rxn) for rxn in unprod_rxns]
+    #    temp_deps = [rms_stats.get_temporary_depletion_due_to(s, max_sims=0) for s in rxn_stats]
+
+    #    print(temp_deps)
+    #
+    #    print(('{},'*(len(restingsets)+1)).format(rms1, *temp_deps))
+    #    print('{}\n'.format(rms_stats.get_temporary_depletion(max_sims=0)))
+
+
+def add_kinda_args(parser):
+    interface = parser.add_argument_group('KinDA I/O parameters')
+    session   = parser.add_argument_group('KinDA session parameters')
+    system    = parser.add_argument_group('KinDA system paramters')
+
+    parser.add_argument('--version', action='version', version='%(prog)s ' + kinda.__version__)
+    parser.add_argument( '-v', '--verbose', action='count', default=0,
+        help="Print more output (-vv for extra debugging information)")
+
+    # I/O paramters
+    interface.add_argument('input_filename', default=None, nargs='?', metavar='<str>',
+            help="Path to the input file.")
+
+    interface.add_argument('-b', '--backup', default=None, metavar='<str>',
+        help="""Store system in the given file.""")
+
+    interface.add_argument('-r', '--restore', default=None, metavar='<str>',
+        help="""Restore system from given file.""")
+
+    interface.add_argument('-d', '--database', default=None, metavar='<str>',
+        help="""Store/Load/Update given database file.""")
+
+    # Session parameters
+    session.add_argument('--rate-error-goal', type=float, default = 0.3, 
+            metavar='<float>',
+            help="""Relative error goal for reaction rates.""")
+
+    session.add_argument('--prob-error-goal', type=float, default = 0.3, 
+            metavar='<float>',
+            help="""Relative error goal for complex probabilities.""")
+
+    session.add_argument('--rate-batch-size', type=int, nargs=2, 
+            default = [40, 400], metavar=['INIT<int>','MAX<int>'],
+            help="""Adjust batch size for simluations. First: initial batch
+            size, second: maximum batch size. A smaller batch size can lead to
+            slower runtime when using multiple cores, as all parallel jobs
+            have to finish in order to determine the next batch size. A large
+            batch size can lead to excess work in order to reach your error
+            goals.""")
+
+    session.add_argument('--prob-batch-size', type=int, nargs=2, 
+            default = [40, 400], metavar=['INIT<int>','MAX<int>'],
+            help="""Adjust batch size for simluations. First: initial batch
+            size, second: maximum batch size. A smaller batch size can lead to
+            slower runtime when using multiple cores, as all parallel jobs
+            have to finish in order to determine the next batch size. A large
+            batch size can lead to excess work in order to reach your error
+            goals.""")
+
+    session.add_argument('--rate-max-sims', type=int, default = 1000, metavar='<int>',
+            help="""Maxum number of Multistrand simulations for this Session.""")
+
+    session.add_argument('--prob-max-sims', type=int, default = 1000, metavar='<int>',
+            help="""Maxum number of NUPACK simulations for this Session.""")
+
+    session.add_argument('--max-concentration', type=float, default = 1e-7, 
+            metavar='<float>',
+            help="""Maximum concentration of any resting complex in the system.""")
+
+    session.add_argument('--multistrand-timeout', type=float, default = 1.0, 
+            metavar='<float>',
+            help="""Maximum Multistrand simulation time [seconds].""")
+
+    session.add_argument('--no-multiprocessing', action="store_true",
+            help="""Switch off multiprocessing for Multistrand and NUPACK.""")
+
+
+    # Not implemented...
+    #parser.add_argument('--start-macrostate-mode', action="store",
+    #        default = 'count-by-complex', metavar='<str>',
+    #        choices=('count-by-complex', 'count-by-domain', 'disassoc'),
+    #        help="""Classify successful Mulstistrand trajectories by using this
+    #        marcostate model. A successful trajectory has stopped by reaching
+    #        this macrostate.""")
+
+    # System parameters
+    system.add_argument('--stop-macrostate-mode', action="store", 
+            choices=('count-by-complex', 'count-by-domain', 'disassoc'),
+            default = 'disassoc', metavar='<str>',
+            help="""Stop a Multistrand simulation whenever a trajectory reaches
+            one of these possible macrostate definitions. 
+                - disassoc: A given set of ordered complexes.
+                - count-by-complex: Number of base-pairs in complex > th
+                - count-by-domain: Number of base-pairs per domain > th
+            where th = --similarity-threshold. """)
+
+    system.add_argument('--similarity-threshold', type=float, 
+            default = 0.51, metavar='<float>',
+            help="""Similarity threshold to assign complexes to domain-level
+            macrostates (= 1-"max-domain-defect").""")
+
+    system.add_argument('-T','--temperature', type=float, default=25, metavar='<float>',
+            help="""Simulation temperature.""")
+
+    # Potentially supported parameters.
+    system.add_argument('--dangles', default='some', metavar='<str>',
+            choices=('some', 'all', 'none'),
+            help="""NUPACK / Multistrand dangle parameter.""")
+
+    system.add_argument('--material', default='DNA', metavar='<str>', #choices('RNA', 'DNA'),
+            help="""Switch DNA and RNA parameter file.""")
+
+    return
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(
+            formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    add_kinda_args(parser)
+    args = parser.parse_args()
+    main(args)
+
