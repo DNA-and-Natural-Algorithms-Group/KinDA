@@ -30,10 +30,11 @@ def sample_global(args):
                   in strands]
 
   ## Call Nupack
-  structs = nupack.sample(num_samples, strand_seqs, **self._nupack_params)
+  structs = nupack.sample(strand_seqs, num_samples, **self._nupack_params)
 
   ## Convert each Nupack sampled structure (a dot-paren string) into a DNAObjects Complex object and process.
   sampled = [Complex(strands = strands, structure = s) for s in structs]
+
   return sampled
 
 
