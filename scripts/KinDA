@@ -109,7 +109,6 @@ def init_parameter_dicts(args):
         # System Parameters
         'start_macrostate_mode': 'NotImplemented',
         'stop_macrostate_mode': args.stop_macrostate_mode,
-        'material': args.material,
         'multistrand_similarity_threshold': args.similarity_threshold,
         'nupack_similarity_threshold': args.similarity_threshold,
 
@@ -120,6 +119,8 @@ def init_parameter_dicts(args):
     }
     
     mparams = {
+        # Session Parameter
+        'verbosity': 0,
         # System Parameters
         'dangles': args.dangles.title(), # first letter uppercase # Some, None, All
         'substrate_type': args.material,
@@ -127,15 +128,16 @@ def init_parameter_dicts(args):
         'unimolecular_scaling': 2.41686715e+06,
         'bimolecular_scaling': 8.01171383e+05,
         'simulation_time': args.multistrand_timeout,
-        'output_interval': 0,
+        'output_interval': -1,
         'parameter_type': 'Nupack',
         'rate_method': 'Metropolis',
         'join_concentration': 1e-15  # collition rate of complexes. ([] * k_bi)
-        # This must be low enough to ensure that no bind reactions occur after
-        # the first step of a simulation.
+        # join_concentration must be low enough to ensure that no bind
+        # reactions occur after the first step of a simulation.
     }
 
     nparams = {
+        # System Parameters
         'dangles': args.dangles,
         'material': args.material.lower(),
         'T': args.temperature,
@@ -143,17 +145,17 @@ def init_parameter_dicts(args):
 
     # More Session parameters
     rate_params = {
-        'relative_error':  args.rate_error_goal,
+        'relative_error':  args.error_goal if args.error_goal is not None else args.rate_error_goal,
         'init_batch_size': args.rate_batch_size[0],
         'max_batch_size':  args.rate_batch_size[1],
-        'max_sims':        args.rate_max_sims
+        'max_sims':        args.max_sims if args.max_sims is not None else args.rate_max_sims
     }
 
     prob_params = {
-        'relative_error':  args.prob_error_goal,
+        'relative_error':  args.error_goal if args.error_goal is not None else args.prob_error_goal,
         'init_batch_size': args.prob_batch_size[0],
         'max_batch_size':  args.prob_batch_size[1],
-        'max_sims':        args.prob_max_sims
+        'max_sims':        args.max_sims if args.max_sims is not None else args.prob_max_sims
     }
 
     return kparams, mparams, nparams, rate_params, prob_params
@@ -184,13 +186,13 @@ def calculate_all_complex_probabilities(KindaSystem, verbose, **kwargs):
         # (including the spurious conformation, denoted as None)
         rms_stats.get_conformation_probs(**kwargs)
 
-        if verbose:
-            for c in rms.complexes:
-                print("# {}, {} +/- {}".format(c.name, 
-                        rms_stats.get_conformation_prob(c.name, max_sims=0), 
-                        rms_stats.get_conformation_prob_error(c.name, max_sims=0)))
+        #if verbose:
+        #    for c in rms.complexes:
+        #        print("# {}, {} +/- {}".format(c.name, 
+        #                rms_stats.get_conformation_prob(c.name, max_sims=0), 
+        #                rms_stats.get_conformation_prob_error(c.name, max_sims=0)))
 
-def calculate_all_reaction_rates(KindaSystem, verbose, **kwargs):
+def calculate_all_reaction_rates(KindaSystem, unproductive, verbose, **kwargs):
     """Calculates reaction rates and error bars.
 
     There are three types of reactions:
@@ -198,12 +200,12 @@ def calculate_all_reaction_rates(KindaSystem, verbose, **kwargs):
         b) unproductive reactions
 
     """
-    rxns = KindaSystem.get_reactions(spurious = False, unproductive=False)
+    rxns = KindaSystem.get_reactions(spurious = False, unproductive = unproductive)
 
     ## Simulate each reaction
     for e, rxn in enumerate(rxns, 1):
         if verbose :
-            print("Analyzing reaction {}/{}: {}".format(e, len(rxns), rxn))
+            print("# Analyzing reaction {}/{}: {}".format(e, len(rxns), rxn))
     
         # Get stats object
         rxn_stats = KindaSystem.get_stats(rxn)
@@ -212,11 +214,11 @@ def calculate_all_reaction_rates(KindaSystem, verbose, **kwargs):
         rxn_stats.get_k1(**kwargs)
         rxn_stats.get_k2(**kwargs)
         
-        if verbose:
-            print("k1: {} +/- {}".format(
-                    rxn_stats.get_k1(max_sims=0), rxn_stats.get_k1_error(max_sims=0)))
-            print("k2: {} +/- {}".format(
-                    rxn_stats.get_k2(max_sims=0), rxn_stats.get_k2_error(max_sims=0)))
+        #if verbose:
+        #    print("k1: {} +/- {}".format(
+        #            rxn_stats.get_k1(max_sims=0), rxn_stats.get_k1_error(max_sims=0)))
+        #    print("k2: {} +/- {}".format(
+        #            rxn_stats.get_k2(max_sims=0), rxn_stats.get_k2_error(max_sims=0)))
  
 
 def main(args):
@@ -291,15 +293,20 @@ def main(args):
     #   1) calculate probabilites of being in a particular resting complex using Nupack
     #   2) calculate reaction rates using Multistrand
 
+    unproductive = args.unproductive_reactions
+    if unproductive is True: 
+        unproductive = None
+    verbose = args.verbose
+
     # let's do 1)
-    calculate_all_complex_probabilities(KindaSystem, args.verbose, **pparams)
+    calculate_all_complex_probabilities(KindaSystem, verbose, **pparams)
    
     if args.backup: ## Export all collected data (just in case...)
         #kinda.statistics.stats_utils.export_data(KindaSystem, args.backup)
         kinda.statistics.stats_utils.export_system(KindaSystem, args.backup)
 
     # let's do 2)
-    calculate_all_reaction_rates(KindaSystem, args.verbose, **rparams)
+    calculate_all_reaction_rates(KindaSystem, unproductive, verbose, **rparams)
    
     if args.backup: ## Export all collected data
         #kinda.statistics.stats_utils.export_data(KindaSystem, args.backup)
@@ -313,7 +320,7 @@ def main(args):
     # Print the results: #
     ######################
     print('# Condensed reactions')
-    for rxn in KindaSystem.get_reactions(spurious=False, unproductive=True):
+    for rxn in KindaSystem.get_reactions(spurious=False, unproductive=unproductive):
         stats = KindaSystem.get_stats(rxn)
 
         k_1 = stats.get_k1(max_sims=0)
@@ -334,7 +341,7 @@ def main(args):
             '/M/s',
             'something', ' + '.join(products)))
 
-    print('\n# Resting Macrostates')
+    print('\n# Resting macrostate probabilities')
     restingsets = KindaSystem.get_restingsets(spurious = False)
     for rms in restingsets:
         stats = KindaSystem.get_stats(rms)
@@ -343,23 +350,22 @@ def main(args):
         p_err = stats.get_conformation_prob_error(None, max_sims=0)
         temp_dep = stats.get_temporary_depletion(max_sims=0)
 
-        print ('{} [Prob = {:12g} +/- {:12g}; Depletion = {}]'.format(rms.name, p, p_err, temp_dep))
+        print ('# {:20s} [Prob = {:12g} +/- {:12g}; Depletion = {:12g}]'.format(
+            rms.name, p, p_err, temp_dep))
 
     # In a table, print out temporary depletion levels for each pairwise combination of resting sets.
-    #print('\n# Temporary Depletion')
-    #for rms1 in restingsets:
-    #    rms_stats = KindaSystem.get_stats(rms1)
+    if unproductive is None:
+        print('\n# Detailed temporary depletion info:')
+        for rms1 in restingsets:
+            rms_stats = KindaSystem.get_stats(rms1)
 
-    #    unprod_rxns = [KindaSystem.get_reactions(unproductive=True, 
-    #        reactants=[rms1,rms2])[0] for rms2 in restingsets]
+            for rms2 in restingsets:
+                unprod_rxn = KindaSystem.get_reactions(unproductive=True, reactants=[rms1,rms2])[0]
+                rxn_stats = KindaSystem.get_stats(unprod_rxn)
+                depl = rms_stats.get_temporary_depletion_due_to(rxn_stats, max_sims=0)
 
-    #    rxn_stats = [KindaSystem.get_stats(rxn) for rxn in unprod_rxns]
-    #    temp_deps = [rms_stats.get_temporary_depletion_due_to(s, max_sims=0) for s in rxn_stats]
-
-    #    print(temp_deps)
-    #
-    #    print(('{},'*(len(restingsets)+1)).format(rms1, *temp_deps))
-    #    print('{}\n'.format(rms_stats.get_temporary_depletion(max_sims=0)))
+                print ('# {:20s} [Depletion due to {:20s} = {:12g}]'.format(
+                    rms1.name, rms2.name, depl))
 
 
 def add_kinda_args(parser):
@@ -385,6 +391,14 @@ def add_kinda_args(parser):
         help="""Store/Load/Update given database file.""")
 
     # Session parameters
+    session.add_argument('--unproductive-reactions', action='store_true',
+            help="""Toggle to include unproductive reactions for analysis.""")
+
+    session.add_argument('-e', '--error-goal', type=float, default = None,
+            metavar='<float>', 
+            help="""If provided, overwrites both --rate-error-goal and
+            --prob-error-goal.""")
+
     session.add_argument('--rate-error-goal', type=float, default = 0.3, 
             metavar='<float>',
             help="""Relative error goal for reaction rates.""")
@@ -411,6 +425,11 @@ def add_kinda_args(parser):
             batch size can lead to excess work in order to reach your error
             goals.""")
 
+    session.add_argument('-s', '--max-sims', type=int, default = None,
+            metavar='<int>', 
+            help="""If provided, overwrites both --rate-max-sims and
+            --prob-max-sims. --max-sims 0 will turn off all simulations.""")
+
     session.add_argument('--rate-max-sims', type=int, default = 1000, metavar='<int>',
             help="""Maxum number of Multistrand simulations for this Session.""")
 
@@ -431,7 +450,7 @@ def add_kinda_args(parser):
 
     # Not implemented...
     #parser.add_argument('--start-macrostate-mode', action="store",
-    #        default = 'count-by-complex', metavar='<str>',
+    #        default = 'count-by-complex', 
     #        choices=('count-by-complex', 'count-by-domain', 'disassoc'),
     #        help="""Classify successful Mulstistrand trajectories by using this
     #        marcostate model. A successful trajectory has stopped by reaching
@@ -440,7 +459,7 @@ def add_kinda_args(parser):
     # System parameters
     system.add_argument('--stop-macrostate-mode', action="store", 
             choices=('count-by-complex', 'count-by-domain', 'disassoc'),
-            default = 'disassoc', metavar='<str>',
+            default = 'disassoc', #metavar='<str>',
             help="""Stop a Multistrand simulation whenever a trajectory reaches
             one of these possible macrostate definitions. 
                 - disassoc: A given set of ordered complexes.
@@ -454,15 +473,16 @@ def add_kinda_args(parser):
             macrostates (= 1-"max-domain-defect").""")
 
     system.add_argument('-T','--temperature', type=float, default=25, metavar='<float>',
-            help="""Simulation temperature.""")
+            help="""Simulation temperature in Celsius.""")
 
     # Potentially supported parameters.
-    system.add_argument('--dangles', default='some', metavar='<str>',
+    system.add_argument('--dangles', default='some',
             choices=('some', 'all', 'none'),
             help="""NUPACK / Multistrand dangle parameter.""")
 
-    system.add_argument('--material', default='DNA', metavar='<str>', #choices('RNA', 'DNA'),
-            help="""Switch DNA and RNA parameter file.""")
+    system.add_argument('--material', default='DNA',
+            choices=('DNA'),  # RNA not supported
+            help=argparse.SUPPRESS)
 
     return
 

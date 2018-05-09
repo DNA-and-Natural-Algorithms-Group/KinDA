@@ -5,10 +5,5 @@
 *.swp
 *~
 
-# Ignore build files
-build/
-dist/
-kinda.egg-info/
-
 # Ignore internal test scripts
 kinda/tests/
