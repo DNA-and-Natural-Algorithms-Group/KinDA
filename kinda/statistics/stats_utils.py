@@ -470,6 +470,7 @@ def export_data(sstats, filepath):
     'resting-set-reactions': rsrxn_to_dict,
     'resting-set-stats': rsstats_to_dict,
     'resting-set-reaction-stats': rsrxnstats_to_dict,
+    'initialization_params': sstats.initialization_params
   }
   
   f = open(filepath, 'w')
@@ -526,6 +527,11 @@ def import_data(filepath, kparams = {}, mparams = {}, nparams = {}):
     products = [restingsets[rs_id] for rs_id in data['products']]
     rs_reactions[rsrxn_id] = dna.RestingSetReaction(name = data['name'], reactants = reactants, products = products)
     
+  kinda_params = sstats_dict['initialization_params']['kinda_params']
+  multistrand_params = sstats_dict['initialization_params']['multistrand_params']
+  nupack_params = sstats_dict['initialization_params']['nupack_params']
+  peppercorn_params = sstats_dict['initialization_params']['peppercorn_params']
+
   from .. import kinda
   sstats = kinda.System(complexes = complexes.values(), 
           restingsets = restingsets.values(), 
