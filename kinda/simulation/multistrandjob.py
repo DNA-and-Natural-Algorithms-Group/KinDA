@@ -86,16 +86,17 @@ class MultistrandJob(object):
     ## Convert DNAObjects to Multistrand objects
     if all(map(lambda x: isinstance(x, RestingSet), kargs['start_state'])):
       resting_sets = kargs['start_state']
-      start_complexes = []
-      boltzmann = True
+      complexes = []
+      boltzmann = False # Should be True, but currently there are issues with boltzmann sampling
+      use_resting_sets = True
     elif all(map(lambda x: isinstance(x, Complex), kargs['start_state'])):
       resting_sets = []
-      start_complexes = kargs['start_state']
+      complexes = kargs['start_state']
       boltzmann = False
+      use_resting_sets = False
     else:
       assert False, "Starting state must be all complexes or all resting sets"
     stop_conditions = kargs['stop_conditions']
-    complexes = start_complexes
 
     ms_data = io_Multistrand.to_Multistrand(
         complexes = complexes,
@@ -109,10 +110,10 @@ class MultistrandJob(object):
     macrostates_dict = dict(ms_data['macrostates'])
 
     ## Set ms_params with all parameters needed to create an MS Options object on the fly
-    if boltzmann:
+    if use_resting_sets:
       start_state = [resting_sets_dict[rs] for rs in resting_sets]
     else:
-      start_state = [complexes_dict[c] for c in start_complexes]
+      start_state = [complexes_dict[c] for c in complexes]
 
     options_dict = dict(
         self._multistrand_params,
@@ -138,7 +139,7 @@ class MultistrandJob(object):
 
   def create_ms_options(self, num_sims):
     """ Creates a fresh MS Options object using the arguments in self._ms_options_dict. """
-    return MSOptions(**dict(self._ms_options_dict, num_simulations = num_sims, verbosity = 0))
+    return MSOptions(**dict(self._ms_options_dict, num_simulations = num_sims))
 
   def run_simulations(self, num_sims, sims_per_update = 1, sims_per_worker=1, status_func = lambda:None):
     ## Run simulations using multiprocessing if specified
