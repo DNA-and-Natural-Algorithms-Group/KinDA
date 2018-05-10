@@ -128,7 +128,10 @@ def k1_mean(success_tag, ms_results):
   success_kcolls = np.ma.array(ms_results['kcoll'], mask=(ms_results['tags']!=success_tag))
   n = len(success_kcolls)
   tags = ms_results['tags']
-  return np.sum(success_kcolls) / (n + 2.0)
+  if sum(~success_kcolls.mask) > 0:
+    return np.sum(success_kcolls) / (n + 2.0)
+  else:
+    return 0.0
 def k1_std(success_tag, ms_results):
   """ The standard deviation for k1 is the
   same as the standard error reported by k1_error() """

@@ -1,1 +1,1 @@
-from PyNupack import *
+from nupack_wrapper import *

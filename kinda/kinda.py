@@ -100,6 +100,17 @@ class System(object):
   ## Basic get functions for system objects
 
   @property
+  def initialization_params(self):
+    """ Returns a dict of the parameters used to initialize this system, including
+    those set by the defaults in options.py. """
+    return {
+      'kinda_params': self._kinda_params,
+      'multistrand_params': self._multistrand_params,
+      'nupack_params': self._nupack_params,
+      'peppercorn_params': self._peppercorn_params
+    }
+
+  @property
   def complexes(self):
     """ Returns a list of all complexes (given and enumerated) predicted for the system. """
     return list(self._complexes)
