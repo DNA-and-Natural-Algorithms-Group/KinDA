@@ -50,8 +50,12 @@ class MultistrandJob(object):
   the trajectory results.
   This is the parent class to the more useful job classes that compile
   specific information for each job mode type."""
+
+  verbose = 1
   
-  def __init__(self, start_state, stop_conditions, sim_mode, multiprocessing = True, multistrand_params = {}):
+  def __init__(self, start_state, stop_conditions, sim_mode, 
+      multiprocessing = True, 
+      multistrand_params = {}):
     self._multistrand_params = dict(multistrand_params)
     self._ms_options_dict = self.setup_ms_params(start_state = start_state,
                                           stop_conditions = stop_conditions,
@@ -141,7 +145,8 @@ class MultistrandJob(object):
     """ Creates a fresh MS Options object using the arguments in self._ms_options_dict. """
     return MSOptions(**dict(self._ms_options_dict, num_simulations = num_sims))
 
-  def run_simulations(self, num_sims, sims_per_update = 1, sims_per_worker=1, status_func = lambda:None):
+  def run_simulations(self, num_sims, sims_per_update = 1, sims_per_worker=1, 
+      status_func = lambda:None):
     ## Run simulations using multiprocessing if specified
     if self._multiprocessing:
       self.run_sims_multiprocessing(num_sims, sims_per_update, sims_per_worker, status_func)
@@ -224,14 +229,27 @@ class MultistrandJob(object):
     for k in self._ms_results:
       self._ms_results[k] = self._ms_results_buff[k][:self.total_sims]
 
-  def reduce_error_to(self, rel_goal, max_sims, reaction = 'overall', stat = 'rate', init_batch_size = 50, min_batch_size = 50, max_batch_size = 500, sims_per_update = 1, sims_per_worker = 1):
+  def reduce_error_to(self, rel_goal, max_sims, 
+      reaction = 'overall', 
+      stat = 'rate', 
+      init_batch_size = 50, 
+      min_batch_size = 50, 
+      max_batch_size = 500, 
+      sims_per_update = 1, 
+      sims_per_worker = 1):
     """Runs simulations to reduce the error to rel_goal*mean or until max_sims is reached."""
     def status_func(batch_sims_done):
-      table_update_func([calc_mean(), calc_error(), goal, "", "%d/%d"%(batch_sims_done,num_trials), "%d/%d"%(num_sims+batch_sims_done,num_sims+exp_add_sims), str(100*(num_sims+batch_sims_done)/(num_sims+exp_add_sims))+"%"])
+      table_update_func([calc_mean(), calc_error(), goal, "", 
+        "%d/%d"%(batch_sims_done,num_trials), 
+        "%d/%d"%(num_sims+batch_sims_done,num_sims+exp_add_sims), 
+        str(100*(num_sims+batch_sims_done)/(num_sims+exp_add_sims))+"%"])
+
     def calc_mean():
       return self._stats_funcs[stat][0](self._tag_id_dict[reaction], self._ms_results)
     def calc_error():  
       return self._stats_funcs[stat][2](self._tag_id_dict[reaction], self._ms_results)
+
+    verbose = MultistrandJob.verbose
 
     num_sims = 0
     error = calc_error()
@@ -239,17 +257,21 @@ class MultistrandJob(object):
 
     # Check if any simulations are necessary
     if error <= goal or num_sims >= max_sims:
+      if max_sims and verbose :
+          print '#    Returning result: Rate = {}; Error = {}; Goal = {}'.format(calc_mean(), error, goal)
       return
 
-    if self._multiprocessing:
-      print "[MULTIPROCESSING ON] (with %d cores)" % multiprocessing.cpu_count()
-    else:
-      print "[MULTIPROCESSING OFF]"
+    if verbose:
+      if self._multiprocessing:
+        print '#    [MULTIPROCESSING ON] (over %d cores)'%multiprocessing.cpu_count()
+      else:
+        print '#    [MULTIPROCESSING OFF]'
 
-    table_update_func = sim_utils.print_progress_table(
-        [stat, "error", "err goal", "", "batch sims", "overall sims", "progress"],
-        [14, 14, 14, 6, 17, 17, 10])
-    table_update_func([calc_mean(), error, goal, "", "--/--", "--/--", "--"])
+      table_update_func = sim_utils.print_progress_table(
+          [stat, "error", "err goal", "", "batch sims", "overall sims", "progress"],
+          [14, 14, 14, 6, 17, 17, 10])
+      table_update_func([calc_mean(), error, goal, "", "--/--", "--/--", "--"])
+
     while not error <= goal and num_sims < max_sims:
       # Estimate additional trials based on inverse square root relationship
       # between error and number of trials
@@ -259,11 +281,16 @@ class MultistrandJob(object):
       else:
         reduction = error / goal
         exp_add_sims = int(self.total_sims * (reduction**2 - 1) + 1)
-        num_trials = max(min(exp_add_sims, max_batch_size, max_sims - num_sims, self.total_sims + 1), min_batch_size)
+        num_trials = max(min(exp_add_sims, max_batch_size, 
+          max_sims - num_sims, self.total_sims + 1), min_batch_size)
         
       self.preallocate_batch(num_trials)
-      self.run_simulations(num_trials, sims_per_update = sims_per_update, sims_per_worker = sims_per_worker, status_func = status_func)
-      status_func(num_trials)
+      self.run_simulations(num_trials, 
+          sims_per_update = sims_per_update, 
+          sims_per_worker = sims_per_worker, 
+          status_func = status_func if verbose else lambda x:None)
+      if verbose:
+        status_func(num_trials)
 
       num_sims += num_trials
       error = calc_error()
@@ -273,10 +300,11 @@ class MultistrandJob(object):
       exp_add_sims = 0
     else:
       exp_add_sims = max(0, int(self.total_sims * ((error/goal)**2 - 1) + 1))
-    table_update_func([calc_mean(), error, goal, "", "--/--", "%d/%d"%(num_sims, num_sims+exp_add_sims), str(100*num_sims/(num_sims+exp_add_sims))+"%"])
-    print
 
-    
+    if verbose:
+      table_update_func([calc_mean(), error, goal, "", "--/--", 
+        "%d/%d"%(num_sims, num_sims+exp_add_sims), str(100*num_sims/(num_sims+exp_add_sims))+"%"])
+      print
 
 class FirstPassageTimeModeJob(MultistrandJob):
   

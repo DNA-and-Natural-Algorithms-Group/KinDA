@@ -72,6 +72,11 @@ class System(object):
     self._spurious_restingsets = None
     self._spurious_condensed_reactions = None
 
+    # ok, I changed my mind, let's make stats objects right away ...  but I can
+    # still see how one wants to initialize the object, then twiggle some
+    # session parameters and *then* make the stats_objects.
+    self.make_stats_objects()
+
   def enumerate(self, peppercorn_params):
     from .enumeration.enumeratejob import EnumerateJob
     self._peppercorn_params = dict(options.peppercorn_params, **peppercorn_params)
@@ -206,9 +211,6 @@ class System(object):
   def get_stats(self, obj):
     """ Returns the stats object corresponding to the given system object.
     obj must be a resting-set reaction or resting set in the system. """
-
-    if self._rxn_to_stats is None:
-      self.make_stats_objects()
 
     if obj in self._rxn_to_stats:
       return self._rxn_to_stats[obj]

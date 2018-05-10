@@ -369,7 +369,7 @@ def calc_unproductive_rxn_score(system_stats, relative_error = 0.5, max_sims = 5
 #       Import/Export Utilities      #
 ######################################
 
-def export_data(sstats, filepath):
+def export_data(sstats, filepath, use_pickle = False):
   """ Exports data of this KinDA object so that it can be imported in a later Python session.
   Does not export the entire KinDA object (only the XXXStats data that has been collected).
   Data is exported in JSON format.
@@ -473,10 +473,14 @@ def export_data(sstats, filepath):
     'initialization_params': sstats.initialization_params
   }
   
-  f = open(filepath, 'w')
-  json.dump(sstats_dict, f)
+  if use_pickle : 
+    pickle.dump(sstats_dict, open(filepath, "wb"))
+  else :
+    json.dump(sstats_dict, open(filepath, 'w'))
 
-def import_data(filepath):
+  return
+
+def import_data(filepath, use_pickle = False):
   """ Imports a KinDA object as exported in the format specified by export_data() 
 
   Imports:
@@ -491,10 +495,11 @@ def import_data(filepath):
 
   
   """
-  f = open(filepath)
-  sstats_dict = json.load(f)
 
-#  return sstats_dict
+  if use_pickle:
+    sstats_dict = pickle.load(open(filepath, "rb"))
+  else:
+    sstats_dict = json.load(open(filepath))
 
   domains = {}
   for domain_id, data in sstats_dict['domains'].iteritems():
@@ -508,24 +513,27 @@ def import_data(filepath):
   complexes = {}
   for complex_id, data in sstats_dict['complexes'].iteritems():
     cpx_strands = [strands[s_id] for s_id in data['strands']]
-    complexes[complex_id] = dna.Complex(name = data['name'], strands = cpx_strands, structure = data['structure'])
+    complexes[complex_id] = dna.Complex(name = data['name'], 
+        strands = cpx_strands, structure = data['structure'])
 
   restingsets = {}
   for rs_id, data in sstats_dict['resting-sets'].iteritems():
     rs_complexes = [complexes[c_id] for c_id in data['complexes']]
-    restingsets[rs_id] = dna.RestingSet(data['name'], complexes = rs_complexes)
+    restingsets[rs_id] = dna.RestingSet(name = data['name'], complexes = rs_complexes)
 
   reactions = {}
   for rxn_id, data in sstats_dict['reactions'].iteritems():
     reactants = [complexes[c_id] for c_id in data['reactants']]
     products = [complexes[c_id] for c_id in data['products']]
-    reactions[rxn_id] = dna.Reaction(name = data['name'], reactants = reactants, products = products)
+    reactions[rxn_id] = dna.Reaction(name = data['name'], 
+        reactants = reactants, products = products)
 
   rs_reactions = {}
   for rsrxn_id, data in sstats_dict['resting-set-reactions'].iteritems():
     reactants = [restingsets[rs_id] for rs_id in data['reactants']]
     products = [restingsets[rs_id] for rs_id in data['products']]
-    rs_reactions[rsrxn_id] = dna.RestingSetReaction(name = data['name'], reactants = reactants, products = products)
+    rs_reactions[rsrxn_id] = dna.RestingSetReaction(name = data['name'], 
+        reactants = reactants, products = products)
     
   kparams = sstats_dict['initialization_params']['kinda_params']
   mparams = sstats_dict['initialization_params']['multistrand_params']
@@ -577,97 +585,4 @@ def import_data(filepath):
     multijob.total_sims = num_sims
     
   return sstats
-
-
-def export_system(sstats, path, use_pickle=True):
-  """ Write a Kinda.System() database to disc.
-
-  First, store the current parameters, so we can sure we import the right thing later.
-  Second, store all the component stats() objects.
-  """
-
-  # Allows only one similarity_threshold
-  rs_similarity_threshold = None
-  rs_max_concentration = None
-  multijob_tag = None
-
-  # loop over all restingsets in the System Stats object...
-  rs_stats = {}
-  for rs in sstats._restingsets:
-    stats = sstats.get_stats(rs)
-    if rs_similarity_threshold:
-      assert stats.get_similarity_threshold() == rs_similarity_threshold
-    if rs_max_concentration:
-      assert stats.c_max == rs_max_concentration
-
-    for cplx in rs.complexes:
-      rs_stats[cplx.name] = {
-          'data': list(stats.get_conformation_prob_data(cplx.name))}
-
-  rxn_stats = {}
-  for rxn in sstats._condensed_reactions:
-    stats = sstats.get_stats(rxn)
-    rxn_stats[str(rxn)] = {
-        'simulations' : {key: list(d) for key,d in stats.get_simulation_data().iteritems()},
-        'tag': stats.multijob_tag
-    }
-
-  if use_pickle : 
-    pickle.dump({'rs_stats': rs_stats, 'rxn_stats' : rxn_stats}, open(path, "wb"))
-  else :
-    json.dump({'rs_stats': rs_stats, 'rxn_stats' : rxn_stats}, open(path, 'w'))
-
-def import_system(sstats, path, use_pickle=True):
-  if use_pickle:
-    sstats_dict = pickle.load(open(path, "rb"))
-  else:
-    sstats_dict = json.load(open(path))
-
-  # c_max
-  # threshold
-
-  #print stats.get_similarity_threshold()
-  #print stats.c_max
-
-  #restingobjects = dict((x.name, x) for x in sstats._restingsets)
-
-  cplx_to_rset = dict(
-      (cplx.name, rset) for rset in sstats._restingsets for cplx in rset.complexes)
-
-  for cplx, data in sstats_dict['rs_stats'].iteritems():
-    # now we need to add the coformation probability data to the RestingSetStats
-    rs = cplx_to_rset[cplx]
-    stats = sstats.get_stats(rs)
-    if stats is None:
-      print "Cannot find resting set: {}".format(rs)
-      continue
-    # Now dig into the rabbithole:
-    # Extract the NupackSampleJob from RestingSetStats and add the raw data.
-    nupackjob = stats.get_nupackjob()
-    for key, val in data.iteritems():
-      if key == 'data':
-        nupackjob.set_complex_prob_data(cplx, val)
-        num_sims = len(val)
-      else :
-        raise SystemStatsImportError('unknown key: {}'.format(key))
-    # Could be data from multible complexes...
-    nupackjob.total_sims += num_sims
-    nupackjob.update_complex_counts()
-
-  rxn_to_obj = dict((str(x), x) for x in sstats._condensed_reactions)
-
-  for rxn, data in sstats_dict['rxn_stats'].iteritems():
-    rxnobj = rxn_to_obj[rxn]
-    stats = sstats.get_stats(rxnobj)
-    if stats == None:
-      print "Cannot find resting set reaction: {}".format(rxn)
-      continue
-    # Now dig into the rabbithole:
-    # Extract the FirstStepModeJob from RestingSetRxnStats and add the raw data.
-    multijob = stats.get_multistrandjob()
-    stats.multijob_tag = data['tag'] # reaction description
-    sim_data = {key:np.array(d) for key,d in data['simulations'].iteritems()}
-    multijob.set_simulation_data(sim_data)
-    multijob.total_sims = len(data['simulations']['tags'])
-
 

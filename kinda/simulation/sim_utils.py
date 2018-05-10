@@ -19,14 +19,14 @@ def print_progress_table(col_headers, col_widths = None, col_init_data = None):
 
   def update_progress(col_data):
     str_data = [('{:<'+str(w-1)+'}').format(d)[:w-1] for d,w in zip(col_data, col_widths)]
-    print ' '.join(str_data), '\r',
+    print "#    {}\r".format(' '.join(str_data)),
     sys.stdout.flush()
 
   if col_widths is None:
     col_widths = [max(len(h)+1, 8) for h in col_headers]
 
   header = ' '.join([(h+' '*(w-1))[:w-1] for h,w in zip(col_headers, col_widths)])
-  print header
+  print "#    {}".format(header)
 
   if col_init_data is not None:
     update_progress(col_init_data)

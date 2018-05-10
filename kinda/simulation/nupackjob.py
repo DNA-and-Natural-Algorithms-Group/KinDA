@@ -50,6 +50,8 @@ class NupackSampleJob(object):
   The similarity threshold may be changed with set_similarity_threshold().
   """
 
+  verbose = 1
+
   def __init__(self, restingset, similarity_threshold = None, multiprocessing = True, nupack_params = {}):
     """ Constructs a NupackSampleJob object with the given resting set and similarity threshold.
     If similarity threshold is not given, the value in options.py (kinda_params['nupack_similarity_threshold'])
@@ -250,11 +252,17 @@ class NupackSampleJob(object):
       error = self.get_complex_prob_error(complex_name)
       goal = rel_goal * prob
       if exp_add_sims is None:
-        update_func([complex_name, prob, error, goal, "", "%d/%d"%(batch_sims_done,num_trials), "%d/--"%(num_sims+batch_sims_done), "--"])
+        update_func([complex_name, prob, error, goal, "", 
+            "%d/%d"%(batch_sims_done,num_trials), "%d/--"%(num_sims+batch_sims_done), "--"])
       else:
-        update_func([complex_name, prob, error, goal, "", "%d/%d"%(batch_sims_done,num_trials), "%d/%d"%(num_sims + batch_sims_done,num_sims+exp_add_sims), str(100*(num_sims+batch_sims_done)/(num_sims+exp_add_sims))+'%']) 
+        update_func([complex_name, prob, error, goal, "", 
+            "%d/%d"%(batch_sims_done,num_trials), 
+            "%d/%d"%(num_sims + batch_sims_done,num_sims+exp_add_sims), 
+            str(100*(num_sims+batch_sims_done)/(num_sims+exp_add_sims))+'%']) 
       
     
+    verbose = NupackSampleJob.verbose
+        
     # Get initial values
     num_sims = 0
     prob = self.get_complex_prob(complex_name)
@@ -262,18 +270,22 @@ class NupackSampleJob(object):
     goal = rel_goal * prob
 
     # Check if simulations are needed, return if not
-    if error <= goal or num_sims >= max_sims:  return
+    if error <= goal or num_sims >= max_sims: 
+        if max_sims and verbose :
+            print '#    Returning result: P({}) = {}; Error = {}; Goal = {}'.format(complex_name, prob, error, goal)
+        return
 
-    if self._multiprocessing:
-      print '[MULTIPROCESSING ON] (over %d cores)'%multiprocessing.cpu_count()
-    else:
-      print '[MULTIPROCESSING OFF]'
+    if verbose:
+      if self._multiprocessing:
+        print '#    [MULTIPROCESSING ON] (over %d cores)'%multiprocessing.cpu_count()
+      else:
+        print '#    [MULTIPROCESSING OFF]'
 
-    # Prepare progress table
-    update_func = print_progress_table(
-        ["complex", "prob", "error", "err goal", "", "batch sims", "overall sims", "progress"],
-        [11, 10, 10, 10, 6, 17, 17, 10])
-    update_func([complex_name, prob, error, goal, "", "--/--", "--/--", "--"])
+      # Prepare progress table
+      update_func = print_progress_table(
+          ["complex", "prob", "error", "err goal", "", "batch sims", "overall sims", "progress"],
+          [11, 10, 10, 10, 6, 17, 17, 10])
+      update_func([complex_name, prob, error, goal, "", "--/--", "--/--", "--"])
 
     # Run simulations
     while not error <= goal and num_sims < max_sims:
@@ -288,7 +300,7 @@ class NupackSampleJob(object):
         num_trials = max(min(max_batch_size, exp_add_sims, max_sims - num_sims, self.total_sims + 1), min_batch_size)
         
       # Query Nupack
-      self.sample(num_samples = num_trials, status_func = status_func)
+      self.sample(num_samples = num_trials, status_func = status_func if verbose else lambda x: None)
 
       # Update estimates and goal
       num_sims += num_trials
@@ -300,5 +312,11 @@ class NupackSampleJob(object):
       exp_add_sims = 0
     else:
       exp_add_sims = max(0, int(self.total_sims * ((error/goal)**2 - 1) + 1))
-    update_func([complex_name, prob, error, goal, "", "--/--", "%d/%d"%(num_sims,num_sims+exp_add_sims), str(100*num_sims/(num_sims+exp_add_sims))+'%'])
-    print
+
+    if verbose:
+      update_func([complex_name, prob, error, goal, "", "--/--", 
+        "%d/%d"%(num_sims,num_sims+exp_add_sims), str(100*num_sims/(num_sims+exp_add_sims))+'%'])
+      print
+
+
+
