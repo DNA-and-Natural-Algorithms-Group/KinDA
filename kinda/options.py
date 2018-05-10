@@ -14,7 +14,7 @@ multistrand_params = {
   'verbosity': 0,
   'dangles': 'Some',
   'simulation_time': 1.00, 
-  'output_interval': 100,
+  'output_interval': 0,
   'parameter_type': 'Nupack',
   'substrate_type': 'DNA',
   'rate_method': 'Metropolis',

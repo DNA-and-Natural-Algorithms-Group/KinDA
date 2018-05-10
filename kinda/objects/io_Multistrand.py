@@ -47,12 +47,14 @@ def to_Multistrand_complexes(complexes, ms_strands):
   return ms_complexes
   
 def to_Multistrand_restingstates(resting_sets, ms_complexes):
+  """ Because support for Multistrand RestingStates has been dropped,
+  we now convert to Multistrand Complex objects with the structure
+  of one of the component complexes in the KinDA RestingSet object. """
   import multistrand.objects as MS
   
   ms_restingstates = {}
   for rs in resting_sets:
-    cpxs = [ms_complexes[c] for c in rs.complexes]
-    ms_restingstates[rs] = MS.RestingState(rs.name, cpxs)
+    ms_restingstates[rs] = ms_complexes[iter(rs.complexes).next()]
   return ms_restingstates
   
 def to_Multistrand_macrostates(macrostates, ms_complexes):
