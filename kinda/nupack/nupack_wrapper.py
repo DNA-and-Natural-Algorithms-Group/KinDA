@@ -383,10 +383,9 @@ def sample(sequences, samples, ordering = None, material = 'rna',
 
   # Check NUPACK version
   if not ("NUPACK 3.0" in output[0] or "NUPACK 3.2" in output[0]):
-    raise IOError("Boltzmann sample function is not up to date. NUPACK 3.0.2 or greater needed.")
+    raise IOError("Boltzmann sample function is not up to date. NUPACK 3.2.0 or greater needed.")
 
   # Parse and return output
   sampled = [l.strip() for l in output[-samples:]]
   return sampled
 
-print "Python interface to NUPACK 3.0 (Pierce lab, Caltech, www.nupack.org) loaded."
