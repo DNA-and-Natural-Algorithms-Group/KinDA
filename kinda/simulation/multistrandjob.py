@@ -87,7 +87,7 @@ class MultistrandJob(object):
     if all(map(lambda x: isinstance(x, RestingSet), kargs['start_state'])):
       resting_sets = kargs['start_state']
       complexes = []
-      boltzmann = False # Should be True, but currently there are issues with boltzmann sampling
+      boltzmann = True
       use_resting_sets = True
     elif all(map(lambda x: isinstance(x, Complex), kargs['start_state'])):
       resting_sets = []
@@ -115,11 +115,13 @@ class MultistrandJob(object):
     else:
       start_state = [complexes_dict[c] for c in complexes]
 
+    for elem in start_state:
+      elem.boltzmann_sample = boltzmann
+
     options_dict = dict(
         self._multistrand_params,
         start_state =         start_state,
         simulation_mode =     kargs['mode'],
-        boltzmann_sample =    boltzmann,
         stop_conditions = list(it.chain(*[macrostates_dict[m] for m in stop_conditions]))
     )
 
