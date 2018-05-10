@@ -498,10 +498,16 @@ def import_data(filepath):
     products = [restingsets[rs_id] for rs_id in data['products']]
     rs_reactions[rsrxn_id] = dna.RestingSetReaction(name = data['name'], reactants = reactants, products = products)
     
-  kinda_params = sstats_dict['initialization_params']['kinda_params']
-  multistrand_params = sstats_dict['initialization_params']['multistrand_params']
-  nupack_params = sstats_dict['initialization_params']['nupack_params']
-  peppercorn_params = sstats_dict['initialization_params']['peppercorn_params']
+  if 'initialization_params' in sstats_dict:
+    kinda_params = sstats_dict['initialization_params']['kinda_params']
+    multistrand_params = sstats_dict['initialization_params']['multistrand_params']
+    nupack_params = sstats_dict['initialization_params']['nupack_params']
+    peppercorn_params = sstats_dict['initialization_params']['peppercorn_params']
+  else:
+    kinda_params = {}
+    multistrand_params = {}
+    nupack_params = {}
+    peppercorn_params = {}
 
   from .. import kinda
   sstats = kinda.System(complexes = complexes.values(), restingsets = restingsets.values(), detailed_reactions = reactions.values(), condensed_reactions = rs_reactions.values(), enumeration = False, kinda_params = kinda_params, multistrand_params = multistrand_params, nupack_params = nupack_params, peppercorn_params = peppercorn_params)

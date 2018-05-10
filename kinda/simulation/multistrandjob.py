@@ -80,6 +80,10 @@ class MultistrandJob(object):
   @multiprocessing.setter
   def multiprocessing(self, val):
     self._multiprocessing = val
+
+  @property
+  def tag_id_dict(self):
+    return self._tag_id_dict.copy()
                                                 
   def setup_ms_params(self, *args, **kargs):
 
