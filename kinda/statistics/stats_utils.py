@@ -44,7 +44,7 @@ def make_RestingSetRxnStats(restingsets, detailed_rxns, condensed_rxns,
   with the same reactants share a Multistrand job object
   for improved efficiency. """
 
-  print "KinDA: Constructing internal KinDA objects...\r",
+  #print "KinDA: Constructing internal KinDA objects...\r",
   sys.stdout.flush()
 
   # Initialize set of spurious reactions
@@ -91,7 +91,7 @@ def make_RestingSetRxnStats(restingsets, detailed_rxns, condensed_rxns,
         multistrand_params = multistrand_params)
     reactants_to_mjob[r] = job
 
-    print "KinDA: Constructing internal KinDA objects... {}%\r".format(100*i/len(reactants)),
+    #print "KinDA: Constructing internal KinDA objects... {}%\r".format(100*i/len(reactants)),
     sys.stdout.flush()
     
   # Create RestingSetRxnStats object for each reaction
@@ -119,7 +119,7 @@ def make_RestingSetRxnStats(restingsets, detailed_rxns, condensed_rxns,
     )
     rxn_to_stats[rxn] = stats
 
-  print "KinDA: Constructing internal KinDA objects... Done!"
+  #print "KinDA: Constructing internal KinDA objects... Done!"
 
   return rxn_to_stats
   
@@ -476,7 +476,7 @@ def export_data(sstats, filepath):
   f = open(filepath, 'w')
   json.dump(sstats_dict, f)
 
-def import_data(filepath, kparams = {}, mparams = {}, nparams = {}):
+def import_data(filepath):
   """ Imports a KinDA object as exported in the format specified by export_data() 
 
   Imports:
@@ -527,17 +527,21 @@ def import_data(filepath, kparams = {}, mparams = {}, nparams = {}):
     products = [restingsets[rs_id] for rs_id in data['products']]
     rs_reactions[rsrxn_id] = dna.RestingSetReaction(name = data['name'], reactants = reactants, products = products)
     
-  kinda_params = sstats_dict['initialization_params']['kinda_params']
-  multistrand_params = sstats_dict['initialization_params']['multistrand_params']
-  nupack_params = sstats_dict['initialization_params']['nupack_params']
-  peppercorn_params = sstats_dict['initialization_params']['peppercorn_params']
+  kparams = sstats_dict['initialization_params']['kinda_params']
+  mparams = sstats_dict['initialization_params']['multistrand_params']
+  nparams = sstats_dict['initialization_params']['nupack_params']
+  pparams = sstats_dict['initialization_params']['peppercorn_params']
 
   from .. import kinda
   sstats = kinda.System(complexes = complexes.values(), 
           restingsets = restingsets.values(), 
           detailed_reactions = reactions.values(), 
-          condensed_reactions = rs_reactions.values(), enumeration = False,
-              kinda_params = kparams, multistrand_params = mparams, nupack_params = nparams)
+          condensed_reactions = rs_reactions.values(),
+          enumeration = False,
+          kinda_params = kparams, 
+          multistrand_params = mparams, 
+          nupack_params = nparams,
+          peppercorn_params = pparams)
   
   for rs_id, data in sstats_dict['resting-set-stats'].iteritems():
     stats = sstats.get_stats(restingsets[rs_id])

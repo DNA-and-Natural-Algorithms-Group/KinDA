@@ -90,10 +90,11 @@ Divide by zero warning:
 import os
 import sys
 import argparse
+import peppercornenumerator
 
 import kinda
-import peppercornenumerator
 from kinda.input import read_pil
+from kinda.statistics.stats_utils import import_data, export_data
 
 def init_parameter_dicts(args):
     """Initialize kinda's parameter format.
@@ -107,7 +108,7 @@ def init_parameter_dicts(args):
 
     kparams = {
         # System Parameters
-        'start_macrostate_mode': 'NotImplemented',
+        'start_macrostate_mode': 'disassoc', # Not implemented
         'stop_macrostate_mode': args.stop_macrostate_mode,
         'multistrand_similarity_threshold': args.similarity_threshold,
         'nupack_similarity_threshold': args.similarity_threshold,
@@ -122,7 +123,7 @@ def init_parameter_dicts(args):
         # Session Parameter
         'verbosity': 0,
         # System Parameters
-        'dangles': args.dangles.title(), # first letter uppercase # Some, None, All
+        'dangles': args.dangles.title(), # first letter uppercase
         'substrate_type': args.material,
         'temperature': args.temperature,
         'unimolecular_scaling': 2.41686715e+06,
@@ -167,7 +168,8 @@ def calculate_all_complex_probabilities(KindaSystem, verbose, **kwargs):
     Args:
         KindaSystem():
         verbose (int):
-        kwargs (dict): Arguments that are passed on to ?.get_conformation_probs()
+        kwargs (dict): Arguments that are passed on to get_conformation_probs() of the
+            kinda.statistics.stats.RestingSetRxnStats() object.
 
     Doublecheck: Probability of the spurious conformation None.
     """
@@ -186,13 +188,7 @@ def calculate_all_complex_probabilities(KindaSystem, verbose, **kwargs):
         # (including the spurious conformation, denoted as None)
         rms_stats.get_conformation_probs(**kwargs)
 
-        #if verbose:
-        #    for c in rms.complexes:
-        #        print("# {}, {} +/- {}".format(c.name, 
-        #                rms_stats.get_conformation_prob(c.name, max_sims=0), 
-        #                rms_stats.get_conformation_prob_error(c.name, max_sims=0)))
-
-def calculate_all_reaction_rates(KindaSystem, unproductive, verbose, **kwargs):
+def calculate_all_reaction_rates(KindaSystem, unproductive, spurious, verbose, **kwargs):
     """Calculates reaction rates and error bars.
 
     There are three types of reactions:
@@ -200,7 +196,7 @@ def calculate_all_reaction_rates(KindaSystem, unproductive, verbose, **kwargs):
         b) unproductive reactions
 
     """
-    rxns = KindaSystem.get_reactions(spurious = False, unproductive = unproductive)
+    rxns = KindaSystem.get_reactions(spurious = spurious, unproductive = unproductive)
 
     ## Simulate each reaction
     for e, rxn in enumerate(rxns, 1):
@@ -214,12 +210,6 @@ def calculate_all_reaction_rates(KindaSystem, unproductive, verbose, **kwargs):
         rxn_stats.get_k1(**kwargs)
         rxn_stats.get_k2(**kwargs)
         
-        #if verbose:
-        #    print("k1: {} +/- {}".format(
-        #            rxn_stats.get_k1(max_sims=0), rxn_stats.get_k1_error(max_sims=0)))
-        #    print("k2: {} +/- {}".format(
-        #            rxn_stats.get_k2(max_sims=0), rxn_stats.get_k2_error(max_sims=0)))
- 
 
 def main(args):
     """Calculate DSD system parameters using Mulstistrand and NUPACK.
@@ -243,27 +233,43 @@ def main(args):
 
     # INPUT processing...
     systeminput = args.input_filename
-    if not systeminput :
-        systeminput = ''
-        for l in sys.stdin:
-            systeminput += l
 
     kparams, mparams, nparams, rparams, pparams = init_parameter_dicts(args)
 
-    if args.restore and os.path.exists(args.restore):
+    if not args.force and args.backup and os.path.exists(args.backup):
+        if args.restore != args.backup:
+            raise SystemExit('Use --force to overwrite existing backup file.')
+
+    if args.restore:
         # Restore a backup file from a previous analysis. This mode ignores any
         # form of *.pil input. Sanity checks ensure that the system parameters
         # match those of the restored database.
         if systeminput :
-            raise SystemExit('Cannot handle system input.')
+            raise SystemExit('--restore mode cannot handle *.PIL file input.')
+        if not os.path.exists(args.restore):
+            raise SystemExit('Cannot find file to restore database: {}.'.format(args.restore))
 
         if args.verbose:
             print('# Importing options and parameters from {}.'.format(args.restore))
-        raise NotImplementedError('need to merge updates')
-        KindaSystem = kinda.statistics.stats_utils.import_data(args.restore,
-              kparams = kparams, mparams = mparams, nparams = nparams)
+
+        KindaSystem = import_data(args.restore)
+
+        for k,v in KindaSystem.initialization_params['kinda_params'].items():
+            if v != kparams[k]:
+                print "WARNING: recovered system uses different paramter: {} = {}".format(k, v)
+        for k,v in KindaSystem.initialization_params['multistrand_params'].items():
+            if v != mparams[k]:
+                print "WARNING: recovered system uses different paramter: {} = {}".format(k, v)
+        for k,v in KindaSystem.initialization_params['nupack_params'].items():
+            if v != nparams[k]:
+                print "WARNING: recovered system uses different paramter: {} = {}".format(k, v)
 
     else :
+        if not systeminput :
+            systeminput = ''
+            for l in sys.stdin:
+                systeminput += l
+
         cxs, det, rss, con = read_pil(systeminput)
         if cxs == []:
             raise SystemExit('ERROR: No complexes found.')
@@ -287,7 +293,8 @@ def main(args):
             # extend the database.
             if args.verbose:
                 print('# Importing data from {}.'.format(args.database))
-            kinda.statistics.stats_utils.import_system(KindaSystem, args.database)
+            raise NotImplementedError('need to merge updates')
+            import_system(KindaSystem, args.database)
 
     # Now that we have the Kinda System setup, we can do two things:
     #   1) calculate probabilites of being in a particular resting complex using Nupack
@@ -296,31 +303,34 @@ def main(args):
     unproductive = args.unproductive_reactions
     if unproductive is True: 
         unproductive = None
+
+    spurious = args.spurious_reactions
+    if spurious is True: 
+        spurious = None
+
     verbose = args.verbose
 
     # let's do 1)
     calculate_all_complex_probabilities(KindaSystem, verbose, **pparams)
    
-    if args.backup: ## Export all collected data (just in case...)
-        #kinda.statistics.stats_utils.export_data(KindaSystem, args.backup)
-        kinda.statistics.stats_utils.export_system(KindaSystem, args.backup)
+    if args.backup: # Export all collected data
+        export_data(KindaSystem, args.backup)
 
     # let's do 2)
-    calculate_all_reaction_rates(KindaSystem, unproductive, verbose, **rparams)
+    calculate_all_reaction_rates(KindaSystem, unproductive, spurious, verbose, **rparams)
    
-    if args.backup: ## Export all collected data
-        #kinda.statistics.stats_utils.export_data(KindaSystem, args.backup)
-        kinda.statistics.stats_utils.export_system(KindaSystem, args.backup)
+    if args.backup: # Export all collected data
+        export_data(KindaSystem, args.backup)
     
     if args.backup:
-        print("# Done. Results backed-up in {}\n".format(args.backup))
-    
+        print("# Done. Results stored in {}\n".format(args.backup))
+
 
     ######################
     # Print the results: #
     ######################
     print('# Condensed reactions')
-    for rxn in KindaSystem.get_reactions(spurious=False, unproductive=unproductive):
+    for rxn in KindaSystem.get_reactions(spurious=spurious, unproductive=unproductive):
         stats = KindaSystem.get_stats(rxn)
 
         k_1 = stats.get_k1(max_sims=0)
@@ -342,7 +352,7 @@ def main(args):
             'something', ' + '.join(products)))
 
     print('\n# Resting macrostate probabilities')
-    restingsets = KindaSystem.get_restingsets(spurious = False)
+    restingsets = KindaSystem.get_restingsets(spurious=spurious)
     for rms in restingsets:
         stats = KindaSystem.get_stats(rms)
     
@@ -350,21 +360,23 @@ def main(args):
         p_err = stats.get_conformation_prob_error(None, max_sims=0)
         temp_dep = stats.get_temporary_depletion(max_sims=0)
 
-        print ('# {:20s} [Prob = {:12g} +/- {:12g}; Depletion = {:12g}]'.format(
+        print('# {:20s} [Prob = {:12g} +/- {:12g}; Depletion = {:12g}]'.format(
             rms.name, p, p_err, temp_dep))
 
     # In a table, print out temporary depletion levels for each pairwise combination of resting sets.
+    restingsets = KindaSystem.get_restingsets(spurious=False)
     if unproductive is None:
         print('\n# Detailed temporary depletion info:')
         for rms1 in restingsets:
             rms_stats = KindaSystem.get_stats(rms1)
 
             for rms2 in restingsets:
-                unprod_rxn = KindaSystem.get_reactions(unproductive=True, reactants=[rms1,rms2])[0]
-                rxn_stats = KindaSystem.get_stats(unprod_rxn)
+                rxns = KindaSystem.get_reactions(unproductive=True, reactants=[rms1,rms2])
+                assert len(rxns) == 1
+                rxn_stats = KindaSystem.get_stats(rxns[0])
                 depl = rms_stats.get_temporary_depletion_due_to(rxn_stats, max_sims=0)
 
-                print ('# {:20s} [Depletion due to {:20s} = {:12g}]'.format(
+                print('# {:20s} [Depletion due to {:20s} = {:12g}]'.format(
                     rms1.name, rms2.name, depl))
 
 
@@ -390,9 +402,15 @@ def add_kinda_args(parser):
     interface.add_argument('-d', '--database', default=None, metavar='<str>',
         help="""Store/Load/Update given database file.""")
 
+    interface.add_argument('--force', action='store_true',
+        help="""Overwrite existing files.""")
+
     # Session parameters
     session.add_argument('--unproductive-reactions', action='store_true',
             help="""Toggle to include unproductive reactions for analysis.""")
+
+    session.add_argument('--spurious-reactions', action='store_true',
+            help="""Toggle to include spurious reactions and complexes for analysis.""")
 
     session.add_argument('-e', '--error-goal', type=float, default = None,
             metavar='<float>', 
@@ -447,7 +465,6 @@ def add_kinda_args(parser):
     session.add_argument('--no-multiprocessing', action="store_true",
             help="""Switch off multiprocessing for Multistrand and NUPACK.""")
 
-
     # Not implemented...
     #parser.add_argument('--start-macrostate-mode', action="store",
     #        default = 'count-by-complex', 
@@ -458,8 +475,9 @@ def add_kinda_args(parser):
 
     # System parameters
     system.add_argument('--stop-macrostate-mode', action="store", 
+            #choices=('ordered-complex', 'complex-accuracy', 'domain-accuracy'),
             choices=('count-by-complex', 'count-by-domain', 'disassoc'),
-            default = 'disassoc', #metavar='<str>',
+            default = 'disassoc',
             help="""Stop a Multistrand simulation whenever a trajectory reaches
             one of these possible macrostate definitions. 
                 - disassoc: A given set of ordered complexes.

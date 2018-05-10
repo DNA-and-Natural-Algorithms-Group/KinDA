@@ -39,10 +39,7 @@ def get_nupack_exec_path(exec_name):
   """ If the NUPACKHOME environment variable is set, use that as the directory
   of the NUPACK executables. Otherwise, have Python search the PATH directly. """
   if 'NUPACKHOME' in os.environ:
-    if('3.0' in os.environ['NUPACKHOME']):
-        return os.environ['NUPACKHOME'] + '/bin/' + exec_name;
-    if('3.2' in os.environ['NUPACKHOME']):
-        return os.environ['NUPACKHOME'] + '/build/bin/' + exec_name;
+    return os.environ['NUPACKHOME'] + '/bin/' + exec_name;
   else:
     return exec_name;
 
@@ -389,4 +386,3 @@ def sample(sequences, samples, ordering = None, material = 'rna',
   sampled = [l.strip() for l in output[-samples:]]
   return sampled
 
-print "Python interface to NUPACK 3.0 (Pierce lab, Caltech, www.nupack.org) loaded."

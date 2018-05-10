@@ -19,8 +19,8 @@ multistrand_params = {
   'substrate_type': 'DNA',
   'rate_method': 'Metropolis',
   'temperature': 25,
-  'sodium': 1.0,
-  'magnesium': 0.0,
+  #'sodium': 1.0,
+  #'magnesium': 0.0,
   'unimolecular_scaling': 5.0e6,
   'bimolecular_scaling': 1.4e6,
   'join_concentration': 1e-15 # this must be low enough to ensure no bind reactions occur after the first step of a simulation
@@ -32,8 +32,8 @@ nupack_params = {
   'dangles': 'some',
   'material': 'dna',
   'T': 25,
-  'sodium': 1.0,
-  'magnesium': 0.0
+  #'sodium': 1.0,
+  #'magnesium': 0.0
 }
 
 # These defaults are given directly to Peppercorn, unless overridden

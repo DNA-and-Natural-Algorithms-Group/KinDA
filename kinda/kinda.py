@@ -61,8 +61,9 @@ class System(object):
     )
 
     if enumeration :
-      #raise DeprecationWarning('bäh')
       self.enumerate(peppercorn_params)
+    else:
+      self._peppercorn_params = None
 
     # Make stats objects separately, not during initialization. You may want to 
     # specify or query parameters before ...
@@ -73,13 +74,13 @@ class System(object):
 
   def enumerate(self, peppercorn_params):
     from .enumeration.enumeratejob import EnumerateJob
-    pparams = dict(options.peppercorn_params, **peppercorn_params)
+    self._peppercorn_params = dict(options.peppercorn_params, **peppercorn_params)
 
     # Create enumeration object
     enum_job = EnumerateJob(
         complexes = self.complexes,
         reactions = self.detailed_reactions,
-        peppercorn_params = pparams
+        peppercorn_params = self._peppercorn_params
     )
 
     # Incorporate enumerated data
@@ -108,7 +109,7 @@ class System(object):
 
     # Set default max concentration for each resting set
     for rs_stats in self._rs_to_stats.values():
-      rs_stats.c_max = self._kinda_params.get('max_concentration', 1e-7)
+      rs_stats.c_max = self._kinda_params['max_concentration']
 
   ## Basic get functions for system objects
   @property
