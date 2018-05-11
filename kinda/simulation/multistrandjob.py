@@ -32,6 +32,7 @@ DISASSOC_MACROSTATE = 2
 LOOSE_MACROSTATE = 3
 COUNT_MACROSTATE = 4
 
+
 # Global function for performing a single simulation, used for multiprocessing
 def run_sims_global(params):
   multijob = params[0]
@@ -64,7 +65,13 @@ class MultistrandJob(object):
         'rate': (sim_utils.rate_mean, sim_utils.rate_std, sim_utils.rate_error)
     }
 
-    self._tag_id_dict = {None: 0, 'overall': 1}
+    self._tag_id_dict = {
+      MSOptions.STR_TIMEOUT: -1,
+      MSOptions.STR_NOINITIAL: -2,
+      MSOptions.STR_NAN: -3,
+      MSOptions.STR_ERROR: -4,
+      'overall': 0
+    }
     self._ms_results = {'tags': np.array([]), 'times': np.array([])}
     self._ms_results_buff = {'tags': np.array([]), 'times': np.array([])}
 
@@ -221,7 +228,7 @@ class MultistrandJob(object):
     n = len(results)
 
     times = [r.time for r in results]
-    tags = [self._tag_id_dict['overall']]*n
+    tags = [self._tag_id_dict[r.tag] for r in results]
 
     self._ms_results_buff['tags'][self.total_sims:self.total_sims+n] = tags
     self._ms_results_buff['times'][self.total_sims:self.total_sims+n] = times
@@ -294,8 +301,13 @@ class FirstPassageTimeModeJob(MultistrandJob):
                                                   **kargs)
       
     self.tags = [sc.tag for sc in self._ms_options_dict['stop_conditions']]
-    self._tag_id_dict = {t:i for i,t in zip(range(1,len(self.tags)+1), sorted(set(self.tags)))}
-    self._tag_id_dict[None] = 0
+    self._tag_id_dict = {
+      MSOptions.STR_TIMEOUT: -1,
+      MSOptions.STR_NOINITIAL: -2,
+      MSOptions.STR_NAN: -3,
+      MSOptions.STR_ERROR: -4,
+    }
+    self._tag_id_dict.update((t,i) for i,t in enumerate(sorted(self.tags)))
   
   def process_results(self, ms_options):
     results = ms_options.interface.results
@@ -328,8 +340,13 @@ class TransitionModeJob(MultistrandJob):
     super(TransitionModeJob, self).__init__(start_complex, stop_conditions, TRANSITION_MODE, **kargs)
       
     self.states = [sc.tag for sc in self._ms_options_dict['stop_conditions']]
-    self._tag_id_dict = {t:i for i,t in zip(range(1,len(self.states)+1), sorted(set(self.states)))}
-    self._tag_id_dict[None] = 0
+    self._tag_id_dict = {
+      MSOptions.STR_TIMEOUT: -1,
+      MSOptions.STR_NOINITIAL: -2,
+      MSOptions.STR_NAN: -3,
+      MSOptions.STR_ERROR: -4,
+    }
+    self._tag_id_dict.update((t,i) for i,t in enumerate(sorted(set(self.states))))
   
   def get_statistic(self, start_states, end_states, stat = 'rate'):
     tag = self.get_tag(start_states, end_states)
@@ -396,8 +413,14 @@ class FirstStepModeJob(MultistrandJob):
   
     super(FirstStepModeJob, self).__init__(start_state, stop_conditions, FIRST_STEP_MODE, **kargs)
       
-    self.tags = [None] + [sc.tag for sc in self._ms_options_dict['stop_conditions']]
-    self._tag_id_dict = {t:i for i,t in enumerate(sorted(set(self.tags)))}
+    self._tag_id_dict = {
+      MSOptions.STR_TIMEOUT: -1,
+      MSOptions.STR_NOINITIAL: -2,
+      MSOptions.STR_NAN: -3,
+      MSOptions.STR_ERROR: -4
+    }
+    self._tag_id_dict.update((t,i) for i,t in enumerate(sorted(set(sc.tag for sc in self._ms_options_dict['stop_conditions']))))
+    self.tags = list(self._tag_id_dict.keys())
 
     self._stats_funcs['prob'] = (sim_utils.bernoulli_mean, sim_utils.bernoulli_std, sim_utils.bernoulli_error)
     self._stats_funcs['kcoll'] = (sim_utils.kcoll_mean, sim_utils.kcoll_std, sim_utils.kcoll_error)
