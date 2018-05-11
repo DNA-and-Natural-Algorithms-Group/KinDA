@@ -153,6 +153,8 @@ class RestingSetRxnStats(object):
 
   def get_multistrandjob(self):
     return self.multijob
+  def get_multistrand_tag(self):
+    return self.multijob_tag
   
   
     
