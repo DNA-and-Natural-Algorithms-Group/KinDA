@@ -123,8 +123,12 @@ class RestingSetRxnStats(object):
   def get_simulation_data(self):
     return self.multijob.get_simulation_data()
 
-  def get_num_sims(self):
-    return self.get_multistrandjob().total_sims
+  def get_num_sims(self, tag = None):
+    if tag is None:
+      return self.get_multistrandjob().total_sims
+    else:
+      tag_id = self.get_multistrandjob().tag_id_dict[tag]
+      return (self.get_simulation_data()['tags'] == tag_id).sum()
     
   def get_raw_stat(self, stat, relative_error, max_sims, **kwargs):
     """ General function to reduce the error on the given statistic
