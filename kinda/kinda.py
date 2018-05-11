@@ -104,11 +104,31 @@ class System(object):
     """ Returns a dict of the parameters used to initialize this system, including
     those set by the defaults in options.py. """
     return {
-      'kinda_params': self._kinda_params,
-      'multistrand_params': self._multistrand_params,
-      'nupack_params': self._nupack_params,
-      'peppercorn_params': self._peppercorn_params
+      'kinda_params': self._kinda_params.copy(),
+      'multistrand_params': self._multistrand_params.copy(),
+      'nupack_params': self._nupack_params.copy(),
+      'peppercorn_params': self._peppercorn_params.copy()
     }
+  @property
+  def kinda_params(self):
+    """ Returns a dict of the KinDA parameters used when initializing the system.
+    Equivalent to initialization_params['kinda_params']. """
+    return self._kinda_params.copy()
+  @property
+  def multistrand_params(self):
+    """ Returns a dict of the Multistrand parameters used when initializing the system.
+    Equivalent to initialization_params['multistrand_params']. """
+    return self._multistrand_params.copy()
+  @property
+  def nupack_params(self):
+    """ Returns a dict of the NUPACK parameters used when initializing the system.
+    Equivalent to initialization_params['nupack_params']. """
+    return self._nupack_params.copy()
+  @property
+  def peppercorn_params(self):
+    """ Returns a dict of the Peppercorn parameters used when initializing the system.
+    Equivalent to the initialization_params['peppercorn_params']. """
+    return self._peppercorn_params.copy()
 
   @property
   def complexes(self):
