@@ -484,7 +484,7 @@ def import_data(filepath):
   restingsets = {}
   for rs_id, data in sstats_dict['resting-sets'].iteritems():
     rs_complexes = [complexes[c_id] for c_id in data['complexes']]
-    restingsets[rs_id] = dna.RestingSet(data['name'], complexes = rs_complexes)
+    restingsets[rs_id] = dna.RestingSet(name = data['name'], complexes = rs_complexes)
 
   reactions = {}
   for rxn_id, data in sstats_dict['reactions'].iteritems():
