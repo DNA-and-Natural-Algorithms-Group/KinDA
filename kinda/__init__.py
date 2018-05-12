@@ -3,7 +3,7 @@
 #  KinDA: Kinetic DNA strand-displacement Analyzer
 #
 
-__version__ = "v0.1.0"
+__version__ = "v0.1.6"
 
 from kinda import System, from_pil
 import statistics
