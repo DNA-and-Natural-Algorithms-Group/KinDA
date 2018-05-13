@@ -70,8 +70,8 @@ class Macrostate(object):
                                               defined analogously.
     complex [type=str]                     -- Required for all but the
                                               'conjunction' and 'disjunction' macrostates.
-    cutoff [type=int OR float]             -- Required for 'count' and 'loose'
-                                              macrostates.
+    cutoff [type=int OR float]             -- Allowed fractional defect. Required for
+                                              'count' and 'loose' macrostates.
     macrostates [type=list of Macrostates] -- Required for the 'conjunction' and 'disjunction'
                                               macrostates.
     """

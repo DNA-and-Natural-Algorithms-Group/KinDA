@@ -32,6 +32,16 @@ DISASSOC_MACROSTATE = 2
 LOOSE_MACROSTATE = 3
 COUNT_MACROSTATE = 4
 
+try:
+  MS_TIMEOUT = MSOptions.STR_TIMEOUT
+  MS_NOINITIALMOVES = MSOptions.STR_NOINITIAL
+  MS_NAN = MSOptions.STR_NAN
+  MS_ERROR = MSOptions.STR_ERROR
+except AttributeError:
+  MS_TIMEOUT = None
+  MS_NOINITIALMOVES = None
+  MS_NAN = None
+  MS_ERROR = None
 
 # Global function for performing a single simulation, used for multiprocessing
 def run_sims_global(params):
@@ -66,10 +76,10 @@ class MultistrandJob(object):
     }
 
     self._tag_id_dict = {
-      MSOptions.STR_TIMEOUT: -1,
-      MSOptions.STR_NOINITIAL: -2,
-      MSOptions.STR_NAN: -3,
-      MSOptions.STR_ERROR: -4,
+      MS_TIMEOUT: -1,
+      MS_NOINITIALMOVES: -2,
+      MS_NAN: -3,
+      MS_ERROR: -4,
       'overall': 0
     }
     self._ms_results = {'tags': np.array([]), 'times': np.array([])}
@@ -302,10 +312,10 @@ class FirstPassageTimeModeJob(MultistrandJob):
       
     self.tags = [sc.tag for sc in self._ms_options_dict['stop_conditions']]
     self._tag_id_dict = {
-      MSOptions.STR_TIMEOUT: -1,
-      MSOptions.STR_NOINITIAL: -2,
-      MSOptions.STR_NAN: -3,
-      MSOptions.STR_ERROR: -4,
+      MS_TIMEOUT: -1,
+      MS_NOINITIALMOVES: -2,
+      MS_NAN: -3,
+      MS_ERROR: -4,
     }
     self._tag_id_dict.update((t,i) for i,t in enumerate(sorted(self.tags)))
   
@@ -341,10 +351,10 @@ class TransitionModeJob(MultistrandJob):
       
     self.states = [sc.tag for sc in self._ms_options_dict['stop_conditions']]
     self._tag_id_dict = {
-      MSOptions.STR_TIMEOUT: -1,
-      MSOptions.STR_NOINITIAL: -2,
-      MSOptions.STR_NAN: -3,
-      MSOptions.STR_ERROR: -4,
+      MS_TIMEOUT: -1,
+      MS_NOINITIALMOVES: -2,
+      MS_NAN: -3,
+      MS_ERROR: -4,
     }
     self._tag_id_dict.update((t,i) for i,t in enumerate(sorted(set(self.states))))
   
@@ -414,10 +424,10 @@ class FirstStepModeJob(MultistrandJob):
     super(FirstStepModeJob, self).__init__(start_state, stop_conditions, FIRST_STEP_MODE, **kargs)
       
     self._tag_id_dict = {
-      MSOptions.STR_TIMEOUT: -1,
-      MSOptions.STR_NOINITIAL: -2,
-      MSOptions.STR_NAN: -3,
-      MSOptions.STR_ERROR: -4
+      MS_TIMEOUT: -1,
+      MS_NOINITIALMOVES: -2,
+      MS_NAN: -3,
+      MS_ERROR: -4
     }
     self._tag_id_dict.update((t,i) for i,t in enumerate(sorted(set(sc.tag for sc in self._ms_options_dict['stop_conditions']))))
     self.tags = list(self._tag_id_dict.keys())

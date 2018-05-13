@@ -214,3 +214,9 @@ class System(object):
       print "Statistics for object {0} not found.".format(obj)
 
 
+def import_data(path):
+  import kinda.statistics.stats_utils as kssu
+  return kssu.import_data(path)
+def export_data(sstats, path):
+  import kinda.statistics.stats_utils as kssu
+  return kssu.export_data(sstats, path)
