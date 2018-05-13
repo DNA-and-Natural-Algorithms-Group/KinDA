@@ -5,7 +5,7 @@
 
 __version__ = "v0.1.6"
 
-from kinda import System, from_pil
+from kinda import System, from_pil, import_data, export_data
 import statistics
 import simulation
 import enumeration
