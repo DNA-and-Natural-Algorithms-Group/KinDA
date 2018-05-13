@@ -282,7 +282,8 @@ class MultistrandJob(object):
       else:
         reduction = error / goal
         exp_add_sims = int(self.total_sims * (reduction**2 - 1) + 1)
-        num_trials = max(min(exp_add_sims, max_batch_size, max_sims - num_sims, self.total_sims + 1), min_batch_size)
+        num_trials = max(min(max_batch_size, exp_add_sims, self.total_sims + 1), min_batch_size)
+      num_trials = min(num_trials, max_sims - num_sims)
         
       self.preallocate_batch(num_trials)
       self.run_simulations(num_trials, sims_per_update = sims_per_update, sims_per_worker = sims_per_worker, status_func = status_func)

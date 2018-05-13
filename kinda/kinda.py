@@ -215,8 +215,6 @@ class System(object):
 
 
 def import_data(path):
-  import kinda.statistics.stats_utils as kssu
-  return kssu.import_data(path)
+  return stats_utils.import_data(path)
 def export_data(sstats, path):
-  import kinda.statistics.stats_utils as kssu
-  return kssu.export_data(sstats, path)
+  return stats_utils.export_data(sstats, path)
