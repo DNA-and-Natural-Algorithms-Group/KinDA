@@ -21,9 +21,10 @@ setup(
     classifiers=['Programming Language :: Python :: 2'],
     test_suite='tests',
     install_requires=[
-      'peppercornenumerator==0.5',
+      'peppercornenumerator==0.6',
       'numpy'],
-    dependency_links=['http://github.com/DNA-and-Natural-Algorithms-Group/peppercornenumerator/tarball/master#egg=peppercornenumerator-0.5'],
-    packages=find_packages()
+    dependency_links=['http://github.com/DNA-and-Natural-Algorithms-Group/peppercornenumerator/tarball/master#egg=peppercornenumerator-0.6'],
+    packages=find_packages(),
+    scripts=['scripts/KinDA']
 )
 
