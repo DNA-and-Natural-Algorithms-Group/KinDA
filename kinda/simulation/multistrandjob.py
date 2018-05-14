@@ -232,6 +232,8 @@ class MultistrandJob(object):
   def preallocate_batch(self, batch_size):
     self._ms_results_buff['tags'].resize(self.total_sims + batch_size, refcheck=False)
     self._ms_results_buff['times'].resize(self.total_sims + batch_size, refcheck=False)
+    self._ms_results['tags'] = self._ms_results_buff['tags'][:self.total_sims]
+    self._ms_results['times'] = self._ms_results_buff['times'][:self.total_sims]
 
   def process_results(self, ms_options):
     results = ms_options.interface.results
@@ -445,6 +447,9 @@ class FirstStepModeJob(MultistrandJob):
     self._ms_results_buff['tags'].resize(self.total_sims+batch_size, refcheck=False)
     self._ms_results_buff['times'].resize(self.total_sims+batch_size, refcheck=False)
     self._ms_results_buff['kcoll'].resize(self.total_sims+batch_size, refcheck=False)
+    self._ms_results['tags'] = self._ms_results_buff['tags'][:self.total_sims]
+    self._ms_results['times'] = self._ms_results_buff['times'][:self.total_sims]
+    self._ms_results['kcoll'] = self._ms_results_buff['kcoll'][:self.total_sims]
 
   def process_results(self, ms_options):
     results = ms_options.interface.results
