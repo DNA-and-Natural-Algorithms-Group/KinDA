@@ -21,8 +21,8 @@ multistrand_params = {
   'temperature': 25,
   'sodium': 1.0,
   'magnesium': 0.0,
-  'unimolecular_scaling': 5.0e6,
-  'bimolecular_scaling': 1.4e6,
+  'unimolecular_scaling': 2.41686715e6,
+  'bimolecular_scaling': 8.01171383e5,
   'join_concentration': 1e-15 # this must be low enough to ensure no bind reactions occur after the first step of a simulation
 }
 
