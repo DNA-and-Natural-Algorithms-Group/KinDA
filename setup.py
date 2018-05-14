@@ -23,7 +23,7 @@ setup(
     install_requires=[
       'peppercornenumerator==0.5',
       'numpy'],
-    dependency_links=['http://github.com/DNA-and-Natural-Algorithms-Group/peppercornenumerator/tarball/master#egg=peppercornenumerator-0.5'],
+    dependency_links=['https://github.com/DNA-and-Natural-Algorithms-Group/peppercornenumerator/archive/v0.5.tar.gz#egg=peppercornenumerator-0.5'],
     packages=find_packages()
 )
 

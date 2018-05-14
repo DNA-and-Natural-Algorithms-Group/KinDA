@@ -263,7 +263,7 @@ class MultistrandJob(object):
     goal = rel_goal * calc_mean()
 
     # Check if any simulations are necessary
-    if error <= goal or num_sims >= max_sims:
+    if error < goal or num_sims >= max_sims:
       return
 
     if self._multiprocessing:
@@ -275,10 +275,10 @@ class MultistrandJob(object):
         [stat, "error", "err goal", "", "batch sims", "overall sims", "progress"],
         [14, 14, 14, 6, 17, 17, 10])
     table_update_func([calc_mean(), error, goal, "", "--/--", "--/--", "--"])
-    while not error <= goal and num_sims < max_sims:
+    while not error < goal and num_sims < max_sims:
       # Estimate additional trials based on inverse square root relationship
       # between error and number of trials
-      if error == float('inf'):
+      if error == float('inf') or goal == 0.0:
         num_trials = init_batch_size
         exp_add_sims = max_sims - num_sims
       else:
@@ -295,7 +295,7 @@ class MultistrandJob(object):
       error = calc_error()
       goal = rel_goal * calc_mean()
 
-    if error == float('inf'):
+    if error == float('inf') or goal == 0.0:
       exp_add_sims = 0
     else:
       exp_add_sims = max(0, int(self.total_sims * ((error/goal)**2 - 1) + 1))

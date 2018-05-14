@@ -102,8 +102,10 @@ def kcoll_mean(success_tag, ms_results):
   n_s = np.sum(~success_kcolls.mask)
   if n_s > 0:
     return success_kcolls.mean()
+  elif n > 0:
+    return ms_results['kcoll'].max()
   else:
-    return float('nan')
+    return 0.0
 def kcoll_std(success_tag, ms_results):
   """ Computes the standard deviation on kcoll, given the sampled values.
   If less than 2 kcoll values have been collected for this reaction, returns float('inf'). """
@@ -111,6 +113,8 @@ def kcoll_std(success_tag, ms_results):
   n_s = np.sum(~success_kcolls.mask)
   if n_s > 1:
     return success_kcolls.std(ddof=1)
+  elif n > 0:
+    return ms_results['kcoll'].max()
   else:
     return float('inf')
 def kcoll_error(success_tag, ms_results):
@@ -119,6 +123,8 @@ def kcoll_error(success_tag, ms_results):
   n_s = np.sum(~success_kcolls.mask)
   if n_s > 1:
     return success_kcolls.std(ddof=1) / math.sqrt(n_s)
+  elif n > 0:
+    return ms_results['kcoll'].max()
   else:
     return float('inf')
 
@@ -127,9 +133,12 @@ def k1_mean(success_tag, ms_results):
   the bimolecular step of a resting-set reaction. """
   success_kcolls = np.ma.array(ms_results['kcoll'], mask=(ms_results['tags']!=success_tag))
   n = len(success_kcolls)
+  n_s = np.sum(~success_kcolls.mask)
   tags = ms_results['tags']
-  if sum(~success_kcolls.mask) > 0:
+  if n_s > 0:
     return np.sum(success_kcolls) / (n + 2.0)
+  elif n > 0:
+    return ms_results['kcoll'].max() * (n_s + 1.0) / (n + 2.0)
   else:
     return 0.0
 def k1_std(success_tag, ms_results):
@@ -145,6 +154,8 @@ def k1_error(success_tag, ms_results):
   if n_s > 0:
     gamma = np.sum(success_kcolls)
     return gamma/(n+2.) * math.sqrt((2.*n - n_s + 1.) / (n_s * (n+3.)))
+  elif n > 0:
+    return ms_results['kcoll'].max() * (n_s + 1.0) / (n + 2.0)
   else:
     return float('inf')
 
