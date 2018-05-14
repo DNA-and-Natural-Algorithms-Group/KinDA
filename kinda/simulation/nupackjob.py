@@ -302,3 +302,14 @@ class NupackSampleJob(object):
       exp_add_sims = max(0, int(self.total_sims * ((error/goal)**2 - 1) + 1))
     update_func([complex_name, prob, error, goal, "", "--/--", "%d/%d"%(num_sims,num_sims+exp_add_sims), str(100*num_sims/(num_sims+exp_add_sims))+'%'])
     print
+
+  def get_top_MFE_structs(self, num):
+    strands = next(iter(self.restingset.complexes)).strands
+    strand_seqs = [strand.sequence for strand in strands]
+    energy_gap = 0.1
+    struct_list = []
+    while len(struct_list) < num:
+      struct_list = nupack.subopt(strand_seqs, energy_gap, **self._nupack_params)
+      energy_gap += 0.5
+    return struct_list
+

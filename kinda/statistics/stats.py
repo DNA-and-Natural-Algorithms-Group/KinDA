@@ -234,15 +234,7 @@ class RestingSetStats(object):
     """ Attempts to obtain the top <num> MFE structures by calling
     NUPACK's subopt executable with increasingly higher energy gaps
     until enough structures are returned. """
-    T = options.nupack_params['temp']
-    material = options.nupack_params['material']
-    dangles = options.nupack_params['dangles']
-    energy_gap = 0.1
-    struct_list = []
-    while len(struct_list) < num:
-      struct_list = nupack.getSubopt(self.strand_seqs, T, material, dangles, energy_gap)
-      energy_gap += 0.5
-    return struct_list
+    return self.get_nupackjob().get_top_MFE_structs(num)
     
   def get_temporary_depletion_due_to(self, rxn, relative_error = 0.5, max_sims=500):
     binding_polynomial = 1. / (1 - self.get_temporary_depletion(relative_error, max_sims))
