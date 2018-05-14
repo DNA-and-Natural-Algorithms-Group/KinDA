@@ -101,7 +101,7 @@ class EnumerateJob(object):
 
     # Perform reaction condensation
     print "KinDA: Performing reaction condensation with Peppercorn...",
-    enumc = enum.ReactionGraph(e)
+    enumc = enum.PepperCondensation(e)
     enumc.condense()
     print "Done!"
     
