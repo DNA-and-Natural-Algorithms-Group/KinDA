@@ -202,7 +202,7 @@ class System(object):
 
     if complex is not None:
       rs = filter(lambda x: complex in x, rs)
-    if strands != []
+    if strands != []:
       rs = filter(lambda x: all([s in x.strands for s in strands]), rs)
     if name is not None:
       rs = filter(lambda x: rs.name == name, rs)
