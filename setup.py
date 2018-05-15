@@ -11,7 +11,7 @@ with open('LICENSE') as f:
 
 setup(
     name='kinda',
-    version='0.1',
+    version='0.1.6',
     description='Kinetic DNA strand-displacement Analyzer',
     long_description=readme,
     url='',
@@ -21,9 +21,9 @@ setup(
     classifiers=['Programming Language :: Python :: 2'],
     test_suite='tests',
     install_requires=[
-      'peppercornenumerator==0.6',
+      'peppercornenumerator==0.6.1',
       'numpy'],
-    dependency_links=['http://github.com/DNA-and-Natural-Algorithms-Group/peppercornenumerator/tarball/master#egg=peppercornenumerator-0.6'],
+    dependency_links=['https://github.com/DNA-and-Natural-Algorithms-Group/peppercornenumerator/archive/v0.6.1.tar.gz#egg=peppercornenumerator-0.6.1'],
     packages=find_packages(),
     scripts=['scripts/KinDA']
 )

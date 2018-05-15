@@ -239,7 +239,7 @@ def loose_domain_macrostate(complex, strand_num, domain_num, cutoff):
   from structure import Structure
   from macrostate import Macrostate
 
-  strandlist = complex.structure.to_strandlist()[:]
+  strandlist = [strand_struct[:] for strand_struct in complex.structure.to_strandlist()]
   strands = complex.strands
   
   domain_start = sum([d.length
@@ -268,7 +268,8 @@ def loose_domain_macrostate(complex, strand_num, domain_num, cutoff):
         
 def count_by_domain_macrostate(complex, cutoff):
   """ Returns a Macrostate that matches a complex such that every domain
-  matches the given complex's structure to within the cutoff fraction. """
+  matches the given complex's structure to within the cutoff fraction. 
+  cutoff is a fractional defect allowed over each domain. """
   from macrostate import Macrostate
 
   macrostates = []
@@ -291,7 +292,7 @@ def restingset_count_by_complex_macrostate(restingset, cutoff):
                     type        = "disjunction",
                     macrostates = macrostates)
 def restingset_count_by_domain_macrostate(restingset, cutoff):
-  print "WARNING: Multistrand may not support macrostates that are defined as a per-domain p-approximation"
+  #print "WARNING: Multistrand may not support macrostates that are defined as a per-domain p-approximation"
   from macrostate import Macrostate
 
   macrostates = [count_by_domain_macrostate(complex, cutoff) for complex in restingset.complexes]

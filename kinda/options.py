@@ -14,15 +14,15 @@ multistrand_params = {
   'verbosity': 0,
   'dangles': 'Some',
   'simulation_time': 1.00, 
-  'output_interval': 100,
+  'output_interval': 0,
   'parameter_type': 'Nupack',
   'substrate_type': 'DNA',
   'rate_method': 'Metropolis',
   'temperature': 25,
-  #'sodium': 1.0,
-  #'magnesium': 0.0,
-  'unimolecular_scaling': 5.0e6,
-  'bimolecular_scaling': 1.4e6,
+  'sodium': 1.0,
+  'magnesium': 0.0,
+  'unimolecular_scaling': 2.41686715e6,
+  'bimolecular_scaling': 8.01171383e5,
   'join_concentration': 1e-15 # this must be low enough to ensure no bind reactions occur after the first step of a simulation
 }
 

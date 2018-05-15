@@ -15,6 +15,7 @@ import pickle
 import numpy as np
 import itertools as it
 
+from .. import __version__ as KINDA_VERSION
 from .. import objects as dna
 from .. import options
 from ..simulation.multistrandjob import FirstStepModeJob
@@ -285,11 +286,11 @@ def create_stop_macrostate(state, tag, spurious, options):
     if mode == 'disassoc' or spurious:
       obj_to_mstate[obj] = dna.Macrostate(type = 'disassoc', complex = next(iter(obj.complexes)))
     elif mode == 'count-by-complex':
-      cutoff = options['multistrand_similarity_threshold']
-      obj_to_mstate[obj] = restingset_count_by_complex_macrostate(obj, cutoff)
+      defect = 1 - options['multistrand_similarity_threshold']
+      obj_to_mstate[obj] = restingset_count_by_complex_macrostate(obj, defect)
     elif mode == 'count-by-domain':
-      cutoff = options['multistrand_similarity_threshold']
-      obj_to_mstate[obj] = restingset_count_by_domain_macrostate(obj, cutoff)
+      defect = 1 - options['multistrand_similarity_threshold']
+      obj_to_mstate[obj] = restingset_count_by_domain_macrostate(obj, defect)
           
   macrostates = dna.Macrostate(
     name        = tag,
@@ -470,7 +471,8 @@ def export_data(sstats, filepath, use_pickle = False):
     'resting-set-reactions': rsrxn_to_dict,
     'resting-set-stats': rsstats_to_dict,
     'resting-set-reaction-stats': rsrxnstats_to_dict,
-    'initialization_params': sstats.initialization_params
+    'initialization_params': sstats.initialization_params,
+    'version': KINDA_VERSION
   }
   
   if use_pickle : 
@@ -500,6 +502,11 @@ def import_data(filepath, use_pickle = False):
     sstats_dict = pickle.load(open(filepath, "rb"))
   else:
     sstats_dict = json.load(open(filepath))
+
+  if 'version' not in sstats_dict:
+    print "# KinDA: WARNING: Imported data file has no version number. Assuming KinDA {}.".format(KINDA_VERSION)
+  elif sstats_dict['version'] != KINDA_VERSION:
+    print "# KinDA: WARNING: Importing data file from KinDA {} as {}. Import may fail.".format(sstats_dict['version'], KINDA_VERSION)
 
   domains = {}
   for domain_id, data in sstats_dict['domains'].iteritems():

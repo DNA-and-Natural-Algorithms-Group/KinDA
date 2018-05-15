@@ -318,5 +318,13 @@ class NupackSampleJob(object):
         "%d/%d"%(num_sims,num_sims+exp_add_sims), str(100*num_sims/(num_sims+exp_add_sims))+'%'])
       print
 
-
+  def get_top_MFE_structs(self, num):
+    strands = next(iter(self.restingset.complexes)).strands
+    strand_seqs = [strand.sequence for strand in strands]
+    energy_gap = 0.1
+    struct_list = []
+    while len(struct_list) < num:
+      struct_list = nupack.subopt(strand_seqs, energy_gap, **self._nupack_params)
+      energy_gap += 0.5
+    return struct_list
 
