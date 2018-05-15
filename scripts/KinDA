@@ -68,6 +68,8 @@ def init_parameter_dicts(args):
         'unimolecular_scaling': 2.41686715e+06,
         'bimolecular_scaling': 8.01171383e+05,
         'simulation_time': args.multistrand_timeout,
+        'sodium': 1.0,
+        'magnesium': 0.0,
         'output_interval': -1,
         'parameter_type': 'Nupack',
         'rate_method': 'Metropolis',
@@ -81,6 +83,8 @@ def init_parameter_dicts(args):
         'dangles': args.dangles,
         'material': args.material.lower(),
         'T': args.temperature,
+        'sodium': 1.0,
+        'magnesium': 0.0,
     }
 
     # More Session parameters

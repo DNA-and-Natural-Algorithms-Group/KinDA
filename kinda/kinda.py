@@ -131,7 +131,7 @@ class System(object):
       'kinda_params': self._kinda_params.copy(),
       'multistrand_params': self._multistrand_params.copy(),
       'nupack_params': self._nupack_params.copy(),
-      'peppercorn_params': self._peppercorn_params.copy()
+      'peppercorn_params': self._peppercorn_params.copy() if self._peppercorn_params else None
     }
   @property
   def kinda_params(self):

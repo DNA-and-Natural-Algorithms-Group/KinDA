@@ -32,8 +32,8 @@ nupack_params = {
   'dangles': 'some',
   'material': 'dna',
   'T': 25,
-  #'sodium': 1.0,
-  #'magnesium': 0.0
+  'sodium': 1.0,
+  'magnesium': 0.0
 }
 
 # These defaults are given directly to Peppercorn, unless overridden
