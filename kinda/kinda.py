@@ -205,9 +205,9 @@ class System(object):
     if strands != []:
       rs = filter(lambda x: all([s in x.strands for s in strands]), rs)
     if name is not None:
-      rs = filter(lambda x: rs.name == name, rs)
+      rs = filter(lambda x: x.name == name, rs)
     if complex_name is not None:
-      rs = filter(lambda x: complex_name in [c.name for c in rs.complexes], rs)
+      rs = filter(lambda x: complex_name in [c.name for c in x.complexes], rs)
 
     return rs
   def get_restingset(self, complex = None, strands = [], name = None, complex_name = None, spurious = False):
