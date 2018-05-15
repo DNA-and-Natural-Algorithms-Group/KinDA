@@ -21,9 +21,9 @@ setup(
     classifiers=['Programming Language :: Python :: 2'],
     test_suite='tests',
     install_requires=[
-      'peppercornenumerator==0.6',
+      'peppercornenumerator==0.6.1',
       'numpy'],
-    dependency_links=['https://github.com/DNA-and-Natural-Algorithms-Group/peppercornenumerator/archive/v0.6.tar.gz#egg=peppercornenumerator-0.6'],
+    dependency_links=['https://github.com/DNA-and-Natural-Algorithms-Group/peppercornenumerator/archive/v0.6.1.tar.gz#egg=peppercornenumerator-0.6.1'],
     packages=find_packages()
 )
 
