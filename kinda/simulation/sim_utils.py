@@ -99,35 +99,26 @@ def kcoll_mean(success_tag, ms_results):
   from Multistrand trajectories.
   If no kcoll values have been collected for this reaction, returns NaN. """
   success_kcolls = np.ma.array(ms_results['kcoll'], mask=(ms_results['tags']!=success_tag))
-  n = len(success_kcolls)
   n_s = np.sum(~success_kcolls.mask)
   if n_s > 0:
     return success_kcolls.mean()
-  elif n > 0:
-    return ms_results['kcoll'].max()
   else:
-    return 0.0
+    return float('nan')
 def kcoll_std(success_tag, ms_results):
   """ Computes the standard deviation on kcoll, given the sampled values.
   If less than 2 kcoll values have been collected for this reaction, returns float('inf'). """
   success_kcolls = np.ma.array(ms_results['kcoll'], mask=(ms_results['tags']!=success_tag))
-  n = len(success_kcolls)
   n_s = np.sum(~success_kcolls.mask)
   if n_s > 1:
     return success_kcolls.std(ddof=1)
-  elif n > 0:
-    return ms_results['kcoll'].max()
   else:
     return float('inf')
 def kcoll_error(success_tag, ms_results):
   """ Computes the standard error on the expected value of kcoll.  """
   success_kcolls = np.ma.array(ms_results['kcoll'], mask=(ms_results['tags']!=success_tag))
-  n = len(success_kcolls)
   n_s = np.sum(~success_kcolls.mask)
   if n_s > 1:
     return success_kcolls.std(ddof=1) / math.sqrt(n_s)
-  elif n > 0:
-    return ms_results['kcoll'].max()
   else:
     return float('inf')
 
