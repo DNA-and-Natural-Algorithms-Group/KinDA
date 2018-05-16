@@ -5,7 +5,7 @@
 KinDA executable workflow:
 --------------------------
 
-cat kotan.pil | peppercorn -c -d [--options] | KinDA [--options]
+cat input.pil | peppercorn -c -d [--options] | KinDA [--options]
 
     Selected options:
         --backup kotan.db (exports results to kotan.db)
@@ -23,7 +23,7 @@ cat kotan.pil | peppercorn -c -d [--options] | KinDA [--options]
         be nice (e.g. multiprocessing)
 """
 
-from __future__ import print_function
+from __future__ import absolute_import, print_function
 
 import os
 import sys
@@ -107,6 +107,19 @@ def init_parameter_dicts(args):
 
     return kparams, mparams, nparams, rate_params, prob_params
  
+def peppercorn(pilstring, is_file = False, params=None):
+    """Requires peppercorn v0.6.2"""
+    from peppercornenumerator import Enumerator
+    from peppercornenumerator.input import read_pil as pepper_read_pil
+    from peppercornenumerator.output import write_pil as pepper_write_pil
+
+    cxs, rxns, strands = pepper_read_pil(pilstring, is_file, composite = True)
+
+    enum = Enumerator(cxs.values(), rxns)
+    enum.enumerate()
+    
+    return pepper_write_pil(enum, fh = None, 
+            detailed = True, condensed = True, composite = strands)
 
 def calculate_all_complex_probabilities(KindaSystem, spurious,
         backup = None, verbose = 0, use_pickle = True, **kwargs):
@@ -257,20 +270,19 @@ def main(args):
             for l in sys.stdin:
                 systeminput += l
 
-        cxs, det, rss, con = read_pil(systeminput)
+        cxs, det, rss, con = read_pil(systeminput, args.input_filename is not None)
         if cxs == []:
             raise SystemExit('ERROR: No complexes found.')
+        elif not (det and rss and con): 
+            if args.verbose:
+                print('# Enumerating using built-in peppercorn version {} with default paramters.'.format(peppercornenumerator.__version__))
+            pilstring = peppercorn(systeminput, args.input_filename is not None)
+            cxs, det, rss, con = read_pil(pilstring, is_file=False)
 
-        if not (det and rss and con): 
-            if args.verbose:
-                print('# Enumerating using built-in peppercorn version.')
-            KindaSystem = kinda.System(cxs, enumeration = True,
-                  kinda_params = kparams, multistrand_params = mparams, nupack_params = nparams)
-        else :
-            if args.verbose:
-                print('# Loading peppercorn output.')
-            KindaSystem = kinda.System(cxs, rss, det, con, enumeration = False, 
-                  kinda_params = kparams, multistrand_params = mparams, nupack_params = nparams)
+        if args.verbose:
+            print('# Initializing KinDA system.')
+        KindaSystem = kinda.System(cxs, rss, det, con, enumeration = False, 
+                kinda_params = kparams, multistrand_params = mparams, nupack_params = nparams)
 
         if args.database and os.path.exists(args.database):
             # Always needs to load the full database, independent on which
