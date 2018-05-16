@@ -1,5 +1,5 @@
 
-#from __future__ import print_function
+from __future__ import print_function
 import itertools as it
 
 from dsdobjects.parser import parse_kernel_string, parse_kernel_file
@@ -7,8 +7,6 @@ from dsdobjects.parser import parse_pil_string, parse_pil_file
 from dsdobjects.parser import ParseException, PilFormatError
 
 from .objects import dnaobjects as dna
-
-# from dsdobjects.utils import resolve_loops
 
 def resolve_loops(loop):
     """ Return a sequence, structure pair from kernel format with parenthesis. """
@@ -56,7 +54,7 @@ def read_pil(data, is_file = False, composite = False):
     for line in parsed_file :
         name = line[1]
         if line[0] == 'dl-domain':
-            raise Exception('KinDA needs nucleotide level information.')
+            raise PilFormatError('KinDA needs nucleotide level information.')
 
         elif line[0] == 'sl-domain':
             if len(line) == 4:
@@ -67,6 +65,8 @@ def read_pil(data, is_file = False, composite = False):
             sequence = dna.Sequence(line[2])
 
             if name[-1] == '*':
+                # This will be possible, sooner or later. But we have to make sure the 
+                # kinda.objects can handle it.
                 raise NotImplementedError
             else :
                 dom = dna.Domain(name = name, sequence = line[2])
@@ -101,7 +101,7 @@ def read_pil(data, is_file = False, composite = False):
             try :
                 sequence = map(lambda d : domains[d], sequence)
             except KeyError:
-                raise Exception("Cannot find domain: {}.".format(d))
+                raise PilFormatError("Cannot find domain: {}.".format(d))
             
             current = []
             strand_list = []
@@ -124,7 +124,6 @@ def read_pil(data, is_file = False, composite = False):
 
         elif line[0] == 'resting-macrostate':
             cplxs = map(lambda c : complexes[c], line[2])
-            name = 'rm_' + name
             resting[name] = dna.RestingSet(name = name, complexes = cplxs)
 
         elif line[0] == 'reaction':
@@ -133,8 +132,8 @@ def read_pil(data, is_file = False, composite = False):
             assert rtype is not None
             
             if rtype == 'condensed' :
-                reactants = map(lambda c : resting['rm_' + c], line[2])
-                products  = map(lambda c : resting['rm_' + c], line[3])
+                reactants = map(lambda c : resting[c], line[2])
+                products  = map(lambda c : resting[c], line[3])
                 con_reactions.append(
                         dna.RestingSetReaction(reactants = reactants, products = products))
             else :
@@ -144,7 +143,7 @@ def read_pil(data, is_file = False, composite = False):
                         dna.Reaction(reactants = reactants, products = products))
 
         else :
-            print 'ignoring keyword:', line[0]
+            print('# Ignoring keyword: {}'.format(line[0]))
 
     # Make sure the reverse reaction between every pair of reactants is
     # included. These unproductive reactions will be important stop states for
