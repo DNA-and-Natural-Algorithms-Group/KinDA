@@ -160,11 +160,11 @@ class System(object):
         and spurious = False will return only enumerated reactions. Otherwise, no distinction will be made.
         """
     if spurious == True:
-      rxns = self._spurious_condensed_reactions
+      rxns = list(self._spurious_condensed_reactions)
     elif spurious == False:
-      rxns = self._condensed_reactions
+      rxns = list(self._condensed_reactions)
     else:
-      rxns = self._spurious_condensed_reactions | self._condensed_reactions
+      rxns = list(self._spurious_condensed_reactions | self._condensed_reactions)
 
     if unproductive == True:
       rxns = filter(lambda x: x.has_reactants(x.products) and x.has_products(x.reactants), rxns)
@@ -194,11 +194,11 @@ class System(object):
     If spurious is None, both spurious and non-spurious resting sets may be returned.
     """
     if spurious == True:
-      rs = self._spurious_restingsets
+      rs = list(self._spurious_restingsets)
     elif spurious == False:
-      rs = self._restingsets
+      rs = list(self._restingsets)
     else:
-      rs = self._restingsets | self._spurious_restingsets
+      rs = list(self._restingsets | self._spurious_restingsets)
 
     if complex is not None:
       rs = filter(lambda x: complex in x, rs)
@@ -221,7 +221,7 @@ class System(object):
     return rs_list[0]
 
   def get_complexes(self, name = None):
-    complexes = self._complexes
+    complexes = list(self._complexes)
     
     if name is not None:
       complexes = filter(lambda x: x.name == name, complexes)

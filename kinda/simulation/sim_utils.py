@@ -9,8 +9,6 @@ import numpy as np
 
 from multistrand.options import Options as MSOptions
 
-MS_TIMEOUT = MSOptions.STR_TIMEOUT
-
 def print_progress_table(col_headers, col_widths = None, col_init_data = None, col_format_specs = None):
   """ Pretty prints a progress table to provide status updates when running simulations
   involving Nupack or Multistrand. Returns a progress update function that can be called
@@ -106,7 +104,6 @@ def kcoll_mean(success_tag, ms_results):
   from Multistrand trajectories.
   If no kcoll values have been collected for this reaction, returns NaN. """
   success_kcolls = np.ma.array(ms_results['kcoll'], mask=(ms_results['tags']!=success_tag))
-  n_timeouts = (ms_results['tags'] == MS_TIMEOUT).sum()
   n = np.sum(ms_results['valid'])
   n_s = np.sum(~success_kcolls.mask)
   if n_s > 0:
