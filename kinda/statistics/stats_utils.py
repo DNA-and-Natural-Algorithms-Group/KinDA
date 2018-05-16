@@ -470,7 +470,8 @@ def import_data(filepath):
   if 'version' not in sstats_dict:
     print "KinDA: WARNING: Imported data file has no version number. Assuming KinDA {}.".format(KINDA_VERSION)
   elif sstats_dict['version'] != KINDA_VERSION:
-    print "KinDA: WARNING: Importing data file from KinDA {} as {}. Import may fail.".format(sstats_dict['version'], KINDA_VERSION)
+    print "KinDA: WARNING: Attempting conversion from KinDA {}.".format(sstats_dict['version'], KINDA_VERSION)
+    sstats_dict = _import_data_convert_version(sstats_dict, sstats_dict['version'])
 
   domains = {}
   for domain_id, data in sstats_dict['domains'].iteritems():
@@ -549,3 +550,21 @@ def import_data(filepath):
     multijob.total_sims = num_sims
     
   return sstats
+
+def _import_data_convert_version(sstats_dict, version):
+  major, minor, subminor = [int(v) for v in version[1:].split('.')]
+  if major == 0 and minor == 1 and (subminor == 6 or subminor == 7):
+    # add 'valid' entry to all simulation data
+    for data in sstats_dict['resting-set-reaction-stats'].values():
+      tags = data['simulation_data']['tags']
+      num_sims = len(tags)
+      MS_TIMEOUT, MS_ERROR = -1, -3
+      data['simulation_data']['valid'] = np.array([t!=MS_TIMEOUT and t!=MS_ERROR for t in tags])
+    sstats_dict['version'] = 'v0.1.8'
+  elif major == 0 and minor == 1 and subminor == 8:
+    pass
+  else:
+    print "KinDA: ERROR: Invalid version number {}. Conversion failed. Simulations and statistical calculations may fail."
+
+  return sstats_dict
+    
