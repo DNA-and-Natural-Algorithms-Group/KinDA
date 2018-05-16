@@ -178,17 +178,6 @@ class System(object):
 
 
   ## Convenience filters for specific objects
-  def get_reaction(self, reactants, products):
-    """ Returns a single reaction with exactly the same reactants and products as those given. """
-    rxns = self.get_reactions(reactants, products)
-    rxns = filter(lambda x: x.reactants_equal(reactants) and x.products_equal(products), rxns)
-    if len(rxns) >= 1:
-      return next(iter(rxns))
-    else:
-      print "Warning: Could not find reaction with the given reactants \
-              {0} and products {1}".format(reactants, products)
-      return None
-
   def get_reactions(self, reactants = [], products = [], unproductive = None, spurious = None):
     """ Returns a list of all reactions including the given reactants and the
     given products.  
@@ -210,13 +199,25 @@ class System(object):
       rxns = filter(lambda x: not(x.has_reactants(x.products) and x.has_products(x.reactants)), rxns)
 
     return filter(lambda x: x.has_reactants(reactants) and x.has_products(products), rxns)
+  def get_reaction(self, reactants = [], products = [], unproductive = None, spurious = None):
+    """ Returns a single reaction matching the criteria given. """
+    rxns = self.get_reactions(reactants = reactants, products = products, unproductive = unproductive, spurious = spurious)
+    if len(rxns) == 0:
+      print "KinDA: ERROR: SystemStats.get_reaction() failed to find a reaction with the given criteria."
+      return None
+    elif len(rxns) > 1:
+      print "KinDA: WARNING: SystemStats.get_reactino() found multiple reactions with the given criteria."
 
-  def get_restingsets(self, complex = None, strands = [], spurious = False):
+    return rxns[0]
+
+  def get_restingsets(self, complex = None, strands = [], name = None, complex_name = None, spurious = False):
     """ Returns a list of resting sets satisfying the filter arguments.
 
     Args:
         complex (optional): Returns a list of resting sets containing the given complex.
         strands (optional): Returns a list of resting sets containing the given strands.
+        name (optional): Returns a list of resting sets with the given name.
+        complex_name (optional): Returns a list of resting sets containing a complex with this name.
         suprious (optional): True: Returns only spurious resting sets.
                              False: Returns only non-spurious resting sets.
                              None: Returns both spurious and non-spurious resting sets.
@@ -228,11 +229,42 @@ class System(object):
     else:
       rs = self._restingsets | self._spurious_restingsets
 
-    if complex != None:
+    if complex is not None:
       rs = filter(lambda x: complex in x, rs)
-    else:
+    if strands != []:
       rs = filter(lambda x: all([s in x.strands for s in strands]), rs)
+    if name is not None:
+      rs = filter(lambda x: x.name == name, rs)
+    if complex_name is not None:
+      rs = filter(lambda x: complex_name in [c.name for c in x.complexes], rs)
+
     return rs
+  def get_restingset(self, complex = None, strands = [], name = None, complex_name = None, spurious = False):
+    rs_list = self.get_restingsets(complex = complex, strands = strands, name = name, complex_name = name, spurious = spurious)
+    if len(rs_list) == 0:
+      print "KinDA: ERROR: SystemStats.get_restingset() failed to find a resting set with the given criteria"
+      return None
+    elif len(rs_list) > 1:
+      print "KinDA: WARNING: SystemStats.get_restingset() found multiple resting sets with the given criteria"
+    
+    return rs_list[0]
+
+  def get_complexes(self, name = None):
+    complexes = self._complexes
+    
+    if name is not None:
+      complexes = filter(lambda x: x.name == name, complexes)
+
+    return complexes
+  def get_complex(self, name = None):
+    complexes = self.get_complexes(name = name)
+    if len(complexes) == 0:
+      print "KinDA: ERROR: SystemStats.get_complexes() failed to find a complex with the given criteria."
+      return None
+    elif len(complexes) > 1:
+      print "KinDA: WARNING: SystemStats.get_complexes() found multiple complexes with the given criteria."
+    
+    return complexes[0]
 
   def get_stats(self, obj):
     """ Returns the stats object corresponding to the given system object.
