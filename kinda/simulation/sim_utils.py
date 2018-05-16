@@ -7,7 +7,11 @@ import sys
 import math
 import numpy as np
 
-def print_progress_table(col_headers, col_widths = None, col_init_data = None):
+from multistrand.options import Options as MSOptions
+
+MS_TIMEOUT = MSOptions.STR_TIMEOUT
+
+def print_progress_table(col_headers, col_widths = None, col_init_data = None, col_format_specs = None):
   """ Pretty prints a progress table to provide status updates when running simulations
   involving Nupack or Multistrand. Returns a progress update function that can be called
   with new column values to update the status shown to the user.
@@ -18,12 +22,15 @@ def print_progress_table(col_headers, col_widths = None, col_init_data = None):
   """
 
   def update_progress(col_data):
-    str_data = [('{:<'+str(w-1)+'}').format(d)[:w-1] for d,w in zip(col_data, col_widths)]
+    str_data = [('{:<'+str(w-1)+'}').format(f.format(d))[:w-1] for d,w,f in zip(col_data, col_widths, col_format_specs)]
     print ' '.join(str_data), '\r',
     sys.stdout.flush()
 
   if col_widths is None:
     col_widths = [max(len(h)+1, 8) for h in col_headers]
+
+  if col_format_specs is None:
+    col_format_specs = ['{}'] * len(col_headers)
 
   header = ' '.join([(h+' '*(w-1))[:w-1] for h,w in zip(col_headers, col_widths)])
   print header
@@ -99,9 +106,13 @@ def kcoll_mean(success_tag, ms_results):
   from Multistrand trajectories.
   If no kcoll values have been collected for this reaction, returns NaN. """
   success_kcolls = np.ma.array(ms_results['kcoll'], mask=(ms_results['tags']!=success_tag))
+  n_timeouts = (ms_results['tags'] == MS_TIMEOUT).sum()
+  n = np.sum(ms_results['valid'])
   n_s = np.sum(~success_kcolls.mask)
   if n_s > 0:
     return success_kcolls.mean()
+  elif n > 0:
+    return ms_results['kcoll'].max()
   else:
     return float('nan')
 def kcoll_std(success_tag, ms_results):
@@ -126,7 +137,7 @@ def k1_mean(success_tag, ms_results):
   """ Reports the expected value of k1, the rate constant for
   the bimolecular step of a resting-set reaction. """
   success_kcolls = np.ma.array(ms_results['kcoll'], mask=(ms_results['tags']!=success_tag))
-  n = len(success_kcolls)
+  n = np.sum(ms_results['valid'])
   n_s = np.sum(~success_kcolls.mask)
   tags = ms_results['tags']
   if n_s > 0:
@@ -134,7 +145,7 @@ def k1_mean(success_tag, ms_results):
   elif n > 0:
     return ms_results['kcoll'].max() * (n_s + 1.0) / (n + 2.0)
   else:
-    return 0.0
+    return float('nan')
 def k1_std(success_tag, ms_results):
   """ The standard deviation for k1 is the
   same as the standard error reported by k1_error() """
@@ -143,20 +154,18 @@ def k1_error(success_tag, ms_results):
   """ Reports the standard error on the expected value of k1.
   See the KinDA paper for a derivation. """
   success_kcolls = np.ma.array(ms_results['kcoll'], mask=(ms_results['tags']!=success_tag))
-  n = len(success_kcolls)
+  n = np.sum(ms_results['valid'])
   n_s = np.sum(~success_kcolls.mask)
   if n_s > 0:
     gamma = np.sum(success_kcolls)
     return gamma/(n+2.) * math.sqrt((2.*n - n_s + 1.) / (n_s * (n+3.)))
-  elif n > 0:
-    return ms_results['kcoll'].max() * (n_s + 1.0) / (n + 2.0)
   else:
     return float('inf')
 
 def bernoulli_mean(success_tag, ms_results):
   """ Expectation of the bernoulli random variable S_i based on Bayesian analysis """
   tag_mask = ms_results['tags']==success_tag
-  n = len(tag_mask)
+  n = np.sum(ms_results['valid'])
   n_s = tag_mask.sum()
   return (n_s + 1.0) / (n + 2.0)
 def bernoulli_std(success_tag, ms_results):
@@ -168,7 +177,7 @@ def bernoulli_std(success_tag, ms_results):
 def bernoulli_error(success_tag, ms_results):
   """ Returns the standard error of the mean of S_i. """
   tag_mask = ms_results['tags']==success_tag
-  n = len(tag_mask)
+  n = np.sum(ms_results['valid'])
   n_s = tag_mask.sum()
   return math.sqrt((n_s+1.0)*(n-n_s+1)/((n+3)*(n+2)*(n+2)));
  

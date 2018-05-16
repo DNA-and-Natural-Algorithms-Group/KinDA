@@ -82,8 +82,8 @@ class MultistrandJob(object):
       MS_ERROR: -4,
       'overall': 0
     }
-    self._ms_results = {'tags': np.array([]), 'times': np.array([])}
-    self._ms_results_buff = {'tags': np.array([]), 'times': np.array([])}
+    self._ms_results = {'valid': np.array([]), 'tags': np.array([]), 'times': np.array([])}
+    self._ms_results_buff = {'valid': np.array([]), 'tags': np.array([]), 'times': np.array([])}
 
     self.total_sims = 0
 
@@ -230,8 +230,10 @@ class MultistrandJob(object):
       status_func(sims_completed)
 
   def preallocate_batch(self, batch_size):
+    self._ms_results_buff['valid'].resize(self.total_sims + batch_size, refcheck=False)
     self._ms_results_buff['tags'].resize(self.total_sims + batch_size, refcheck=False)
     self._ms_results_buff['times'].resize(self.total_sims + batch_size, refcheck=False)
+    self._ms_results['valid'] = self._ms_results_buff['valid'][:self.total_sims]
     self._ms_results['tags'] = self._ms_results_buff['tags'][:self.total_sims]
     self._ms_results['times'] = self._ms_results_buff['times'][:self.total_sims]
 
@@ -241,7 +243,9 @@ class MultistrandJob(object):
 
     times = [r.time for r in results]
     tags = [self._tag_id_dict[r.tag] for r in results]
+    valid = [t!=self._tag_id_dict[MS_TIMEOUT] and t!=self._tag_id_dict[MS_ERROR] for t in tags]
 
+    self._ms_results_buff['valid'][self.total_sims:self.total_sims+n] = valid
     self._ms_results_buff['tags'][self.total_sims:self.total_sims+n] = tags
     self._ms_results_buff['times'][self.total_sims:self.total_sims+n] = times
 
@@ -252,7 +256,18 @@ class MultistrandJob(object):
   def reduce_error_to(self, rel_goal, max_sims, reaction = 'overall', stat = 'rate', init_batch_size = 50, min_batch_size = 50, max_batch_size = 500, sims_per_update = 1, sims_per_worker = 1):
     """Runs simulations to reduce the error to rel_goal*mean or until max_sims is reached."""
     def status_func(batch_sims_done):
-      table_update_func([calc_mean(), calc_error(), goal, "", "%d/%d"%(batch_sims_done,num_trials), "%d/%d"%(num_sims+batch_sims_done,num_sims+exp_add_sims), str(100*(num_sims+batch_sims_done)/(num_sims+exp_add_sims))+"%"])
+      total_sims = self.total_sims
+      total_success = (self._ms_results['tags']==self._tag_id_dict[reaction]).sum()
+      total_timeout = total_sims - int((self._ms_results['valid']).sum())
+      total_failure = total_sims - total_success - total_timeout
+      table_update_func([
+          calc_mean(), 
+          calc_error(), 
+          goal, 
+          (batch_sims_done,num_trials), 
+          (total_sims,total_sims+exp_add_sims-batch_sims_done, total_success, total_failure, total_timeout), 
+          100*(total_sims)/(total_sims+exp_add_sims-batch_sims_done)
+      ])
     def calc_mean():
       return self._stats_funcs[stat][0](self._tag_id_dict[reaction], self._ms_results)
     def calc_error():  
@@ -272,9 +287,10 @@ class MultistrandJob(object):
       print "[MULTIPROCESSING OFF]"
 
     table_update_func = sim_utils.print_progress_table(
-        [stat, "error", "err goal", "", "batch sims", "overall sims", "progress"],
-        [14, 14, 14, 6, 17, 17, 10])
-    table_update_func([calc_mean(), error, goal, "", "--/--", "--/--", "--"])
+        [stat, "error", "err goal", "batch sims", "total sims (S,F,T)", "progress"],
+        col_widths = [10, 10, 10, 17, 35, 10],
+        col_format_specs = ['{:.4}', '{:.4}', '{:.4}', '{0[0]}/{0[1]}', '{0[0]}/{0[1]} ({0[2]},{0[3]},{0[4]})', '{}%'])
+    table_update_func([calc_mean(), error, goal, ("--","--"), ("--","--","--","--","--"), "--"])
     while not error < goal and num_sims < max_sims:
       # Estimate additional trials based on inverse square root relationship
       # between error and number of trials
@@ -295,11 +311,22 @@ class MultistrandJob(object):
       error = calc_error()
       goal = rel_goal * calc_mean()
 
+    total_sims = self.total_sims
+    total_success = (self._ms_results['tags']==self._tag_id_dict[reaction]).sum()
+    total_timeout = total_sims - int((self._ms_results['valid']).sum())
+    total_failure = total_sims - total_success - total_timeout
     if error == float('inf') or goal == 0.0:
       exp_add_sims = 0
     else:
-      exp_add_sims = max(0, int(self.total_sims * ((error/goal)**2 - 1) + 1))
-    table_update_func([calc_mean(), error, goal, "", "--/--", "%d/%d"%(num_sims, num_sims+exp_add_sims), str(100*num_sims/(num_sims+exp_add_sims))+"%"])
+      exp_add_sims = max(0, int(total_sims * ((error/goal)**2 - 1) + 1))
+    table_update_func([
+        calc_mean(), 
+        error, 
+        goal, 
+        ("--","--"), 
+        (total_sims, total_sims+exp_add_sims, total_success, total_failure, total_timeout), 
+        100*total_sims/(total_sims+exp_add_sims)
+    ])
     print
 
     
@@ -327,9 +354,11 @@ class FirstPassageTimeModeJob(MultistrandJob):
     n = len(results)
     
     tags = [self._tag_id_dict[r.tag] for r in results]
+    valid = [t!=self._tag_id_dict[MS_TIMEOUT] and t!=self._tag_id_dict[MS_ERROR] for t in tags]
     times = [r.time for r in results]
 
     start_ind, end_ind = self.total_sims, self.total_sims+n
+    self._ms_results_buff['valid'][start_ind:end_ind] = valid
     self._ms_results_buff['tags'][start_ind:end_ind] = tags
     self._ms_results_buff['times'][start_ind:end_ind] = times
 
@@ -373,6 +402,7 @@ class TransitionModeJob(MultistrandJob):
     transition_paths = ms_options.interface.transition_lists
     
     tags = [self._tag_id_dict[r.tag] for r in results]
+    valid = [t!=self._tag_id_dict[MS_TIMEOUT] and t!=self._tag_id_dict[MS_ERROR] for t in tags]
     times = [r.time for r in results]
    
     for path in transition_paths:
@@ -389,6 +419,7 @@ class TransitionModeJob(MultistrandJob):
     # Make sure there's enough space
     self.preallocate_batch(self.total_sims+len(tags) - len(self._ms_results_buff['tags']))
 
+    self._ms_results_buff['valid'][self.total_sims:self.total_sims+len(tags)] = valid
     self._ms_results_buff['tags'][self.total_sims:self.total_sims+len(tags)] = tags
     self._ms_results_buff['times'][self.total_sims:self.total_sims+len(times)] = times
 
@@ -444,9 +475,11 @@ class FirstStepModeJob(MultistrandJob):
     self._ms_results_buff['kcoll'] = np.array([])
 
   def preallocate_batch(self, batch_size):
+    self._ms_results_buff['valid'].resize(self.total_sims+batch_size, refcheck=False)
     self._ms_results_buff['tags'].resize(self.total_sims+batch_size, refcheck=False)
     self._ms_results_buff['times'].resize(self.total_sims+batch_size, refcheck=False)
     self._ms_results_buff['kcoll'].resize(self.total_sims+batch_size, refcheck=False)
+    self._ms_results['valid'] = self._ms_results_buff['valid'][:self.total_sims]
     self._ms_results['tags'] = self._ms_results_buff['tags'][:self.total_sims]
     self._ms_results['times'] = self._ms_results_buff['times'][:self.total_sims]
     self._ms_results['kcoll'] = self._ms_results_buff['kcoll'][:self.total_sims]
@@ -456,10 +489,12 @@ class FirstStepModeJob(MultistrandJob):
     n=len(results)
 
     tags = [self._tag_id_dict[r.tag] for r in results]
+    valid = [t!=self._tag_id_dict[MS_TIMEOUT] and t!=self._tag_id_dict[MS_ERROR] for t in tags]
     times = [r.time for r in results]
     kcolls = [r.collision_rate for r in results]
     
     assert len(self._ms_results_buff['tags']) >= self.total_sims+n
+    self._ms_results_buff['valid'][self.total_sims:self.total_sims+n] = valid
     self._ms_results_buff['tags'][self.total_sims:self.total_sims+n] = tags
     self._ms_results_buff['times'][self.total_sims:self.total_sims+n] = times
     self._ms_results_buff['kcoll'][self.total_sims:self.total_sims+n] = kcolls
