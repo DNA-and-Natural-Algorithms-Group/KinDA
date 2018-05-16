@@ -39,7 +39,10 @@ def get_nupack_exec_path(exec_name):
   """ If the NUPACKHOME environment variable is set, use that as the directory
   of the NUPACK executables. Otherwise, have Python search the PATH directly. """
   if 'NUPACKHOME' in os.environ:
-    return os.environ['NUPACKHOME'] + '/bin/' + exec_name;
+    if('3.0' in os.environ['NUPACKHOME']):
+        return os.environ['NUPACKHOME'] + '/bin/' + exec_name;
+    if('3.2' in os.environ['NUPACKHOME']):
+        return os.environ['NUPACKHOME'] + '/build/bin/' + exec_name;
   else:
     return exec_name;
 

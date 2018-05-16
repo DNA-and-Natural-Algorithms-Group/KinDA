@@ -68,8 +68,8 @@ def init_parameter_dicts(args):
         'unimolecular_scaling': 2.41686715e+06,
         'bimolecular_scaling': 8.01171383e+05,
         'simulation_time': args.multistrand_timeout,
-        'sodium': 1.0,
-        'magnesium': 0.0,
+        'sodium': args.sodium
+        'magnesium': args.magnesium
         'output_interval': -1,
         'parameter_type': 'Nupack',
         'rate_method': 'Metropolis',
@@ -83,8 +83,8 @@ def init_parameter_dicts(args):
         'dangles': args.dangles,
         'material': args.material.lower(),
         'T': args.temperature,
-        'sodium': 1.0,
-        'magnesium': 0.0,
+        'sodium': args.sodium
+        'magnesium': args.magnesium
     }
 
     # More Session parameters
@@ -130,9 +130,10 @@ def calculate_all_complex_probabilities(KindaSystem, spurious,
 
         # Query/calculate probabilities for all conformations 
         # (including the spurious conformation, denoted as None)
-        rms_stats.get_conformation_probs(**kwargs)
+        x = rms_stats.get_conformation_probs(max_sims = 0)
+        y = rms_stats.get_conformation_probs(**kwargs)
 
-        if backup :
+        if x != y and backup :
             export_data(KindaSystem, args.backup, use_pickle)
 
         if verbose >= 2:
@@ -165,10 +166,12 @@ def calculate_all_reaction_rates(KindaSystem, unproductive, spurious,
         rxn_stats = KindaSystem.get_stats(rxn)
     
         # Query/calculate k1 and k2 reaction rates to requested precision
-        rxn_stats.get_k1(**kwargs)
-        rxn_stats.get_k2(**kwargs)
+        k1x = rxn_stats.get_k1(max_sims=0)
+        k1y = rxn_stats.get_k1(**kwargs)
+        k2x = rxn_stats.get_k2(max_sims=0)
+        k2y = rxn_stats.get_k2(**kwargs)
         
-        if backup :
+        if (k1x != k1y or k2x != k2y) and backup :
             export_data(KindaSystem, args.backup, use_pickle)
 
 def main(args):
@@ -194,11 +197,17 @@ def main(args):
 
     kparams, mparams, nparams, rparams, pparams = init_parameter_dicts(args)
 
-    use_pickle = True # if False, uses json instead of pickle
+    # Import/Export
+    import_pickle = False if args.restore_json else True
+    export_pickle = False if args.backup_json else True
+    args.backup = args.backup_json if args.backup_json else args.backup
+    args.restore = args.restore_json if args.restore_json else args.restore
+
+    # Verbosity
     kinda.simulation.nupackjob.NupackSampleJob.verbose = args.verbose
     kinda.simulation.multistrandjob.MultistrandJob.verbose = args.verbose
 
-    # Set session parameters
+    # Session parameters
     unproductive = args.unproductive_reactions
     if unproductive is True: 
         unproductive = None
@@ -214,7 +223,7 @@ def main(args):
     # System initialization
     if args.restore:
         # Restore a backup file from a previous analysis. This mode ignores any
-        # form of *.pil input. Sanity checks ensure that the system parameters
+        # other form of input. Sanity checks ensure that the system parameters
         # match those of the restored database.
         if systeminput :
             raise SystemExit('--restore mode cannot handle *.PIL file input.')
@@ -224,7 +233,7 @@ def main(args):
         if args.verbose:
             print('# Importing options and parameters from {}.'.format(args.restore))
 
-        KindaSystem = import_data(args.restore, use_pickle)
+        KindaSystem = import_data(args.restore, import_pickle)
 
         for k,v in KindaSystem.initialization_params['kinda_params'].items():
             if v != kparams[k]:
@@ -274,11 +283,11 @@ def main(args):
 
     # let's do 1)
     calculate_all_complex_probabilities(KindaSystem, spurious,
-            args.backup, args.verbose, use_pickle, **pparams)
+            args.backup, args.verbose, export_pickle, **pparams)
    
     # let's do 2)
     calculate_all_reaction_rates(KindaSystem, unproductive, spurious, 
-            args.backup, args.verbose, use_pickle, **rparams)
+            args.backup, args.verbose, export_pickle, **rparams)
    
     if args.backup:
         print("\n# Done. Results stored in {}".format(args.backup))
@@ -359,10 +368,16 @@ def add_kinda_args(parser):
             help="Path to the input file.")
 
     interface.add_argument('-b', '--backup', default=None, metavar='<str>',
-        help="""Store system in the given file.""")
+        help="""Store system in the given pickle file.""")
+
+    interface.add_argument('--backup-json', default=None, metavar='<str>',
+        help="""Store system in the given JSON file.""")
 
     interface.add_argument('-r', '--restore', default=None, metavar='<str>',
-        help="""Restore system from given file.""")
+        help="""Restore system from given pickle file.""")
+
+    interface.add_argument('--restore-json', default=None, metavar='<str>',
+        help="""Restore system from given JSON file.""")
 
     interface.add_argument('-d', '--database', default=None, metavar='<str>',
         #help="""Store/Load/Update given database file.""")
@@ -458,6 +473,12 @@ def add_kinda_args(parser):
 
     system.add_argument('-T','--temperature', type=float, default=25, metavar='<float>',
             help="""Simulation temperature in Celsius.""")
+
+    system.add_argument('--sodium', type=float, default=1.0, metavar='<float>',
+            help="""Sodium concentration [M].""")
+
+    system.add_argument('--magnesium', type=float, default=0.0, metavar='<float>',
+            help="""Magnesium concentration [M].""")
 
     # Potentially supported parameters.
     system.add_argument('--dangles', default='some',
