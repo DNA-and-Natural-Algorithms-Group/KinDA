@@ -275,7 +275,7 @@ def main(args):
             raise SystemExit('ERROR: No complexes found.')
         elif not (det and rss and con): 
             if args.verbose:
-                print('# Enumerating using built-in peppercorn version {} with default paramters.'.format(peppercornenumerator.__version__))
+                print('# Enumerating using peppercornenumerator-{} with default paramters.'.format(peppercornenumerator.__version__))
             pilstring = peppercorn(systeminput, args.input_filename is not None)
             cxs, det, rss, con = read_pil(pilstring, is_file=False)
 
