@@ -9,8 +9,6 @@ import numpy as np
 
 from multistrand.options import Options as MSOptions
 
-MS_TIMEOUT = MSOptions.STR_TIMEOUT
-
 def print_progress_table(col_headers, col_widths = None, col_init_data = None, col_format_specs = None):
   """ Pretty prints a progress table to provide status updates when running simulations
   involving Nupack or Multistrand. Returns a progress update function that can be called
@@ -50,7 +48,7 @@ def time_mean(success_tag, ms_results):
   success_times = np.ma.array(ms_results['times'], mask=(ms_results['tags']!=success_tag))
   n_s = np.sum(~success_times.mask)
   if n_s > 0:
-    return success_times.mean()
+    return float(success_times.mean())
   else:
     return float('nan')
 def time_std(success_tag, ms_results):
@@ -58,7 +56,7 @@ def time_std(success_tag, ms_results):
   success_times = np.ma.array(ms_results['times'], mask=(ms_results['tags']!=success_tag))
   n_s = np.sum(~success_times.mask)
   if n_s > 1:
-    return success_times.std(ddof=1)
+    return float(success_times.std(ddof=1))
   else:
     return float('inf')
 def time_error(success_tag, ms_results):
@@ -66,7 +64,7 @@ def time_error(success_tag, ms_results):
   success_times = np.ma.array(ms_results['times'], mask=(ms_results['tags']!=success_tag))
   n_s = np.sum(~success_times.mask)
   if n_s > 1:
-    return success_times.std(ddof=1) / math.sqrt(n_s)
+    return float(success_times.std(ddof=1) / math.sqrt(n_s))
   else:
     return float('inf')
 
@@ -78,7 +76,7 @@ def rate_mean(success_tag, ms_results):
   success_times = np.ma.array(ms_results['times'], mask=(ms_results['tags']!=success_tag))
   n_s = np.sum(~success_times.mask)
   if n_s > 0:
-    return 1./success_times.mean()
+    return float(1./success_times.mean())
   else:
     return float('nan')
 def rate_std(success_tag, ms_results):
@@ -97,7 +95,7 @@ def rate_error(success_tag, ms_results):
     time_mean = success_times.mean()
     time_error = success_times.std(ddof=1) / math.sqrt(n_s)
     # Based on estimated local linearity of relationship between t and r=1/t
-    return time_error / time_mean**2
+    return float(time_error / time_mean**2)
   else:
     return float('inf')
 
@@ -106,13 +104,12 @@ def kcoll_mean(success_tag, ms_results):
   from Multistrand trajectories.
   If no kcoll values have been collected for this reaction, returns NaN. """
   success_kcolls = np.ma.array(ms_results['kcoll'], mask=(ms_results['tags']!=success_tag))
-  n_timeouts = (ms_results['tags'] == MS_TIMEOUT).sum()
   n = np.sum(ms_results['valid'])
   n_s = np.sum(~success_kcolls.mask)
   if n_s > 0:
-    return success_kcolls.mean()
-  elif n > 0:
-    return ms_results['kcoll'].max()
+    return float(success_kcolls.mean())
+  elif n > 1:
+    return float(ms_results['kcoll'].max())
   else:
     return float('nan')
 def kcoll_std(success_tag, ms_results):
@@ -121,7 +118,7 @@ def kcoll_std(success_tag, ms_results):
   success_kcolls = np.ma.array(ms_results['kcoll'], mask=(ms_results['tags']!=success_tag))
   n_s = np.sum(~success_kcolls.mask)
   if n_s > 1:
-    return success_kcolls.std(ddof=1)
+    return float(success_kcolls.std(ddof=1))
   else:
     return float('inf')
 def kcoll_error(success_tag, ms_results):
@@ -129,7 +126,7 @@ def kcoll_error(success_tag, ms_results):
   success_kcolls = np.ma.array(ms_results['kcoll'], mask=(ms_results['tags']!=success_tag))
   n_s = np.sum(~success_kcolls.mask)
   if n_s > 1:
-    return success_kcolls.std(ddof=1) / math.sqrt(n_s)
+    return float(success_kcolls.std(ddof=1) / math.sqrt(n_s))
   else:
     return float('inf')
 
@@ -141,9 +138,9 @@ def k1_mean(success_tag, ms_results):
   n_s = np.sum(~success_kcolls.mask)
   tags = ms_results['tags']
   if n_s > 0:
-    return np.sum(success_kcolls) / (n + 2.0)
+    return float(np.sum(success_kcolls) / (n + 2.0))
   elif n > 0:
-    return ms_results['kcoll'].max() * (n_s + 1.0) / (n + 2.0)
+    return float(ms_results['kcoll'].max() * (n_s + 1.0) / (n + 2.0))
   else:
     return float('nan')
 def k1_std(success_tag, ms_results):
@@ -158,7 +155,7 @@ def k1_error(success_tag, ms_results):
   n_s = np.sum(~success_kcolls.mask)
   if n_s > 0:
     gamma = np.sum(success_kcolls)
-    return gamma/(n+2.) * math.sqrt((2.*n - n_s + 1.) / (n_s * (n+3.)))
+    return float(gamma/(n+2.) * math.sqrt((2.*n - n_s + 1.) / (n_s * (n+3.))))
   else:
     return float('inf')
 
@@ -188,7 +185,7 @@ def k2_mean(success_tag, ms_results):
   success_t2s = np.ma.array(ms_results['times'], mask=(ms_results['tags']!=success_tag))
   n_s = np.sum(~success_t2s.mask)
   if n_s > 0:
-    return np.sum(success_kcolls) / np.sum(success_kcolls*success_t2s)
+    return float(np.sum(success_kcolls) / np.sum(success_kcolls*success_t2s))
   else:
     return float('nan')
 def k2_std(success_tag, ms_results):
@@ -202,6 +199,6 @@ def k2_error(success_tag, ms_results):
     time_mean = np.sum(success_kcolls*success_t2s) / np.sum(success_kcolls)
     time_std = math.sqrt(np.sum(success_kcolls * (success_t2s - time_mean)**2) / (np.sum(success_kcolls)-1))
     time_err = time_std / math.sqrt(n_s)
-    return time_err / time_mean**2
+    return float(time_err / time_mean**2)
   else:
     return float('inf')
