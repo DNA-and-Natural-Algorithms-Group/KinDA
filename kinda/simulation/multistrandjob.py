@@ -82,8 +82,8 @@ class MultistrandJob(object):
       MS_ERROR: -4,
       'overall': 0
     }
-    self._ms_results = {'valid': np.array([]), 'tags': np.array([]), 'times': np.array([])}
-    self._ms_results_buff = {'valid': np.array([]), 'tags': np.array([]), 'times': np.array([])}
+    self._ms_results = {'valid': np.array([], dtype=np.bool), 'tags': np.array([], np.int64), 'times': np.array([])}
+    self._ms_results_buff = {'valid': np.array([], dtype=np.bool), 'tags': np.array([], np.int64), 'times': np.array([])}
 
     self.total_sims = 0
 
