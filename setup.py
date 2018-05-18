@@ -11,7 +11,7 @@ with open('LICENSE') as f:
 
 setup(
     name='kinda',
-    version='0.1.8',
+    version='0.1.9',
     description='Kinetic DNA strand-displacement Analyzer',
     long_description=readme,
     url='',
