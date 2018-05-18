@@ -97,9 +97,8 @@ class NupackSampleJob(object):
     The Bayesian estimator (n+1)/(N+2) is used to estimate this probability, in order to prevent
     improbable estimates when n=0,N.
     """
-    index = self.get_complex_index(complex_name)
     N = self.total_sims
-    Nc = self._complex_counts[index]
+    Nc = self.get_complex_count(complex_name)
     return (Nc + 1.0)/(N + 2)
   def get_complex_prob_error(self, complex_name = None):
     """ Returns the standard error on the conformation probability associated with the given complex_name.
@@ -109,8 +108,7 @@ class NupackSampleJob(object):
       SE = (n+1)*(N-n+1)/((N+3)*(N+2)*(N+2))
     to avoid artifacts when n=0,N.
     """
-    index = self.get_complex_index(complex_name)
-    Nc = self._complex_counts[index]
+    Nc = self.get_complex_count(complex_name)
     N = self.total_sims;
     return math.sqrt((Nc+1.0)*(N-Nc+1)/((N+3)*(N+2)*(N+2)));
 
@@ -127,6 +125,8 @@ class NupackSampleJob(object):
   def get_num_sims(self):
     """ Returns the total number of sampled secondary structures. """
     return self.total_sims
+  def get_complex_count(self, complex_name = None):
+    return self._complex_counts[self.get_complex_index(complex_name)]
 
   def set_similarity_threshold(self, similarity_threshold):
     """ Modifies the similarity threshold used to classify each sampled secondary structure as one of
@@ -249,10 +249,13 @@ class NupackSampleJob(object):
       prob = self.get_complex_prob(complex_name)
       error = self.get_complex_prob_error(complex_name)
       goal = rel_goal * prob
+      total_sims = self.total_sims
+      total_success = self.get_complex_count(complex_name)
+      total_failure = total_sims - total_success
       if exp_add_sims is None:
-        update_func([complex_name, prob, error, goal, "", "%d/%d"%(batch_sims_done,num_trials), "%d/--"%(num_sims+batch_sims_done), "--"])
+        update_func([complex_name, prob, error, goal, (batch_sims_done,num_trials), (total_sims,"--",total_success,total_failure), "--"])
       else:
-        update_func([complex_name, prob, error, goal, "", "%d/%d"%(batch_sims_done,num_trials), "%d/%d"%(num_sims + batch_sims_done,num_sims+exp_add_sims), str(100*(num_sims+batch_sims_done)/(num_sims+exp_add_sims))+'%']) 
+        update_func([complex_name, prob, error, goal, (batch_sims_done,num_trials), (total_sims,total_sims+exp_add_sims-batch_sims_done, total_success, total_failure), 100*total_sims/(total_sims+exp_add_sims-batch_sims_done)]) 
       
     
     # Get initial values
@@ -271,15 +274,17 @@ class NupackSampleJob(object):
 
     # Prepare progress table
     update_func = print_progress_table(
-        ["complex", "prob", "error", "err goal", "", "batch sims", "overall sims", "progress"],
-        [11, 10, 10, 10, 6, 17, 17, 10])
-    update_func([complex_name, prob, error, goal, "", "--/--", "--/--", "--"])
+        ["complex", "prob", "error", "err goal", "batch sims", "total sims (S,F)", "progress"],
+        col_widths = [11, 10, 10, 10, 17, 35, 10],
+        col_format_specs = ['{}','{:.4}','{:.4}','{:.4}','{0[0]}/{0[1]}','{0[0]}/{0[1]} ({0[2]},{0[3]})','{}%']
+    )
+    update_func([complex_name, prob, error, goal, ("--","--"), ("--","--","--","--"), "--"])
 
     # Run simulations
     while not error <= goal and num_sims < max_sims:
       # Estimate additional trials based on inverse square root relationship
       # between error and number of trials
-      if error == float('inf'):
+      if self.total_sims == 0:
         num_trials = init_batch_size
         exp_add_sims = None
       else:
@@ -296,11 +301,14 @@ class NupackSampleJob(object):
       error = self.get_complex_prob_error(complex_name)
       goal = rel_goal * prob
 
-    if error == float('inf'):
+    if self.total_sims == 0:
       exp_add_sims = 0
     else:
       exp_add_sims = max(0, int(self.total_sims * ((error/goal)**2 - 1) + 1))
-    update_func([complex_name, prob, error, goal, "", "--/--", "%d/%d"%(num_sims,num_sims+exp_add_sims), str(100*num_sims/(num_sims+exp_add_sims))+'%'])
+    total_sims = self.total_sims
+    total_success = self.get_complex_count(complex_name)
+    total_failure = total_sims - total_success
+    update_func([complex_name, prob, error, goal, ("--","--"), (self.total_sims,self.total_sims+exp_add_sims,total_success,total_failure), 100*self.total_sims/(self.total_sims+exp_add_sims)])
     print
 
   def get_top_MFE_structs(self, num):

@@ -233,8 +233,11 @@ class RestingSetStats(object):
   def get_conformation_prob_data(self, complex_name):
     return self.sampler.get_complex_prob_data(complex_name)
 
-  def get_num_simulations(self):
+  def get_num_sims(self):
     return self.get_nupackjob().total_sims
+  def get_conformation_count(self, complex_name = None):
+    return self.get_nupackjob().get_complex_count(complex_name)
+    
     
   def get_top_MFE_structs(self, num):
     """ Attempts to obtain the top <num> MFE structures by calling
