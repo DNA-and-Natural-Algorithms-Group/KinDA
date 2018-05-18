@@ -14,6 +14,7 @@ import numpy as np
 # Import Multistrand
 import multistrand.objects as MSObjects
 from multistrand.options import Options as MSOptions
+from multistrand.options import Literals as MSLiterals
 from multistrand.system import SimSystem as MSSimSystem
 
 from ..objects import utils, io_Multistrand, Macrostate, RestingSet, Complex
@@ -33,14 +34,13 @@ LOOSE_MACROSTATE = 3
 COUNT_MACROSTATE = 4
 
 try:
-  MS_TIMEOUT = MSOptions.STR_TIMEOUT
-  MS_NOINITIALMOVES = MSOptions.STR_NOINITIAL
-  MS_NAN = MSOptions.STR_NAN
-  MS_ERROR = MSOptions.STR_ERROR
+  MS_TIMEOUT = MSLiterals.time_out
+  MS_NOINITIALMOVES = MSLiterals.no_initial_moves
+  MS_ERROR = MSLiterals.sim_error
 except AttributeError:
+  print "KinDA: WARNING: built-in Multistrand tags (time_out, no_initial_moves, sim_error) not found."
   MS_TIMEOUT = None
   MS_NOINITIALMOVES = None
-  MS_NAN = None
   MS_ERROR = None
 
 # Global function for performing a single simulation, used for multiprocessing
@@ -78,8 +78,7 @@ class MultistrandJob(object):
     self._tag_id_dict = {
       MS_TIMEOUT: -1,
       MS_NOINITIALMOVES: -2,
-      MS_NAN: -3,
-      MS_ERROR: -4,
+      MS_ERROR: -3,
       'overall': 0
     }
     self._ms_results = {'valid': np.array([], dtype=np.bool), 'tags': np.array([], np.int64), 'times': np.array([])}
@@ -344,8 +343,7 @@ class FirstPassageTimeModeJob(MultistrandJob):
     self._tag_id_dict = {
       MS_TIMEOUT: -1,
       MS_NOINITIALMOVES: -2,
-      MS_NAN: -3,
-      MS_ERROR: -4,
+      MS_ERROR: -3,
     }
     self._tag_id_dict.update((t,i) for i,t in enumerate(sorted(self.tags)))
   
@@ -385,8 +383,7 @@ class TransitionModeJob(MultistrandJob):
     self._tag_id_dict = {
       MS_TIMEOUT: -1,
       MS_NOINITIALMOVES: -2,
-      MS_NAN: -3,
-      MS_ERROR: -4,
+      MS_ERROR: -3,
     }
     self._tag_id_dict.update((t,i) for i,t in enumerate(sorted(set(self.states))))
   
@@ -460,8 +457,7 @@ class FirstStepModeJob(MultistrandJob):
     self._tag_id_dict = {
       MS_TIMEOUT: -1,
       MS_NOINITIALMOVES: -2,
-      MS_NAN: -3,
-      MS_ERROR: -4
+      MS_ERROR: -3
     }
     self._tag_id_dict.update((t,i) for i,t in enumerate(sorted(set(sc.tag for sc in self._ms_options_dict['stop_conditions']))))
     self.tags = list(self._tag_id_dict.keys())
