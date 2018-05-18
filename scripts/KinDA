@@ -93,15 +93,17 @@ def init_parameter_dicts(args):
     # More Session parameters
     rate_params = {
         'relative_error':  args.error_goal if args.error_goal is not None else args.rate_error_goal,
-        'init_batch_size': args.rate_batch_size[0],
-        'max_batch_size':  args.rate_batch_size[1],
+        'min_batch_size':  args.rate_batch_size[0],
+        'init_batch_size': args.rate_batch_size[1],
+        'max_batch_size':  args.rate_batch_size[2],
         'max_sims':        args.max_sims if args.max_sims is not None else args.rate_max_sims
     }
 
     prob_params = {
         'relative_error':  args.error_goal if args.error_goal is not None else args.prob_error_goal,
-        'init_batch_size': args.prob_batch_size[0],
-        'max_batch_size':  args.prob_batch_size[1],
+        'min_batch_size':  args.rate_batch_size[0],
+        'init_batch_size': args.prob_batch_size[1],
+        'max_batch_size':  args.prob_batch_size[2],
         'max_sims':        args.max_sims if args.max_sims is not None else args.prob_max_sims
     }
 
@@ -214,6 +216,11 @@ def main(args):
     kparams, mparams, nparams, rparams, pparams = init_parameter_dicts(args)
 
     # Import/Export
+    if args.database:
+        if (args.restore_json or args.backup_json or args.restore or args.backup):
+            raise SystemExit('You may not specify any other I/O paramters when using --database.')
+        args.restore = args.backup = args.database
+
     import_pickle = False if args.restore_json else True
     export_pickle = False if args.backup_json else True
     args.backup = args.backup_json if args.backup_json else args.backup
@@ -353,9 +360,9 @@ def add_kinda_args(parser):
         help="""Restore system from given JSON file.""")
 
     interface.add_argument('-d', '--database', default=None, metavar='<str>',
-        #help="""Store/Load/Update given database file.""")
-        #NOTE: This would be nice, but requires dsdobjects.
-        help=argparse.SUPPRESS)
+        help="""Restore from and backup to given database file (uses PICKLE).""")
+        # NOTE: It would be nice to store/load/update *any* given database
+        # file, but that requires dsdobjects.
 
     interface.add_argument('--force', action='store_true',
         help="""Overwrite existing files.""")
@@ -380,20 +387,22 @@ def add_kinda_args(parser):
             metavar='<float>',
             help="""Relative error goal for complex probabilities.""")
 
-    session.add_argument('--rate-batch-size', type=int, nargs=2, 
-            default = [40, 400], metavar=['INIT<int>','MAX<int>'],
+    session.add_argument('--rate-batch-size', type=int, nargs=3, 
+            default = [40, 80, 400], metavar='<int>',
             help="""Adjust batch size for Multistrand simulations. 
-            First argument: initial batch size, second argument: maximum batch
-            size. 
-            A smaller batch size can lead to slower runtime when using multiple
-            cores, as all parallel jobs have to finish in order to determine
-            whether a new batch gets submitted.  A large batch size can lead to
-            excess work in order to reach your error goals.
 
-            """)
+                - First argument: minimum batch size 
+                - Second argument: initial batch size 
+                - Third argument: maximum batch size 
 
-    session.add_argument('--prob-batch-size', type=int, nargs=2, 
-            default = [40, 400], metavar=['INIT<int>','MAX<int>'],
+            When using multiple cores, the batch size is devided by the number
+            of cores.  A smaller batch size can lead to slower runtime when
+            using multiple cores, as all parallel jobs have to finish in order
+            to determine whether a new batch gets submitted. A large batch size
+            can lead to excess work in order to reach your error goals.""")
+
+    session.add_argument('--prob-batch-size', type=int, nargs=3, 
+            default = [40, 80, 400], metavar='<int>',
             help="""Adjust batch size for NUPACK stochastic backtracking. 
             Equivalent behavior to --rate-batch-size. """)
 

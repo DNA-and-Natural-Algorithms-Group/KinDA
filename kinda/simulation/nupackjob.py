@@ -18,26 +18,21 @@ from sim_utils import print_progress_table
 
 
 ## GLOBALS
-def sample_global(args):
+def sample_global((self, num_samples)):
   """ Global function for calling NUPACK, used for multiprocessing  """
-  self = args[0]
-  num_samples = args[1]
 
-  ## Set up arguments/options for Nupack call
+  # Set up arguments/options for Nupack call
   strands = next(iter(self.restingset.complexes)).strands
-  strand_seqs = [strand.sequence
-                  for strand
-                  in strands]
+  strand_seqs = [strand.sequence for strand in strands]
 
-  ## Call Nupack
+  # Call Nupack
   structs = nupack.sample(strand_seqs, num_samples, **self._nupack_params)
 
-  ## Convert each Nupack sampled structure (a dot-paren string) into a DNAObjects Complex object and process.
+  # Convert each Nupack sampled structure (a dot-paren string) into a
+  # DNAObjects Complex object and process.
   sampled = [Complex(strands = strands, structure = s) for s in structs]
 
   return sampled
-
-
 
 ## CLASSES
 
@@ -103,6 +98,7 @@ class NupackSampleJob(object):
     N = self.total_sims
     Nc = self._complex_counts[index]
     return (Nc + 1.0)/(N + 2)
+
   def get_complex_prob_error(self, complex_name = None):
     """ Returns the standard error on the conformation probability associated with the given complex_name.
     complex_name should match the name field of one of the complex in the resting set used to
@@ -114,7 +110,10 @@ class NupackSampleJob(object):
     index = self.get_complex_index(complex_name)
     Nc = self._complex_counts[index]
     N = self.total_sims;
-    return math.sqrt((Nc+1.0)*(N-Nc+1)/((N+3)*(N+2)*(N+2)));
+    if N == 0 :
+      return float('inf')
+    else :
+      return math.sqrt((Nc+1.0)*(N-Nc+1)/((N+3)*(N+2)*(N+2)));
 
   def get_complex_prob_data(self, complex_name = None):
     """ Returns raw sampling data for the given complex_name.
@@ -142,15 +141,17 @@ class NupackSampleJob(object):
     ## Recalculate complex counts for new similarity threshold
     self.update_complex_counts()
 
-  def sample(self, **params):
+  def sample(self, num_samples, status_func = lambda x: None):
     """ Calls sample_multiprocessing or sample_singleprocessing depending on the value of
     self._multiprocessing """
-    if self._multiprocessing:
-      self.sample_multiprocessing(**params)
-    else:
-      self.sample_singleprocessing(**params)
 
-  def sample_multiprocessing(self, num_samples, samples_per_worker = None, status_func = lambda:None):
+    if self._multiprocessing:
+      self.sample_multiprocessing(num_samples, status_func = status_func)
+    else:
+      self.sample_singleprocessing(num_samples, status_func = status_func)
+
+  def sample_multiprocessing(self, num_samples, 
+      status_func = lambda x: None):
     """ Runs sample() in multiple processes. """
 
     # Temporarily remove SIGINT event handler from current process
@@ -165,22 +166,18 @@ class NupackSampleJob(object):
     signal.signal(signal.SIGINT, sigint_handler)
 
     # Setup args for each process
-    if samples_per_worker is None:
-      samples_per_worker = num_samples / k
-      args = [(self, samples_per_worker+1)] * (num_samples % k)
-      args += [(self, samples_per_worker)] * (k - (num_samples % k))
-    else:
-      args = [(self, samples_per_worker)] * (num_samples / samples_per_worker)
-      if num_samples%samples_per_worker > 0:  args+= [(self, num_samples%samples_per_worker)]
+    samples_per_worker = int(num_samples / k)
+    args = [(self, samples_per_worker+1)] * (num_samples % k)
+    args += [(self, samples_per_worker)] * (k - (num_samples % k))
 
     it = p.imap_unordered(sample_global, args)
     p.close()
 
     try:
       sims_completed = 0
-      for res in it:
-        self.add_sampled_complexes(res)
-        sims_completed += len(res)
+      for cplx in it:
+        self.add_sampled_complexes(cplx)
+        sims_completed += len(cplx)
         status_func(sims_completed)
     except KeyboardInterrupt:
       print "SIGINT: Ending NUPACK sampling prematurely..."
@@ -189,7 +186,7 @@ class NupackSampleJob(object):
       raise KeyboardInterrupt
 
 
-  def sample_singleprocessing(self, num_samples, status_func=lambda:None):
+  def sample_singleprocessing(self, num_samples, status_func = lambda x: None):
     """ Queries Nupack for num_samples secondary structures, sampled from the Boltzmann distribution
     of secondary structures for this resting set. The sampled secondary structures are automatically
     processed to compute new estimates for each conformation probability.
@@ -240,25 +237,43 @@ class NupackSampleJob(object):
     self._complex_counts[spurious_idx] = np.sum(spurious_similarities)
       
     
-  def reduce_error_to(self, rel_goal, max_sims, complex_name = None, init_batch_size = 50, min_batch_size = 50, max_batch_size = 1000):
+  def reduce_error_to(self, rel_goal, max_sims, complex_name = None, 
+      init_batch_size = 50, 
+      min_batch_size = 50, 
+      max_batch_size = 1000):
     """ Continue querying Nupack for secondary structures sampled from the Boltzmann distribution
     until the standard error of the estimated probability for the given complex_name
     is at most rel_goal*complex_prob, or max_sims conformations have been sampled.
     If no complex_name is given, the halting condition is based on the error
     for the spurious conformation probability.
+
+    num_trials = is the batch size. This value is always between min and max
+      batch size, it starts with initial batch size and then gets calculated.
+      This number gets devided by the number of cores. 
+
+    num_sims = The number of finished simulations.
+    max_sims = The maximum number of simulations.
+    exp_add_sims = An estimate of how many simulations are still needed to reach the error goal.
+      # Initially None, 
+
     """
     def status_func(batch_sims_done):
       prob = self.get_complex_prob(complex_name)
       error = self.get_complex_prob_error(complex_name)
       goal = rel_goal * prob
+
       if exp_add_sims is None:
         update_func([complex_name, prob, error, goal, "", 
-            "%d/%d"%(batch_sims_done,num_trials), "%d/--"%(num_sims+batch_sims_done), "--"])
+          "{:d}/{:d}".format(batch_sims_done,num_trials), 
+          "{:d}/--".format(num_sims + batch_sims_done), 
+          "--"])
       else:
         update_func([complex_name, prob, error, goal, "", 
-            "%d/%d"%(batch_sims_done,num_trials), 
-            "%d/%d"%(num_sims + batch_sims_done,num_sims+exp_add_sims), 
-            str(100*(num_sims+batch_sims_done)/(num_sims+exp_add_sims))+'%']) 
+            "{:d}/{:d}".format(batch_sims_done,
+                               num_trials), 
+            "{:d}/{:d}".format(num_sims + batch_sims_done, 
+                               num_sims + exp_add_sims), 
+            "{:3d}%".format(100*(num_sims+batch_sims_done)/(num_sims+exp_add_sims))]) 
       
     
     verbose = NupackSampleJob.verbose
@@ -272,7 +287,8 @@ class NupackSampleJob(object):
     # Check if simulations are needed, return if not
     if error <= goal or num_sims >= max_sims: 
         if max_sims and verbose :
-            print '#    Returning result: P({}) = {}; Error = {}; Goal = {}'.format(complex_name, prob, error, goal)
+            print '#    Returning result: P({}) = {}; Error = {}; Goal = {}'.format(
+                complex_name, prob, error, goal)
         return
 
     if verbose:
@@ -295,12 +311,13 @@ class NupackSampleJob(object):
         num_trials = init_batch_size
         exp_add_sims = None
       else:
-        reduction = error / goal
-        exp_add_sims = int(self.total_sims * (reduction**2 - 1) + 1)
-        num_trials = max(min(max_batch_size, exp_add_sims, max_sims - num_sims, self.total_sims + 1), min_batch_size)
+        exp_add_sims = max(0, int(self.total_sims * ((error/goal)**2 - 1) + 1))
+        num_trials = max(
+            min(max_batch_size, exp_add_sims, max_sims - num_sims, self.total_sims + 1), 
+            min_batch_size)
         
       # Query Nupack
-      self.sample(num_samples = num_trials, status_func = status_func if verbose else lambda x: None)
+      self.sample(num_trials, status_func = status_func if verbose else lambda x: None)
 
       # Update estimates and goal
       num_sims += num_trials
@@ -313,10 +330,11 @@ class NupackSampleJob(object):
     else:
       exp_add_sims = max(0, int(self.total_sims * ((error/goal)**2 - 1) + 1))
 
-    if verbose:
-      update_func([complex_name, prob, error, goal, "", "--/--", 
-        "%d/%d"%(num_sims,num_sims+exp_add_sims), str(100*num_sims/(num_sims+exp_add_sims))+'%'])
-      print
+    if verbose: # Return result
+      update_func([complex_name, prob, error, goal, "", 
+        "--/--",
+       "{:d}/{:d}".format(num_sims,num_sims+exp_add_sims), 
+       "{:3d}%".format(100*num_sims/(num_sims+exp_add_sims))], inline=False) 
 
   def get_top_MFE_structs(self, num):
     strands = next(iter(self.restingset.complexes)).strands
