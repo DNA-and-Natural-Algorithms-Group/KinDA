@@ -38,20 +38,18 @@ try:
   MS_NOINITIALMOVES = MSLiterals.no_initial_moves
   MS_ERROR = MSLiterals.sim_error
 except AttributeError:
-  print "KinDA: WARNING: built-in Multistrand tags (time_out, no_initial_moves, sim_error) not found."
+  print "KinDA: WARNING: built-in Multistrand result tags not found."
   MS_TIMEOUT = None
   MS_NOINITIALMOVES = None
   MS_ERROR = None
 
 # Global function for performing a single simulation, used for multiprocessing
 def run_sims_global(params):
-  multijob = params[0]
-  num_sims = params[1]
+  multijob, num_sims = params
 
   ms_options = multijob.create_ms_options(num_sims)
   MSSimSystem(ms_options).start()
   return ms_options
-
 
 # MultistrandJob class definition
 class MultistrandJob(object):
@@ -62,11 +60,12 @@ class MultistrandJob(object):
   This is the parent class to the more useful job classes that compile
   specific information for each job mode type."""
   
-  def __init__(self, start_state, stop_conditions, sim_mode, multiprocessing = True, multistrand_params = {}):
+  def __init__(self, start_state, stop_conditions, sim_mode, boltzmann_selectors = None, multiprocessing = True, multistrand_params = {}):
     self._multistrand_params = dict(multistrand_params)
     self._ms_options_dict = self.setup_ms_params(start_state = start_state,
                                           stop_conditions = stop_conditions,
-                                          mode = sim_mode)
+                                          mode = sim_mode,
+                                          boltzmann_selectors = boltzmann_selectors)
 
     self._multiprocessing = multiprocessing
     
@@ -103,21 +102,20 @@ class MultistrandJob(object):
                                                 
   def setup_ms_params(self, *args, **kargs):
 
-    ## Convert DNAObjects to Multistrand objects
-    if all(map(lambda x: isinstance(x, RestingSet), kargs['start_state'])):
-      resting_sets = kargs['start_state']
-      complexes = []
-      boltzmann = True
-      use_resting_sets = True
-    elif all(map(lambda x: isinstance(x, Complex), kargs['start_state'])):
-      resting_sets = []
-      complexes = kargs['start_state']
-      boltzmann = False
-      use_resting_sets = False
-    else:
-      assert False, "Starting state must be all complexes or all resting sets"
+    ## Extract keyword arguments
+    start_state = kargs['start_state']
     stop_conditions = kargs['stop_conditions']
+    resting_sets = list(filter(lambda x: isinstance(x, RestingSet), start_state))
+    complexes = list(filter(lambda x: isinstance(x, Complex), start_state))
 
+    if kargs['boltzmann_selectors'] is None:
+      boltzmann = False
+      boltzmann_selectors = [None]*len(start_state)
+    else:
+      boltzmann = True
+      boltzmann_selectors = kargs['boltzmann_selectors']
+
+    ## Convert DNAObjects to Multistrand objects
     ms_data = io_Multistrand.to_Multistrand(
         complexes = complexes,
         resting_sets = resting_sets,
@@ -129,20 +127,26 @@ class MultistrandJob(object):
     resting_sets_dict = dict(ms_data['restingstates'])
     macrostates_dict = dict(ms_data['macrostates'])
 
-    ## Set ms_params with all parameters needed to create an MS Options object on the fly
-    if use_resting_sets:
-      start_state = [resting_sets_dict[rs] for rs in resting_sets]
-    else:
-      start_state = [complexes_dict[c] for c in complexes]
+    ms_start_state = [
+            resting_sets_dict[elem]
+            if (elem in resting_sets_dict)
+            else complexes_dict[elem]
+        for elem in kargs['start_state']
+    ]
+    ms_stop_conditions = list(it.chain(*[macrostates_dict[m] for m in stop_conditions]))
 
-    for elem in start_state:
+
+    ## Set boltzmann sampling status for all Multistrand start_state complexes
+    for elem,boltzmann_func in zip(ms_start_state, boltzmann_selectors):
       elem.boltzmann_sample = boltzmann
+      elem.sampleSelect = boltzmann_func
 
+    ## Set ms_params with all parameters needed to create an MS Options object on the fly
     options_dict = dict(
         self._multistrand_params,
-        start_state =         start_state,
+        start_state =         ms_start_state,
         simulation_mode =     kargs['mode'],
-        stop_conditions = list(it.chain(*[macrostates_dict[m] for m in stop_conditions]))
+        stop_conditions =     ms_stop_conditions
     )
 
     return options_dict

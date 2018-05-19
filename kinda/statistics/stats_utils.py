@@ -85,9 +85,27 @@ def make_RestingSetRxnStats(restingsets, detailed_rxns, condensed_rxns, kinda_pa
         in zip(enum_prods + spurious_prods, tags, spurious_flags)
       ]
     
+    # Make Boltzmann sampling selector functions for each reactant
+    start_macrostate_mode = kinda_params.get('start_macrostate_mode', 'disassoc')
+    similarity_threshold = kinda_params['multistrand_similarity_threshold']
+    boltzmann_selectors = [
+        create_boltzmann_selector(
+            restingset, 
+            mode = start_macrostate_mode,
+            similarity_threshold = similarity_threshold
+        )
+        for restingset in r
+    ]
+
     # Make Multistrand job
     multiprocessing = kinda_params.get('multistrand_multiprocessing', True)
-    job = FirstStepModeJob(r, stop_conditions, multiprocessing = multiprocessing, multistrand_params = multistrand_params)
+    job = FirstStepModeJob(
+        r,
+        stop_conditions,
+        boltzmann_selectors = boltzmann_selectors,
+        multiprocessing = multiprocessing,
+        multistrand_params = multistrand_params
+    )
     reactants_to_mjob[r] = job
 
     print "KinDA: Constructing internal KinDA objects... {}%\r".format(100*i/len(reactants)),
@@ -294,6 +312,59 @@ def create_stop_macrostate(state, tag, spurious, options):
     macrostates = [obj_to_mstate[o] for o in state])
   return macrostates
 
+## Boltzmann sample-and-select functions must be picklable
+## to be used with the multiprocessing library
+class DisassocSelector(object):
+  def __init__(self, restingset):
+    self._restingset = restingset # not actually used
+  def __call__(self, struct):
+    return True
+class CountByComplexSelector(object):
+  def __init__(self, restingset, threshold):
+    self._restingset = restingset
+    self._threshold = threshold
+  def __call__(self, struct):
+    kinda_struct = dna.Structure(strands = self._restingset.strands, structure = struct)
+    return any(
+        dna.utils.defect(complex, kinda_struct) < 1-self._threshold
+        for complex in self._restingset.complexes
+    )
+class CountByDomainSelector(object):
+  def __init__(self, restingset, threshold):
+    self._restingset = restingset
+    self._threshold = threshold
+  def __call__(self, struct):
+    kinda_struct = dna.Structure(strands = self._restingset.strands, structure = struct)
+    return any(
+        dna.utils.max_domain_defect(complex, kinda_struct) < 1-self._threshold
+        for complex in self._restingset.complexes
+    )
+
+
+
+def create_boltzmann_selector(restingset, mode, similarity_threshold = None):
+  """ Creates a 'selector' function that takes a secondary structure
+  description for this resting set and returns True if it satisfies the given
+  mode and similarity threshold. Available modes are:
+    disassoc: any secondary structure with the same ordered strands
+    count-by-complex: any secondary structure where the fractional defect over
+      the entire complex is within 1-similarity_threshold of any of the conformations
+      in the given resting set
+    count-by-domain: any secondary structure where, for at least one of the conformations
+      in the resting set, the fractional defect over every domain is
+      within 1-similarity_threshold 
+  Each function takes a single argument, the secondary structure as a dot-paren-plus string,
+  which should be taken from the space of possible secondary structures with the resting set's
+  strand ordering.
+  """
+  if mode == 'disassoc':
+    return DisassocSelector(restingset)
+  elif mode == 'count-by-complex':
+    assert similarity_threshold is not None
+    return CountByComplexSelector(restingset, similarity_threshold)
+  elif mode == 'count-by-domain':
+    assert similarity_threshold is not None
+    return CountByDomainSelector(restingset, similarity_threshold)
 
 def make_RestingSetStats(restingsets, kinda_params = {}, nupack_params = {}):
   """ A convenience function to make RestingSetStats objects for
