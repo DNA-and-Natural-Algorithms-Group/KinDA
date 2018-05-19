@@ -49,17 +49,19 @@ class RestingSetRxnStats(object):
       
     ## Make Multistrand job object for k1 and k2
     if multijob == None:
-      self.multijob = FirstStepModeJob(self.reactants, [self.products], [multijob_tag])
+      if len(self.reactants) == 2:
+        self.multijob = FirstStepModeJob(self.reactants, [self.products], [multijob_tag])
+      elif len(self.reactants) == 1:
+        self.multijob = FirstPassageTimeModeJob(self.reactants, [self.products], [multijob_tag])
+      else:
+        self.multijob = None
+        print "KinDA: ERROR: Cannot handle reactions with more than 2 or less than 1 reactants. Simulations of reaction {} -> {} may fail.".format(self.reactants, self.products)
     else:
       self.multijob = multijob
     self.multijob_tag = multijob_tag
     
     ## Initialize RestingSetStats list
     self.rs_stats = {rs: None for rs in self.reactants}
-    
-    ## Initialize reaction lists
-    self.k1_rxn_stats = []
-    self.k2_rxn_stats = []
     
   
   def _get_reduced_k1_stats(self, relative_error, max_sims):
@@ -80,22 +82,30 @@ class RestingSetRxnStats(object):
     reactant depletion that reduces the effective rate of this reaction. 
     Additional simulations are run until the fractional error is
     below the given relative_error threshold. """
+    assert isinstance(self.multijob, FirstStepModeJob)
     return self._get_reduced_k1_stats(relative_error, max_sims, **kwargs)[0]
+  def get_k(self, relative_error = 0.5, max_sims = 5000, **kwargs):
+    """ Returns the reaction rate k for this reaction. """
+    assert isinstance(self.multijob, FirstPassageTimeModeJob)
+    return self.get_raw_stat('rate',relative_error, max_sims, **kwargs)[0]
   def get_k1(self, relative_error = 0.50, max_sims = 5000, **kwargs):
     """ Returns the raw k1 value calculated from Multistrand trajectory
     simulations. The relative_error is the fractional error allowed in
     the return value. Additional trials are simulated until this error
     threshold is achieved. """
+    assert isinstance(self.multijob, FirstStepModeJob)
     return self.get_raw_stat('k1',relative_error, max_sims, **kwargs)[0]
   def get_k2(self, relative_error = 0.50, max_sims = 5000, **kwargs):
     """ Returns the k2 folding rate on successful Multistrand trajectories. 
     Additional simulations are run until the fractional error is
     below the given relative_error threshold. """
+    assert isinstance(self.multijob, FirstStepModeJob)
     return self.get_raw_stat('k2', relative_error, max_sims, **kwargs)[0]
   def get_kcoll(self, relative_error = 0.50, max_sims = 5000, **kwargs):
     """ Returns the average kcoll value calculated over successful Multistrand
     trajectories. Additional simulations are run until the fractional error is
     below the given relative_error threshold. """
+    assert isinstance(self.multijob, FirstStepModeJob)
     return self.get_raw_stat('kcoll', relative_error, max_sims, **kwargs)[0]
   def get_prob(self, relative_error = 0.50, max_sims = 5000, **kwargs):
     """ Returns the fraction of Multistrand trajectories that ended
@@ -106,15 +116,22 @@ class RestingSetRxnStats(object):
 
   def get_reduced_k1_error(self, relative_error = 0.50, max_sims = 5000, **kwargs):
     """ Returns the standard error on the net k1 value """
+    assert isinstance(self.multijob, FirstStepModeJob)
     return self._get_reduced_k1_stats(relative_error, max_sims, **kwargs)[1]
+  def get_k_error(self, relative_error = 0.5, max_sims = 5000, **kwargs):
+    assert isinstance(self.multijob, FirstPassageTimeModeJob)
+    return self.get_raw_stat('rate', relative_error, max_sims, **kwargs)[1]
   def get_k1_error(self, relative_error = 0.50, max_sims = 5000, **kwargs):
     """ Returns the standard error on the raw k1 value """
+    assert isinstance(self.multijob, FirstStepModeJob)
     return self.get_raw_stat('k1', relative_error, max_sims, **kwargs)[1]
   def get_k2_error(self, relative_error = 0.50, max_sims = 5000, **kwargs):
     """ Returns the standard error on k2 """
+    assert isinstance(self.multijob, FirstStepModeJob)
     return self.get_raw_stat('k2', relative_error, max_sims, **kwargs)[1]
   def get_kcoll_error(self, relative_error = 0.50, max_sims = 5000, **kwargs):
     """ Returns the standard error on kcoll """
+    assert isinstance(self.multijob, FirstStepModeJob)
     return self.get_raw_stat('kcoll', relative_error, max_sims, **kwargs)[1]
   def get_prob_error(self, relative_error = 0.50, max_sims = 5000, **kwargs):
     """ Returns the standard error on the probability """
@@ -152,11 +169,6 @@ class RestingSetRxnStats(object):
   def get_rs_stats(self, reactant):
     return self.rs_stats[reactant]
     
-  def add_k1_rxn(self, rxn_stats):
-    self.k1_rxn_stats.append(rxn_stats)
-  def add_k2_rxn(self, rxn_stats):
-    self.k2_rxn_stats.append(rxn_stats)
-
   def get_multistrandjob(self):
     return self.multijob
   def get_multistrand_tag(self):

@@ -73,9 +73,6 @@ class System(object):
     else:
       self._enum_job = None
 
-    # Remove this line when we properly handle slow unimolecular reactions
-    self._condensed_reactions = set(filter(lambda rxn:len(rxn.reactants)==2, self._condensed_reactions))
-
     # Create stats objects for reactions and resting sets
     # make_stats() will also make stats objects for potential spurious reactions and resting sets
     self._rs_to_stats, self._rxn_to_stats = stats_utils.make_stats(
@@ -154,7 +151,7 @@ class System(object):
   ## Convenience filters for specific objects
 
 
-  def get_reactions(self, reactants = [], products = [], unproductive = None, spurious = None):
+  def get_reactions(self, reactants = [], products = [], arity = None, unproductive = None, spurious = None):
     """ Returns a list of all reactions including the given reactants and the given products.
         If specified, spurious = True will return only spurious reactions (those not enumerated by Peppercorn)
         and spurious = False will return only enumerated reactions. Otherwise, no distinction will be made.
@@ -170,6 +167,9 @@ class System(object):
       rxns = filter(lambda x: x.has_reactants(x.products) and x.has_products(x.reactants), rxns)
     elif unproductive == False:
       rxns = filter(lambda x: not(x.has_reactants(x.products) and x.has_products(x.reactants)), rxns)
+
+    if arity is not None:
+      rxns = filter(lambda x: len(x.reactants)==arity, rxns)
 
     return filter(lambda x: x.has_reactants(reactants) and x.has_products(products), rxns)
   def get_reaction(self, reactants = [], products = [], unproductive = None, spurious = None):

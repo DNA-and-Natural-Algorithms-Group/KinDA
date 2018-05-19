@@ -21,7 +21,7 @@ import numpy as np
 from .. import __version__ as KINDA_VERSION
 from .. import objects as dna
 from .. import options
-from ..simulation.multistrandjob import FirstStepModeJob
+from ..simulation.multistrandjob import FirstPassageTimeModeJob, FirstStepModeJob
 from .stats import RestingSetRxnStats, RestingSetStats
 
 
@@ -51,31 +51,35 @@ def make_RestingSetRxnStats(restingsets, detailed_rxns, condensed_rxns, kinda_pa
   # Initialize set of spurious reactions
   spurious_rxns = set([]); # a list of all spurious reactions possible between any reactant pair
   
-  # Determine all possible pairs of reactants
-  reactants = set([
-      tuple(sorted([r1, r2], key = lambda rs: rs.id))
-      for r1, r2
-      in it.product(restingsets, restingsets)
-  ])
+  # Determine all possible sets of reactants
+  # Each reaction may have 1 or 2 reactants
+  all_reactants = set(
+      [
+          tuple(sorted([r1, r2], key = lambda rs: rs.id))
+          for r1, r2
+          in it.product(restingsets, restingsets)
+      ] +
+      [(r,) for r in restingsets]
+  )
   
   # Make a Multistrand simulation job for each reactant group
   reactants_to_mjob = {}
-  for i, r in enumerate(reactants):
+  for i, reactants in enumerate(all_reactants):
     # Group all products coming from these reactants together
-    enum_prods = [list(rxn.products) for rxn in condensed_rxns if rxn.reactants_equal(r)]
+    enum_prods = [list(rxn.products) for rxn in condensed_rxns if rxn.reactants_equal(reactants)]
 
     # Get spurious products from these reactants
-    spurious_prods = get_spurious_products(r, detailed_rxns, enum_prods)
+    spurious_prods = get_spurious_products(reactants, detailed_rxns, enum_prods)
     new_spurious_rxns = [
         dna.RestingSetReaction(
-            reactants = r,
+            reactants = reactants,
             products  = p)
         for p in spurious_prods]
     spurious_rxns |= set(new_spurious_rxns)
     
     # Make product tags for each product group so data can be pulled out later
-    tags = [str(rxn) for rxn in condensed_rxns if rxn.reactants_equal(r)]
-    tags = tags + ['_spurious({})'.format(str(rxn)) for rxn in new_spurious_rxns]
+    tags = [str(rxn) for rxn in condensed_rxns if rxn.reactants_equal(reactants)]
+    tags += ['_spurious({})'.format(str(rxn)) for rxn in new_spurious_rxns]
     spurious_flags = [False]*len(enum_prods) + [True]*len(spurious_prods)
     
     # Make Macrostates for Multistrand stop conditions
@@ -94,21 +98,30 @@ def make_RestingSetRxnStats(restingsets, detailed_rxns, condensed_rxns, kinda_pa
             mode = start_macrostate_mode,
             similarity_threshold = similarity_threshold
         )
-        for restingset in r
+        for restingset in reactants
     ]
 
     # Make Multistrand job
     multiprocessing = kinda_params.get('multistrand_multiprocessing', True)
-    job = FirstStepModeJob(
-        r,
-        stop_conditions,
-        boltzmann_selectors = boltzmann_selectors,
-        multiprocessing = multiprocessing,
-        multistrand_params = multistrand_params
-    )
-    reactants_to_mjob[r] = job
+    if len(reactants) == 2:
+      job = FirstStepModeJob(
+          reactants,
+          stop_conditions,
+          boltzmann_selectors = boltzmann_selectors,
+          multiprocessing = multiprocessing,
+          multistrand_params = multistrand_params
+      )
+    elif len(reactants) == 1:
+      job = FirstPassageTimeModeJob(
+          reactants,
+          stop_conditions,
+          boltzmann_selectors = boltzmann_selectors,
+          multiprocessing = multiprocessing,
+          multistrand_params = multistrand_params
+      )
+    reactants_to_mjob[reactants] = job
 
-    print "KinDA: Constructing internal KinDA objects... {}%\r".format(100*i/len(reactants)),
+    print "KinDA: Constructing internal KinDA objects... {}%\r".format(100*i/len(all_reactants)),
     sys.stdout.flush()
     
   # Create RestingSetRxnStats object for each reaction
@@ -148,9 +161,9 @@ def get_spurious_products(reactants, reactions, stop_states):
   This produces all unexpected complexes produced 'one step' away
   from the expected reaction trajectories. Note that complexes 
   produced by binding of the two reactants in unexpected ways
-  are not included as spurious unless they dissociate into an
-  unenumerated strand-level complex. Otherwise, the reaction will be
-  classified as unproductive. """
+  are classified as unproductvie unless they dissociate into an
+  unenumerated strand-level complex, in which case they are
+  considered to be spurious.  """
   def hashable_strand_rotation(strands):
     index = 0
     poss_starts = range(len(strands))
@@ -174,7 +187,7 @@ def get_spurious_products(reactants, reactions, stop_states):
     enumerated.add(init_state)
     for rxn in reactions:
       unreacting = listminuslist(list(init_state), rxn[0])
-      if len(unreacting) == len(init_state) - len(rxn[0]):
+      if len(unreacting) == len(init_state) - len(rxn[0]): # check that all reactants were present
         new_state = hashable_state(unreacting + rxn[1])
         if new_state not in enumerated:
           enumerate_states(new_state, reactions, enumerated)
