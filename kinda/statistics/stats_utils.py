@@ -502,7 +502,7 @@ def export_data(sstats, filepath):
   rsrxnstats_to_dict = {}
   for rsrxn in rs_reactions:
     stats = sstats.get_stats(rsrxn)
-    sim_data = {key: list(d) for key,d in stats.get_simulation_data().iteritems()}
+    sim_data = {key: d.tolist() for key,d in stats.get_simulation_data().iteritems()}
     rsrxnstats_to_dict[rsrxn_to_id[rsrxn]] = {
       'prob': '{0} +/- {1}'.format(stats.get_prob(1, max_sims = 0), stats.get_prob_error(max_sims=0)),
       'kcoll': '{0} +/- {1}'.format(stats.get_kcoll(1, max_sims = 0), stats.get_kcoll_error(max_sims=0)),

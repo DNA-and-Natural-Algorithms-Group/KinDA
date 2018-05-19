@@ -80,8 +80,8 @@ class MultistrandJob(object):
       MS_ERROR: -3,
       'overall': 0
     }
-    self._ms_results = {'valid': np.array([], dtype=np.bool), 'tags': np.array([], np.int64), 'times': np.array([])}
-    self._ms_results_buff = {'valid': np.array([], dtype=np.bool), 'tags': np.array([], np.int64), 'times': np.array([])}
+    self._ms_results = {'valid': np.array([], dtype=np.int8), 'tags': np.array([], np.int64), 'times': np.array([])}
+    self._ms_results_buff = {'valid': np.array([], dtype=np.int8), 'tags': np.array([], np.int64), 'times': np.array([])}
 
     self.total_sims = 0
 
@@ -159,8 +159,13 @@ class MultistrandJob(object):
   def get_simulation_data(self):
     return self._ms_results
   def set_simulation_data(self, ms_results):
-    self._ms_results = ms_results
-    self._ms_results_buff = {k:np.array(v) for k,v in ms_results.iteritems()}
+    # copy data from ms_results to self._ms_results_buff, while preserving data types of
+    # numpy arrays in self._ms_results_buff
+    for k,v in ms_results.iteritems():
+      self._ms_results_buff[k].resize(len(v))
+      np.copyto(v, self._ms_results_buff[k])
+      self._ms_results[k] = self._ms_results_buff[k]
+    self.total_sims = len(self._ms_results['tags'])
   
 
   def create_ms_options(self, num_sims):
