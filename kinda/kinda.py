@@ -151,7 +151,7 @@ class System(object):
   ## Convenience filters for specific objects
 
 
-  def get_reactions(self, reactants = [], products = [], arity = None, unproductive = None, spurious = None):
+  def get_reactions(self, reactants = [], products = [], arity = 2, unproductive = None, spurious = None):
     """ Returns a list of all reactions including the given reactants and the given products.
         If specified, spurious = True will return only spurious reactions (those not enumerated by Peppercorn)
         and spurious = False will return only enumerated reactions. Otherwise, no distinction will be made.
