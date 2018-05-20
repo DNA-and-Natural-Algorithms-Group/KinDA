@@ -163,8 +163,9 @@ class MultistrandJob(object):
     # numpy arrays in self._ms_results_buff
     for k,v in ms_results.iteritems():
       self._ms_results_buff[k].resize(len(v))
-      np.copyto(v, self._ms_results_buff[k])
       self._ms_results[k] = self._ms_results_buff[k]
+      if len(v) > 0:
+        np.copyto(self._ms_results_buff[k], v)
     self.total_sims = len(self._ms_results['tags'])
   
 
