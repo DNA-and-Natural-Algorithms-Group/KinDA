@@ -631,11 +631,11 @@ def _import_data_convert_version(sstats_dict, version):
       num_sims = len(tags)
       MS_TIMEOUT, MS_ERROR = -1, -3
       data['simulation_data']['valid'] = np.array([t!=MS_TIMEOUT and t!=MS_ERROR for t in tags])
-    sstats_dict['version'] = 'v0.1.8'
-  elif major == 0 and minor == 1 and subminor == 8:
+    sstats_dict['version'] = 'v0.1.10'
+  elif major == 0 and minor == 1 and 8 <= subminor <= 10:
     pass
   else:
-    print "KinDA: ERROR: Invalid version number {}. Conversion failed. Simulations and statistical calculations may fail."
+    print "KinDA: ERROR: Invalid version number {}. Conversion failed. Simulations and statistical calculations may fail.".format(version)
 
   return sstats_dict
     
