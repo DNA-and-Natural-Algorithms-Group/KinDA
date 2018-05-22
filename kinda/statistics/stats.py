@@ -68,7 +68,8 @@ class RestingSetRxnStats(object):
     reactant depletion that reduces the effective rate of this reaction. 
     Additional simulations are run until the fractional error is
     below the given relative_error threshold. """
-    fractions = [1 - rs.get_temporary_depletion(relative_error, max_sims) for rs in self.rs_stats.values() if rs != None]
+    fractions = [1 - rs.get_temporary_depletion(relative_error, max_sims) \
+                                      for rs in self.rs_stats.values() if rs != None]
     rate_fraction = reduce(lambda x,y: x*y, fractions, 1.0)
     raw_k1 = self.get_k1(relative_error / rate_fraction, max_sims)
     raw_k1_err = set.get_k1_err(max_sims = 0)
@@ -86,7 +87,7 @@ class RestingSetRxnStats(object):
     simulations. The relative_error is the fractional error allowed in
     the return value. Additional trials are simulated until this error
     threshold is achieved. """
-    return self.get_raw_stat('k1',relative_error, max_sims, **kwargs)[0]
+    return self.get_raw_stat('k1', relative_error, max_sims, **kwargs)[0]
   def get_k2(self, relative_error = 0.50, max_sims = 5000, **kwargs):
     """ Returns the k2 folding rate on successful Multistrand trajectories. 
     Additional simulations are run until the fractional error is
@@ -130,12 +131,26 @@ class RestingSetRxnStats(object):
       tag_id = self.get_multistrandjob().tag_id_dict[tag]
       return (self.get_simulation_data()['tags'] == tag_id).sum()
     
-  def get_raw_stat(self, stat, relative_error, max_sims, **kwargs):
+  def get_raw_stat(self, stat, relative_error, max_sims, verbose = 0, 
+      init_batch_size = 50, 
+      min_batch_size = 50, 
+      max_batch_size = 500, 
+      sims_per_update = 1, 
+      sims_per_worker = 1):
     """ General function to reduce the error on the given statistic
     to below the given threshold and return the value and standard
     error of the statistic. """
     # Reduce error to threshold
-    self.multijob.reduce_error_to(relative_error, max_sims, reaction = self.multijob_tag, stat = stat, **kwargs)
+    self.multijob.reduce_error_to(relative_error, max_sims, 
+        reaction = self.multijob_tag, 
+        stat = stat, 
+        init_batch_size = init_batch_size,
+        min_batch_size = min_batch_size,
+        max_batch_size = max_batch_size,
+        sims_per_update = sims_per_update,
+        sims_per_worker = sims_per_worker,
+        verbose = verbose)
+
     # Calculate and return statistic
     val = self.multijob.get_statistic(self.multijob_tag, stat)
     error = self.multijob.get_statistic_error(self.multijob_tag, stat)
@@ -208,17 +223,24 @@ class RestingSetStats(object):
     self.sampler.reduce_error_to(relative_error, max_sims, complex_name, **kwargs)
     prob = self.sampler.get_complex_prob(complex_name)
     return prob
-  def get_conformation_prob_error(self, complex_name, relative_error = 0.50, max_sims = 100000, **kwargs):
+
+  def get_conformation_prob_error(self, complex_name, 
+      relative_error = 0.50, max_sims = 100000, **kwargs):
     self.sampler.reduce_error_to(relative_error, max_sims, complex_name, **kwargs)
     error = self.sampler.get_complex_prob_error(complex_name)
     return error
-  def get_conformation_probs(self, relative_error = 0.50, max_sims = 100000, **kwargs):
+
+  def get_conformation_probs(self, 
+      relative_error = 0.50, max_sims = 100000, verbose = 0, **kwargs):
     """ Returns the probability and probability error for all
     conformations in the resting set as a dictionary. """
     names = [c.name for c in self.restingset.complexes] + [None]
-    for n in names:
-      self.sampler.reduce_error_to(relative_error, max_sims, n, **kwargs)
+    for e, n in enumerate(names):
+      v = 2 if (verbose == 1 and e == 0) else verbose
+      num_sims = self.sampler.reduce_error_to(relative_error, max_sims, n, verbose = v, **kwargs)
+      max_sims -= num_sims
     return {name: self.get_conformation_prob(name, max_sims = 0) for name in names}
+
   def get_similarity_threshold(self):
     return self.sampler.similarity_threshold
   def set_similarity_threshold(self, threshold):

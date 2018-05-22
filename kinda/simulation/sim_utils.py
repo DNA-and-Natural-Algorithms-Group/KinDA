@@ -11,7 +11,8 @@ import numpy as np
 
 from multistrand.options import Options as MSOptions
 
-def print_progress_table(col_headers, col_widths = None, col_init_data = None, col_format_specs = None):
+def print_progress_table(col_headers, col_widths = None, col_init_data = None, 
+    col_format_specs = None, skip_header=False):
   """ Live updates on progress with NUPACK and Multistrand computations.
 
   Note: This table has two rows. The 
@@ -44,7 +45,8 @@ def print_progress_table(col_headers, col_widths = None, col_init_data = None, c
     assert len(col_format_specs) == len(col_headers)
 
   header = ' '.join([(h+' '*(w-1))[:w-1] for h,w in zip(col_headers, col_widths)])
-  print("#    {}".format(header))
+  if not skip_header:
+    print("#    {}".format(header))
 
   if col_init_data is not None:
     update_progress(col_init_data)
