@@ -152,10 +152,10 @@ def calculate_all_complex_probabilities(KindaSystem, spurious,
 
         # Query/calculate probabilities for all conformations 
         # (including the spurious conformation, denoted as None)
-        num = rms_stats.get_num_simulations()
+        num = rms_stats.get_num_sims()
         rms_stats.get_conformation_probs(verbose = verbose, **kwargs)
         
-        if num != rms_stats.get_num_simulations() and backup :
+        if num != rms_stats.get_num_sims() and backup :
             export_data(KindaSystem, args.backup, use_pickle)
 
         if verbose >= 2:

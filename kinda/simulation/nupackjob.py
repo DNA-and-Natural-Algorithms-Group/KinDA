@@ -102,9 +102,8 @@ class NupackSampleJob(object):
     The Bayesian estimator (n+1)/(N+2) is used to estimate this probability, in order to prevent
     improbable estimates when n=0,N.
     """
-    index = self.get_complex_index(complex_name)
     N = self.total_sims
-    Nc = self._complex_counts[index]
+    Nc = self.get_complex_count(complex_name)
     return (Nc + 1.0)/(N + 2)
 
   def get_complex_prob_error(self, complex_name = None):
@@ -134,6 +133,8 @@ class NupackSampleJob(object):
   def get_num_sims(self):
     """ Returns the total number of sampled secondary structures. """
     return self.total_sims
+  def get_complex_count(self, complex_name = None):
+    return self._complex_counts[self.get_complex_index(complex_name)]
 
   def set_similarity_threshold(self, similarity_threshold):
     """ Modifies the similarity threshold used to classify each sampled secondary structure as one of
@@ -267,18 +268,23 @@ class NupackSampleJob(object):
       prob = self.get_complex_prob(complex_name)
       error = self.get_complex_prob_error(complex_name)
       goal = rel_goal * prob
+      total_sims = self.total_sims
+      total_success = self.get_complex_count(complex_name)
+      total_failure = total_sims - total_success
 
       if exp_add_sims is None:
         assert num_sims + batch_sims_done == self.total_sims
         update_func([complex_name, prob, error, goal, "  |", 
           "{:d}/{:d}".format(batch_sims_done,num_trials), 
           "{:d}/--".format(num_sims + batch_sims_done), 
+          "{:d}/{:d}".format(total_success, total_failure), 
           "--"])
       else:
         tot_sims = self.total_sims
         update_func([complex_name, prob, error, goal, "  |", 
             "{:d}/{:d}".format(batch_sims_done, num_trials), 
             "{:d}/{:d}".format(tot_sims, exp_add_sims-batch_sims_done), 
+            "{:d}/{:d}".format(total_success, total_failure), 
             "{:3d}%".format(100*(tot_sims+batch_sims_done)/
               (tot_sims+exp_add_sims-batch_sims_done))]) 
       
@@ -297,9 +303,9 @@ class NupackSampleJob(object):
 
       # Prepare progress table
       update_func = print_progress_table(
-          ["complex", "prob", "error", "err goal", "  |", "batch sims", "done/needed", "progress"],
-          [11, 10, 10, 10, 6, 17, 17, 10], skip_header = True if verbose == 1 else False)
-      update_func([complex_name, prob, error, goal, "  |", "--/--", "--/--", "--"])
+          ["complex", "prob", "error", "err goal", "  |", "batch sims", "done/needed", "S/F", "progress"],
+          [11, 10, 10, 10, 6, 17, 17, 17, 10], skip_header = True if verbose == 1 else False)
+      update_func([complex_name, prob, error, goal, "  |", "--/--", "--/--", "--/--", "--"])
 
     # Run simulations
     while not error <= goal and num_sims < max_sims:
@@ -332,9 +338,12 @@ class NupackSampleJob(object):
     if verbose: # Return result
       assert exp_add_sims is not None
       tot_sims = self.total_sims
+      total_success = self.get_complex_count(complex_name)
+      total_failure = tot_sims - total_success
       update_func([complex_name, prob, error, goal, "  |", 
         "{:d}/{:d}".format(num_sims, max_sims), 
         "{:d}/{:d}".format(tot_sims, exp_add_sims), 
+        "{:d}/{:d}".format(total_success, total_failure), 
         "{:3d}%".format(100*tot_sims/(tot_sims+exp_add_sims))], inline=False) 
     return num_sims
 

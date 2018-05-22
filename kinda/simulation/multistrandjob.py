@@ -14,6 +14,7 @@ import numpy as np
 # Import Multistrand
 import multistrand.objects as MSObjects
 from multistrand.options import Options as MSOptions
+from multistrand.options import Literals as MSLiterals
 from multistrand.system import SimSystem as MSSimSystem
 
 from ..objects import utils, io_Multistrand, Macrostate, RestingSet, Complex
@@ -33,14 +34,13 @@ LOOSE_MACROSTATE = 3
 COUNT_MACROSTATE = 4
 
 try:
-  MS_TIMEOUT = MSOptions.STR_TIMEOUT
-  MS_NOINITIALMOVES = MSOptions.STR_NOINITIAL
-  MS_NAN = MSOptions.STR_NAN
-  MS_ERROR = MSOptions.STR_ERROR
+  MS_TIMEOUT = MSLiterals.time_out
+  MS_NOINITIALMOVES = MSLiterals.no_initial_moves
+  MS_ERROR = MSLiterals.sim_error
 except AttributeError:
+  print "KinDA: WARNING: built-in Multistrand result tags not found."
   MS_TIMEOUT = None
   MS_NOINITIALMOVES = None
-  MS_NAN = None
   MS_ERROR = None
 
 def run_sims_global((multijob, num_sims)):
@@ -49,7 +49,6 @@ def run_sims_global((multijob, num_sims)):
   ms_options = multijob.create_ms_options(num_sims)
   MSSimSystem(ms_options).start()
   return ms_options
-
 
 # MultistrandJob class definition
 class MultistrandJob(object):
@@ -60,16 +59,15 @@ class MultistrandJob(object):
   This is the parent class to the more useful job classes that compile
   specific information for each job mode type."""
 
-  verbose = 1
-  
   def __init__(self, start_state, stop_conditions, sim_mode, 
-      multiprocessing = True, 
-      multistrand_params = {}):
-
+          boltzmann_selectors = None, 
+          multiprocessing = True, 
+          multistrand_params = {}):
     self._multistrand_params = dict(multistrand_params)
     self._ms_options_dict = self.setup_ms_params(start_state = start_state,
-                                                 stop_conditions = stop_conditions,
-                                                 mode = sim_mode)
+                                          stop_conditions = stop_conditions,
+                                          mode = sim_mode,
+                                          boltzmann_selectors = boltzmann_selectors)
 
     self._multiprocessing = multiprocessing
     
@@ -81,12 +79,11 @@ class MultistrandJob(object):
     self._tag_id_dict = {
       MS_TIMEOUT: -1,
       MS_NOINITIALMOVES: -2,
-      MS_NAN: -3,
-      MS_ERROR: -4,
+      MS_ERROR: -3,
       'overall': 0
     }
-    self._ms_results = {'valid': np.array([]), 'tags': np.array([]), 'times': np.array([])}
-    self._ms_results_buff = {'valid': np.array([]), 'tags': np.array([]), 'times': np.array([])}
+    self._ms_results = {'valid': np.array([], dtype=np.int8), 'tags': np.array([], np.int64), 'times': np.array([])}
+    self._ms_results_buff = {'valid': np.array([], dtype=np.int8), 'tags': np.array([], np.int64), 'times': np.array([])}
 
     self.total_sims = 0
 
@@ -107,21 +104,20 @@ class MultistrandJob(object):
                                                 
   def setup_ms_params(self, *args, **kargs):
 
-    ## Convert DNAObjects to Multistrand objects
-    if all(map(lambda x: isinstance(x, RestingSet), kargs['start_state'])):
-      resting_sets = kargs['start_state']
-      complexes = []
-      boltzmann = True
-      use_resting_sets = True
-    elif all(map(lambda x: isinstance(x, Complex), kargs['start_state'])):
-      resting_sets = []
-      complexes = kargs['start_state']
-      boltzmann = False
-      use_resting_sets = False
-    else:
-      assert False, "Starting state must be all complexes or all resting sets"
+    ## Extract keyword arguments
+    start_state = kargs['start_state']
     stop_conditions = kargs['stop_conditions']
+    resting_sets = list(filter(lambda x: isinstance(x, RestingSet), start_state))
+    complexes = list(filter(lambda x: isinstance(x, Complex), start_state))
 
+    if kargs['boltzmann_selectors'] is None:
+      boltzmann = False
+      boltzmann_selectors = [None]*len(start_state)
+    else:
+      boltzmann = True
+      boltzmann_selectors = kargs['boltzmann_selectors']
+
+    ## Convert DNAObjects to Multistrand objects
     ms_data = io_Multistrand.to_Multistrand(
         complexes = complexes,
         resting_sets = resting_sets,
@@ -133,20 +129,26 @@ class MultistrandJob(object):
     resting_sets_dict = dict(ms_data['restingstates'])
     macrostates_dict = dict(ms_data['macrostates'])
 
-    ## Set ms_params with all parameters needed to create an MS Options object on the fly
-    if use_resting_sets:
-      start_state = [resting_sets_dict[rs] for rs in resting_sets]
-    else:
-      start_state = [complexes_dict[c] for c in complexes]
+    ms_start_state = [
+            resting_sets_dict[elem]
+            if (elem in resting_sets_dict)
+            else complexes_dict[elem]
+        for elem in kargs['start_state']
+    ]
+    ms_stop_conditions = list(it.chain(*[macrostates_dict[m] for m in stop_conditions]))
 
-    for elem in start_state:
+
+    ## Set boltzmann sampling status for all Multistrand start_state complexes
+    for elem,boltzmann_func in zip(ms_start_state, boltzmann_selectors):
       elem.boltzmann_sample = boltzmann
+      elem.sampleSelect = boltzmann_func
 
+    ## Set ms_params with all parameters needed to create an MS Options object on the fly
     options_dict = dict(
         self._multistrand_params,
-        start_state =         start_state,
+        start_state =         ms_start_state,
         simulation_mode =     kargs['mode'],
-        stop_conditions = list(it.chain(*[macrostates_dict[m] for m in stop_conditions]))
+        stop_conditions =     ms_stop_conditions
     )
 
     return options_dict
@@ -159,8 +161,14 @@ class MultistrandJob(object):
   def get_simulation_data(self):
     return self._ms_results
   def set_simulation_data(self, ms_results):
-    self._ms_results = ms_results
-    self._ms_results_buff = {k:np.array(v) for k,v in ms_results.iteritems()}
+    # copy data from ms_results to self._ms_results_buff, while preserving data types of
+    # numpy arrays in self._ms_results_buff
+    for k,v in ms_results.iteritems():
+      self._ms_results_buff[k].resize(len(v))
+      self._ms_results[k] = self._ms_results_buff[k]
+      if len(v) > 0:
+        np.copyto(self._ms_results_buff[k], v)
+    self.total_sims = len(self._ms_results['tags'])
   
   def create_ms_options(self, num_sims):
     """ Creates a fresh MS Options object using the arguments in self._ms_options_dict. """
@@ -372,8 +380,7 @@ class FirstPassageTimeModeJob(MultistrandJob):
     self._tag_id_dict = {
       MS_TIMEOUT: -1,
       MS_NOINITIALMOVES: -2,
-      MS_NAN: -3,
-      MS_ERROR: -4,
+      MS_ERROR: -3,
     }
     self._tag_id_dict.update((t,i) for i,t in enumerate(sorted(self.tags)))
   
@@ -411,8 +418,7 @@ class TransitionModeJob(MultistrandJob):
     self._tag_id_dict = {
       MS_TIMEOUT: -1,
       MS_NOINITIALMOVES: -2,
-      MS_NAN: -3,
-      MS_ERROR: -4,
+      MS_ERROR: -3,
     }
     self._tag_id_dict.update((t,i) for i,t in enumerate(sorted(set(self.states))))
   
@@ -485,8 +491,7 @@ class FirstStepModeJob(MultistrandJob):
     self._tag_id_dict = {
       MS_TIMEOUT: -1,
       MS_NOINITIALMOVES: -2,
-      MS_NAN: -3,
-      MS_ERROR: -4
+      MS_ERROR: -3
     }
     self._tag_id_dict.update((t,i) for i,t in enumerate(sorted(set(sc.tag for sc in self._ms_options_dict['stop_conditions']))))
     self.tags = list(self._tag_id_dict.keys())

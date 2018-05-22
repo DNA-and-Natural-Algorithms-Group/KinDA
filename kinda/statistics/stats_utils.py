@@ -18,7 +18,7 @@ import itertools as it
 from .. import __version__ as KINDA_VERSION
 from .. import objects as dna
 from .. import options
-from ..simulation.multistrandjob import FirstStepModeJob
+from ..simulation.multistrandjob import FirstPassageTimeModeJob, FirstStepModeJob
 from .stats import RestingSetRxnStats, RestingSetStats
 
 class SystemStatsImportError(Exception):
@@ -51,31 +51,35 @@ def make_RestingSetRxnStats(restingsets, detailed_rxns, condensed_rxns,
   # Initialize set of spurious reactions
   spurious_rxns = set([]); # a list of all spurious reactions possible between any reactant pair
   
-  # Determine all possible pairs of reactants
-  reactants = set([
-      tuple(sorted([r1, r2], key = lambda rs: rs.id))
-      for r1, r2
-      in it.product(restingsets, restingsets)
-  ])
+  # Determine all possible sets of reactants
+  # Each reaction may have 1 or 2 reactants
+  all_reactants = set(
+      [
+          tuple(sorted([r1, r2], key = lambda rs: rs.id))
+          for r1, r2
+          in it.product(restingsets, restingsets)
+      ] +
+      [(r,) for r in restingsets]
+  )
   
   # Make a Multistrand simulation job for each reactant group
   reactants_to_mjob = {}
-  for i, r in enumerate(reactants):
+  for i, reactants in enumerate(all_reactants):
     # Group all products coming from these reactants together
-    enum_prods = [list(rxn.products) for rxn in condensed_rxns if rxn.reactants_equal(r)]
+    enum_prods = [list(rxn.products) for rxn in condensed_rxns if rxn.reactants_equal(reactants)]
 
     # Get spurious products from these reactants
-    spurious_prods = get_spurious_products(r, detailed_rxns, enum_prods)
+    spurious_prods = get_spurious_products(reactants, detailed_rxns, enum_prods)
     new_spurious_rxns = [
         dna.RestingSetReaction(
-            reactants = r,
+            reactants = reactants,
             products  = p)
         for p in spurious_prods]
     spurious_rxns |= set(new_spurious_rxns)
     
     # Make product tags for each product group so data can be pulled out later
-    tags = [str(rxn) for rxn in condensed_rxns if rxn.reactants_equal(r)]
-    tags = tags + ['_spurious({})'.format(str(rxn)) for rxn in new_spurious_rxns]
+    tags = [str(rxn) for rxn in condensed_rxns if rxn.reactants_equal(reactants)]
+    tags += ['_spurious({})'.format(str(rxn)) for rxn in new_spurious_rxns]
     spurious_flags = [False]*len(enum_prods) + [True]*len(spurious_prods)
     
     # Make Macrostates for Multistrand stop conditions
@@ -85,15 +89,40 @@ def make_RestingSetRxnStats(restingsets, detailed_rxns, condensed_rxns,
         in zip(enum_prods + spurious_prods, tags, spurious_flags)
       ]
     
+    # Make Boltzmann sampling selector functions for each reactant
+    start_macrostate_mode = kinda_params.get('start_macrostate_mode', 'disassoc')
+    similarity_threshold = kinda_params['multistrand_similarity_threshold']
+    boltzmann_selectors = [
+        create_boltzmann_selector(
+            restingset, 
+            mode = start_macrostate_mode,
+            similarity_threshold = similarity_threshold
+        )
+        for restingset in reactants
+    ]
+
     # Make Multistrand job
     multiprocessing = kinda_params.get('multistrand_multiprocessing', True)
-    job = FirstStepModeJob(r, stop_conditions, 
-        multiprocessing = multiprocessing, 
-        multistrand_params = multistrand_params)
-    reactants_to_mjob[r] = job
+    if len(reactants) == 2:
+      job = FirstStepModeJob(
+          reactants,
+          stop_conditions,
+          boltzmann_selectors = boltzmann_selectors,
+          multiprocessing = multiprocessing,
+          multistrand_params = multistrand_params
+      )
+    elif len(reactants) == 1:
+      job = FirstPassageTimeModeJob(
+          reactants,
+          stop_conditions,
+          boltzmann_selectors = boltzmann_selectors,
+          multiprocessing = multiprocessing,
+          multistrand_params = multistrand_params
+      )
+    reactants_to_mjob[reactants] = job
 
-    #print "KinDA: Constructing internal KinDA objects... {}%\r".format(100*i/len(reactants)),
-    sys.stdout.flush()
+    #print "KinDA: Constructing internal KinDA objects... {}%\r".format(100*i/len(all_reactants)),
+    #sys.stdout.flush()
     
   # Create RestingSetRxnStats object for each reaction
   rxn_to_stats = {}
@@ -134,9 +163,9 @@ def get_spurious_products(reactants, reactions, stop_states):
   This produces all unexpected complexes produced 'one step' away
   from the expected reaction trajectories. Note that complexes 
   produced by binding of the two reactants in unexpected ways
-  are not included as spurious unless they dissociate into an
-  unenumerated strand-level complex. Otherwise, the reaction will be
-  classified as unproductive. """
+  are classified as unproductvie unless they dissociate into an
+  unenumerated strand-level complex, in which case they are
+  considered to be spurious.  """
   def hashable_strand_rotation(strands):
     index = 0
     poss_starts = range(len(strands))
@@ -160,7 +189,7 @@ def get_spurious_products(reactants, reactions, stop_states):
     enumerated.add(init_state)
     for rxn in reactions:
       unreacting = listminuslist(list(init_state), rxn[0])
-      if len(unreacting) == len(init_state) - len(rxn[0]):
+      if len(unreacting) == len(init_state) - len(rxn[0]): # check that all reactants were present
         new_state = hashable_state(unreacting + rxn[1])
         if new_state not in enumerated:
           enumerate_states(new_state, reactions, enumerated)
@@ -298,6 +327,59 @@ def create_stop_macrostate(state, tag, spurious, options):
     macrostates = [obj_to_mstate[o] for o in state])
   return macrostates
 
+## Boltzmann sample-and-select functions must be picklable
+## to be used with the multiprocessing library
+class DisassocSelector(object):
+  def __init__(self, restingset):
+    self._restingset = restingset # not actually used
+  def __call__(self, struct):
+    return True
+class CountByComplexSelector(object):
+  def __init__(self, restingset, threshold):
+    self._restingset = restingset
+    self._threshold = threshold
+  def __call__(self, struct):
+    kinda_struct = dna.Structure(strands = self._restingset.strands, structure = struct)
+    return any(
+        dna.utils.defect(complex, kinda_struct) < 1-self._threshold
+        for complex in self._restingset.complexes
+    )
+class CountByDomainSelector(object):
+  def __init__(self, restingset, threshold):
+    self._restingset = restingset
+    self._threshold = threshold
+  def __call__(self, struct):
+    kinda_struct = dna.Structure(strands = self._restingset.strands, structure = struct)
+    return any(
+        dna.utils.max_domain_defect(complex, kinda_struct) < 1-self._threshold
+        for complex in self._restingset.complexes
+    )
+
+
+
+def create_boltzmann_selector(restingset, mode, similarity_threshold = None):
+  """ Creates a 'selector' function that takes a secondary structure
+  description for this resting set and returns True if it satisfies the given
+  mode and similarity threshold. Available modes are:
+    disassoc: any secondary structure with the same ordered strands
+    count-by-complex: any secondary structure where the fractional defect over
+      the entire complex is within 1-similarity_threshold of any of the conformations
+      in the given resting set
+    count-by-domain: any secondary structure where, for at least one of the conformations
+      in the resting set, the fractional defect over every domain is
+      within 1-similarity_threshold 
+  Each function takes a single argument, the secondary structure as a dot-paren-plus string,
+  which should be taken from the space of possible secondary structures with the resting set's
+  strand ordering.
+  """
+  if mode == 'disassoc':
+    return DisassocSelector(restingset)
+  elif mode == 'count-by-complex':
+    assert similarity_threshold is not None
+    return CountByComplexSelector(restingset, similarity_threshold)
+  elif mode == 'count-by-domain':
+    assert similarity_threshold is not None
+    return CountByDomainSelector(restingset, similarity_threshold)
 
 def make_RestingSetStats(restingsets, kinda_params = {}, nupack_params = {}):
   """ A convenience function to make RestingSetStats objects for
@@ -447,7 +529,7 @@ def export_data(sstats, filepath, use_pickle = False):
   rsrxnstats_to_dict = {}
   for rsrxn in rs_reactions:
     stats = sstats.get_stats(rsrxn)
-    sim_data = {key: list(d) for key,d in stats.get_simulation_data().iteritems()}
+    sim_data = {key: d.tolist() for key,d in stats.get_simulation_data().iteritems()}
     rsrxnstats_to_dict[rsrxn_to_id[rsrxn]] = {
       'prob': '{0} +/- {1}'.format(stats.get_prob(1, max_sims = 0), 
                                    stats.get_prob_error(max_sims=0)),
@@ -603,11 +685,11 @@ def _import_data_convert_version(sstats_dict, version):
       num_sims = len(tags)
       MS_TIMEOUT, MS_ERROR = -1, -3
       data['simulation_data']['valid'] = np.array([t!=MS_TIMEOUT and t!=MS_ERROR for t in tags])
-    sstats_dict['version'] = 'v0.1.8'
-  elif major == 0 and minor == 1 and subminor == 8:
+    sstats_dict['version'] = 'v0.1.10'
+  elif major == 0 and minor == 1 and 8 <= subminor <= 10:
     pass
   else:
-    print "KinDA: ERROR: Invalid version number {}. Conversion failed. Simulations and statistical calculations may fail."
+    print "KinDA: ERROR: Invalid version number {}. Conversion failed. Simulations and statistical calculations may fail.".format(version)
 
   return sstats_dict
     

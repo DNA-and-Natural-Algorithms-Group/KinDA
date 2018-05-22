@@ -49,17 +49,19 @@ class RestingSetRxnStats(object):
       
     ## Make Multistrand job object for k1 and k2
     if multijob == None:
-      self.multijob = FirstStepModeJob(self.reactants, [self.products], [multijob_tag])
+      if len(self.reactants) == 2:
+        self.multijob = FirstStepModeJob(self.reactants, [self.products], [multijob_tag])
+      elif len(self.reactants) == 1:
+        self.multijob = FirstPassageTimeModeJob(self.reactants, [self.products], [multijob_tag])
+      else:
+        self.multijob = None
+        print "KinDA: ERROR: Cannot handle reactions with more than 2 or less than 1 reactants. Simulations of reaction {} -> {} may fail.".format(self.reactants, self.products)
     else:
       self.multijob = multijob
     self.multijob_tag = multijob_tag
     
     ## Initialize RestingSetStats list
     self.rs_stats = {rs: None for rs in self.reactants}
-    
-    ## Initialize reaction lists
-    self.k1_rxn_stats = []
-    self.k2_rxn_stats = []
     
   
   def _get_reduced_k1_stats(self, relative_error, max_sims):
@@ -81,22 +83,30 @@ class RestingSetRxnStats(object):
     reactant depletion that reduces the effective rate of this reaction. 
     Additional simulations are run until the fractional error is
     below the given relative_error threshold. """
+    assert isinstance(self.multijob, FirstStepModeJob), "KinDA: ERROR: Cannot get k1 for unimolecular reaction"
     return self._get_reduced_k1_stats(relative_error, max_sims, **kwargs)[0]
+  def get_k(self, relative_error = 0.5, max_sims = 5000, **kwargs):
+    """ Returns the reaction rate k for this reaction. """
+    assert isinstance(self.multijob, FirstPassageTimeModeJob), "KinDA: ERROR: Cannot get k for bimolecular reaction"
+    return self.get_raw_stat('rate',relative_error, max_sims, **kwargs)[0]
   def get_k1(self, relative_error = 0.50, max_sims = 5000, **kwargs):
     """ Returns the raw k1 value calculated from Multistrand trajectory
     simulations. The relative_error is the fractional error allowed in
     the return value. Additional trials are simulated until this error
     threshold is achieved. """
+    assert isinstance(self.multijob, FirstStepModeJob), "KinDA: ERROR: Cannot get k1 for unimolecular reaction"
     return self.get_raw_stat('k1', relative_error, max_sims, **kwargs)[0]
   def get_k2(self, relative_error = 0.50, max_sims = 5000, **kwargs):
     """ Returns the k2 folding rate on successful Multistrand trajectories. 
     Additional simulations are run until the fractional error is
     below the given relative_error threshold. """
+    assert isinstance(self.multijob, FirstStepModeJob), "KinDA: ERROR: Cannot get k2 for unimolecular reaction"
     return self.get_raw_stat('k2', relative_error, max_sims, **kwargs)[0]
   def get_kcoll(self, relative_error = 0.50, max_sims = 5000, **kwargs):
     """ Returns the average kcoll value calculated over successful Multistrand
     trajectories. Additional simulations are run until the fractional error is
     below the given relative_error threshold. """
+    assert isinstance(self.multijob, FirstStepModeJob), "KinDA: ERROR: Cannot get kcoll for unimolecular reaction"
     return self.get_raw_stat('kcoll', relative_error, max_sims, **kwargs)[0]
   def get_prob(self, relative_error = 0.50, max_sims = 5000, **kwargs):
     """ Returns the fraction of Multistrand trajectories that ended
@@ -107,15 +117,22 @@ class RestingSetRxnStats(object):
 
   def get_reduced_k1_error(self, relative_error = 0.50, max_sims = 5000, **kwargs):
     """ Returns the standard error on the net k1 value """
+    assert isinstance(self.multijob, FirstStepModeJob), "KinDA: ERROR: Cannot get k1 for unimolecular reaction"
     return self._get_reduced_k1_stats(relative_error, max_sims, **kwargs)[1]
+  def get_k_error(self, relative_error = 0.5, max_sims = 5000, **kwargs):
+    assert isinstance(self.multijob, FirstPassageTimeModeJob), "KinDA: ERROR: Cannot get k for bimolecular reaction"
+    return self.get_raw_stat('rate', relative_error, max_sims, **kwargs)[1]
   def get_k1_error(self, relative_error = 0.50, max_sims = 5000, **kwargs):
     """ Returns the standard error on the raw k1 value """
+    assert isinstance(self.multijob, FirstStepModeJob), "KinDA: ERROR: Cannot get k1 for unimolecular reaction"
     return self.get_raw_stat('k1', relative_error, max_sims, **kwargs)[1]
   def get_k2_error(self, relative_error = 0.50, max_sims = 5000, **kwargs):
     """ Returns the standard error on k2 """
+    assert isinstance(self.multijob, FirstStepModeJob), "KinDA: ERROR: Cannot get k2 for unimolecular reaction"
     return self.get_raw_stat('k2', relative_error, max_sims, **kwargs)[1]
   def get_kcoll_error(self, relative_error = 0.50, max_sims = 5000, **kwargs):
     """ Returns the standard error on kcoll """
+    assert isinstance(self.multijob, FirstStepModeJob), "KinDA: ERROR: Cannot get kcoll for unimolecular reaction"
     return self.get_raw_stat('kcoll', relative_error, max_sims, **kwargs)[1]
   def get_prob_error(self, relative_error = 0.50, max_sims = 5000, **kwargs):
     """ Returns the standard error on the probability """
@@ -130,6 +147,12 @@ class RestingSetRxnStats(object):
     else:
       tag_id = self.get_multistrandjob().tag_id_dict[tag]
       return (self.get_simulation_data()['tags'] == tag_id).sum()
+  def get_num_successful_sims(self):
+    return self.get_num_sims(tag = self.get_multistrand_tag())
+  def get_num_failed_sims(self):
+    return self.get_num_sims() - self.get_num_successful_sims() - self.get_num_timeout_sims()
+  def get_num_timeout_sims(self):
+    return self.get_num_sims() - self.get_simulation_data()['valid'].sum()
     
   def get_raw_stat(self, stat, relative_error, max_sims, verbose = 0, 
       init_batch_size = 50, 
@@ -161,11 +184,6 @@ class RestingSetRxnStats(object):
   def get_rs_stats(self, reactant):
     return self.rs_stats[reactant]
     
-  def add_k1_rxn(self, rxn_stats):
-    self.k1_rxn_stats.append(rxn_stats)
-  def add_k2_rxn(self, rxn_stats):
-    self.k2_rxn_stats.append(rxn_stats)
-
   def get_multistrandjob(self):
     return self.multijob
   def get_multistrand_tag(self):
@@ -249,8 +267,11 @@ class RestingSetStats(object):
   def get_conformation_prob_data(self, complex_name):
     return self.sampler.get_complex_prob_data(complex_name)
 
-  def get_num_simulations(self):
+  def get_num_sims(self):
     return self.get_nupackjob().total_sims
+  def get_conformation_count(self, complex_name = None):
+    return self.get_nupackjob().get_complex_count(complex_name)
+    
     
   def get_top_MFE_structs(self, num):
     """ Attempts to obtain the top <num> MFE structures by calling
