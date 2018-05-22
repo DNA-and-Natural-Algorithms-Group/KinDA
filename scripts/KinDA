@@ -50,8 +50,8 @@ def init_parameter_dicts(args):
 
     kparams = {
         # System Parameters
-        'start_macrostate_mode': 'disassoc', # Not implemented
-        'stop_macrostate_mode': args.stop_macrostate_mode,
+        'start_macrostate_mode': args.macrostate_mode if args.macrostate_mode else args.start_macrostate_mode,
+        'stop_macrostate_mode': args.macrostate_mode if args.macrostate_mode else args.stop_macrostate_mode,
         'multistrand_similarity_threshold': args.similarity_threshold,
         'nupack_similarity_threshold': args.similarity_threshold,
 
@@ -448,17 +448,21 @@ def add_kinda_args(parser):
     session.add_argument('--no-multiprocessing', action="store_true",
             help="""Switch off multiprocessing for Multistrand and NUPACK.""")
 
-    # Not implemented...
-    #parser.add_argument('--start-macrostate-mode', action="store",
-    #        default = 'count-by-complex', 
-    #        choices=('count-by-complex', 'count-by-domain', 'disassoc'),
-    #        help="""Classify successful Mulstistrand trajectories by using this
-    #        marcostate model. A successful trajectory has stopped by reaching
-    #        this macrostate.""")
-
     # System parameters
+    system.add_argument('--macrostate-mode', action="store",
+            choices=('count-by-complex', 'count-by-domain', 'disassoc'),
+            default = None, 
+            help="""Use corresponding Multistrand macrostate model. If
+            provided, overwrites both --start-macrostate-mode and
+            --stop-macrostate-mode.""")
+
+    system.add_argument('--start-macrostate-mode', action="store",
+            choices=('count-by-complex', 'count-by-domain', 'disassoc'),
+            default = 'disassoc', 
+            help="""Use corresponding Multistrand macrostate model for sampling
+            of initial conformation.""")
+
     system.add_argument('--stop-macrostate-mode', action="store", 
-            #choices=('ordered-complex', 'complex-accuracy', 'domain-accuracy'),
             choices=('count-by-complex', 'count-by-domain', 'disassoc'),
             default = 'disassoc',
             help="""Stop a Multistrand simulation whenever a trajectory reaches
