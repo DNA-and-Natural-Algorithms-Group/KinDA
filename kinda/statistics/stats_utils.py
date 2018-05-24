@@ -631,13 +631,16 @@ def import_data(filepath):
     num_sims = len(data['simulation_data']['tags'])
     sim_data = {key:np.array(d) for key,d in data['simulation_data'].iteritems()}
     multijob.set_simulation_data(sim_data)
+    multijob.set_invalid_simulation_data(data['invalid_simulation_data'])
     multijob.total_sims = num_sims
     
   return sstats
 
 def _import_data_convert_version(sstats_dict, version):
   major, minor, subminor = [int(v) for v in version[1:].split('.')]
-  if major == 0 and minor == 1 and (subminor == 6 or subminor == 7):
+  if major == 0 and minor == 1 and subminor <= 5:
+    print "KinDA: ERROR: Invalid version number {}. Conversion failed. Simulations and statistical calculations may fail.".format(version)
+  elif major == 0 and minor == 1 and subminor <= 7:
     # add 'valid' entry to all simulation data
     for data in sstats_dict['resting-set-reaction-stats'].values():
       tags = data['simulation_data']['tags']
@@ -645,10 +648,12 @@ def _import_data_convert_version(sstats_dict, version):
       MS_TIMEOUT, MS_ERROR = -1, -3
       data['simulation_data']['valid'] = np.array([t!=MS_TIMEOUT and t!=MS_ERROR for t in tags])
     sstats_dict['version'] = 'v0.1.10'
-  elif major == 0 and minor == 1 and 8 <= subminor <= 10:
-    pass
-  else:
-    print "KinDA: ERROR: Invalid version number {}. Conversion failed. Simulations and statistical calculations may fail.".format(version)
+  elif major == 0 and minor == 1 and subminor <= 10:
+    # add 'invalid_simulation_data' dict ms_results
+    for data in sstats_dict['resting-set-reaction-stats'].values():
+      invalid_idxs = filter(lambda i:data['simulation_data']['valid'][i]==0, range(len(data['simulation_data']['valid'])))
+      data['invalid_simulation_data'] = [{simulation_index: i} for i in invalid_idxs]
+    sstats_dict['version'] = 'v0.1.11'
 
   return sstats_dict
     
