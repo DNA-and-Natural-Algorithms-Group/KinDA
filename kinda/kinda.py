@@ -176,9 +176,9 @@ class System(object):
       rxns = filter(lambda x: len(x.reactants)==arity, rxns)
 
     return filter(lambda x: x.has_reactants(reactants) and x.has_products(products), rxns)
-  def get_reaction(self, reactants = [], products = [], unproductive = None, spurious = None):
+  def get_reaction(self, **kwargs):
     """ Returns a single reaction matching the criteria given. """
-    rxns = self.get_reactions(reactants = reactants, products = products, unproductive = unproductive, spurious = spurious)
+    rxns = self.get_reactions(**kwargs)
     if len(rxns) == 0:
       print "KinDA: ERROR: SystemStats.get_reaction() failed to find a reaction with the given criteria."
       return None

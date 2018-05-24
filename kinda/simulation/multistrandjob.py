@@ -82,6 +82,7 @@ class MultistrandJob(object):
     }
     self._ms_results = {'valid': np.array([], dtype=np.int8), 'tags': np.array([], np.int64), 'times': np.array([])}
     self._ms_results_buff = {'valid': np.array([], dtype=np.int8), 'tags': np.array([], np.int64), 'times': np.array([])}
+    self._ms_results_invalid = [] # extra information about invalid simulations, like timeouts
 
     self.total_sims = 0
 
@@ -167,6 +168,11 @@ class MultistrandJob(object):
       if len(v) > 0:
         np.copyto(self._ms_results_buff[k], v)
     self.total_sims = len(self._ms_results['tags'])
+
+  def get_invalid_simulation_data(self):
+    return self._ms_results_invalid
+  def set_invalid_simulation_data(self, invalid_sim_data):
+    self._ms_results_invalid = invalid_sim_data[:]
   
 
   def create_ms_options(self, num_sims):
@@ -258,9 +264,22 @@ class MultistrandJob(object):
     self._ms_results_buff['tags'][self.total_sims:self.total_sims+n] = tags
     self._ms_results_buff['times'][self.total_sims:self.total_sims+n] = times
 
+    ## Store extra information about invalid simulations
+    for i in range(n):
+      if not valid[i]:
+        self._ms_results_invalid.append({
+            'simulation_index': i+self.total_sims,
+            'stop_time': times[i],
+            'type': 'timeout' if tags[i]==self._tag_id_dict[MS_TIMEOUT] else 'error',
+            'seed': results[i].seed,
+            'start_state': results[i].start_state
+#            'stop_structure': **IS THIS AVAILABLE?
+        })
+
     self.total_sims = self.total_sims + n
     for k in self._ms_results:
       self._ms_results[k] = self._ms_results_buff[k][:self.total_sims]
+
 
   def reduce_error_to(self, rel_goal, max_sims, reaction = 'overall', stat = 'rate', init_batch_size = 50, min_batch_size = 50, max_batch_size = 500, sims_per_update = 1, sims_per_worker = 1):
     """Runs simulations to reduce the error to rel_goal*mean or until max_sims is reached."""
@@ -357,6 +376,8 @@ class FirstPassageTimeModeJob(MultistrandJob):
     }
     self._tag_id_dict.update((t,i) for i,t in enumerate(sorted(self.tags)))
   
+    self._stats_funcs['prob'] = (sim_utils.bernoulli_mean, sim_utils.bernoulli_std, sim_utils.bernoulli_error)
+  
   def process_results(self, ms_options):
     results = ms_options.interface.results
     n = len(results)
@@ -369,6 +390,18 @@ class FirstPassageTimeModeJob(MultistrandJob):
     self._ms_results_buff['valid'][start_ind:end_ind] = valid
     self._ms_results_buff['tags'][start_ind:end_ind] = tags
     self._ms_results_buff['times'][start_ind:end_ind] = times
+
+    ## Store extra information about invalid simulations
+    for i in range(n):
+      if not valid[i]:
+        self._ms_results_invalid.append({
+            'simulation_index': i+self.total_sims,
+            'stop_time': times[i],
+            'type': 'timeout' if tags[i]==self._tag_id_dict[MS_TIMEOUT] else 'error',
+            'seed': results[i].seed,
+            'start_state': results[i].start_state
+#            'stop_structure': **IS THIS AVAILABLE?
+        })
 
     self.total_sims = self.total_sims + n
     for k in self._ms_results:
@@ -411,7 +444,19 @@ class TransitionModeJob(MultistrandJob):
     tags = [self._tag_id_dict[r.tag] for r in results]
     valid = [t!=self._tag_id_dict[MS_TIMEOUT] and t!=self._tag_id_dict[MS_ERROR] for t in tags]
     times = [r.time for r in results]
-   
+
+    ## Store extra information about invalid simulations
+    for i in range(n):
+      if not valid[i]:
+        self._ms_results_invalid.append({
+            'simulation_index': i+self.total_sims,
+            'stop_time': times[i],
+            'type': 'timeout' if tags[i]==self._tag_id_dict[MS_TIMEOUT] else 'error',
+            'seed': results[i].seed,
+            'start_state': results[i].start_state
+#            'stop_structure': **IS THIS AVAILABLE?
+        })
+ 
     for path in transition_paths:
       collapsed_path = collapse_transition_path(path)
       for start, end in zip(collapsed_path[0:-1], collapsed_path[1:]):
@@ -422,6 +467,7 @@ class TransitionModeJob(MultistrandJob):
         if key not in self._tag_id_dict:  self._tag_id_dict[key] = len(self._tag_id_dict)
         tags.append(self._tag_id_dict[key])
         times.append(time_diff)
+        valid.append(True)
 
     # Make sure there's enough space
     self.preallocate_batch(self.total_sims+len(tags) - len(self._ms_results_buff['tags']))
@@ -504,6 +550,18 @@ class FirstStepModeJob(MultistrandJob):
     self._ms_results_buff['tags'][self.total_sims:self.total_sims+n] = tags
     self._ms_results_buff['times'][self.total_sims:self.total_sims+n] = times
     self._ms_results_buff['kcoll'][self.total_sims:self.total_sims+n] = kcolls
+
+    ## Store extra information about invalid simulations
+    for i in range(n):
+      if not valid[i]:
+        self._ms_results_invalid.append({
+            'simulation_index': i+self.total_sims,
+            'stop_time': times[i],
+            'type': 'timeout' if tags[i]==self._tag_id_dict[MS_TIMEOUT] else 'error',
+            'seed': results[i].seed,
+            'start_state': results[i].start_state
+#            'stop_structure': **IS THIS AVAILABLE?
+        })
 
     self.total_sims += n
     for k in self._ms_results:

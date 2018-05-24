@@ -516,14 +516,24 @@ def export_data(sstats, filepath):
   for rsrxn in rs_reactions:
     stats = sstats.get_stats(rsrxn)
     sim_data = {key: d.tolist() for key,d in stats.get_simulation_data().iteritems()}
-    rsrxnstats_to_dict[rsrxn_to_id[rsrxn]] = {
-      'prob': '{0} +/- {1}'.format(stats.get_prob(1, max_sims = 0), stats.get_prob_error(max_sims=0)),
-      'kcoll': '{0} +/- {1}'.format(stats.get_kcoll(1, max_sims = 0), stats.get_kcoll_error(max_sims=0)),
-      'k1': '{0} +/- {1}'.format(stats.get_k1(1, max_sims = 0), stats.get_k1_error(max_sims=0)),
-      'k2': '{0} +/- {1}'.format(stats.get_k2(1, max_sims = 0), stats.get_k2_error(max_sims=0)),
-      'simulation_data': sim_data,
-      'tag': stats.multijob_tag
-    }
+    if len(rsrxn.reactants) == 2:
+      rsrxnstats_to_dict[rsrxn_to_id[rsrxn]] = {
+        'prob': '{0} +/- {1}'.format(stats.get_prob(1, max_sims = 0), stats.get_prob_error(max_sims=0)),
+        'kcoll': '{0} +/- {1}'.format(stats.get_kcoll(1, max_sims = 0), stats.get_kcoll_error(max_sims=0)),
+        'k1': '{0} +/- {1}'.format(stats.get_k1(1, max_sims = 0), stats.get_k1_error(max_sims=0)),
+        'k2': '{0} +/- {1}'.format(stats.get_k2(1, max_sims = 0), stats.get_k2_error(max_sims=0)),
+        'simulation_data': sim_data,
+        'invalid_simulation_data': stats.get_invalid_simulation_data(),
+        'tag': stats.multijob_tag
+      }
+    elif len(rsrxn.reactants) == 1:
+      rsrxnstats_to_dict[rsrxn_to_id[rsrxn]] = {
+        'prob': '{0} +/- {1}'.format(stats.get_prob(1, max_sims = 0), stats.get_prob_error(max_sims=0)),
+        'k': '{0} +/- {1}'.format(stats.get_k(1, max_sims = 0), stats.get_k_error(max_sims=0)),
+        'simulation_data': sim_data,
+        'invalid_simulation_data': stats.get_invalid_simulation_data(),
+        'tag': stats.multijob_tag
+      }
 
   #print rsrxn_to_id
 
