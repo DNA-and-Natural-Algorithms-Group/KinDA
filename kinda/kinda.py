@@ -73,6 +73,10 @@ class System(object):
     else:
       self._enum_job = None
 
+    # Filter out unimolecular reactions, if these are disabled.
+    if not self._kinda_params['enable_unimolecular_reactions']:
+      self._condensed_reactions = set(filter(lambda rxn: len(rxn.reactants)==2, self._condensed_reactions))
+
     # Create stats objects for reactions and resting sets
     # make_stats() will also make stats objects for potential spurious reactions and resting sets
     self._rs_to_stats, self._rxn_to_stats = stats_utils.make_stats(

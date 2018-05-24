@@ -5,6 +5,7 @@ kinda_params = {
   'nupack_similarity_threshold': 0.51,
   'multistrand_multiprocessing': True,
   'nupack_multiprocessing': True,
+  'enable_unimolecular_reactions': False,
   'max_concentration': 1e-7  # Provides a default max concentration for each resting set, used for system-level scores
 }
 
@@ -13,6 +14,7 @@ kinda_params = {
 multistrand_params = {
   'verbosity': 0,
   'dangles': 'Some',
+  'gt_enable': True,
   'simulation_time': 1.00, 
   'output_interval': 0,
   'parameter_type': 'Nupack',
