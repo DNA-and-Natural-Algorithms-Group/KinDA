@@ -269,11 +269,11 @@ class MultistrandJob(object):
       if not valid[i]:
         self._ms_results_invalid.append({
             'simulation_index': i+self.total_sims,
-            'stop_time': times[i],
+            'end_time': times[i],
             'type': 'timeout' if tags[i]==self._tag_id_dict[MS_TIMEOUT] else 'error',
             'seed': results[i].seed,
-            'start_state': results[i].start_state
-#            'stop_structure': **IS THIS AVAILABLE?
+            'start_structure': results[i].start_state,
+            'end_state': [list(v) for v in ms_options.interface.end_states[i]] # convert tuples to lists
         })
 
     self.total_sims = self.total_sims + n
@@ -396,11 +396,11 @@ class FirstPassageTimeModeJob(MultistrandJob):
       if not valid[i]:
         self._ms_results_invalid.append({
             'simulation_index': i+self.total_sims,
-            'stop_time': times[i],
+            'end_time': times[i],
             'type': 'timeout' if tags[i]==self._tag_id_dict[MS_TIMEOUT] else 'error',
             'seed': results[i].seed,
-            'start_state': results[i].start_state
-#            'stop_structure': **IS THIS AVAILABLE?
+            'start_structure': results[i].start_state,
+            'end_state': [list(v) for v in ms_options.interface.end_states[i]] # convert tuples to lists
         })
 
     self.total_sims = self.total_sims + n
@@ -450,11 +450,11 @@ class TransitionModeJob(MultistrandJob):
       if not valid[i]:
         self._ms_results_invalid.append({
             'simulation_index': i+self.total_sims,
-            'stop_time': times[i],
+            'end_time': times[i],
             'type': 'timeout' if tags[i]==self._tag_id_dict[MS_TIMEOUT] else 'error',
             'seed': results[i].seed,
-            'start_state': results[i].start_state
-#            'stop_structure': **IS THIS AVAILABLE?
+            'start_structure': results[i].start_state,
+            'end_state': [list(v) for v in ms_options.interface.end_states[i]] # convert tuples to lists
         })
  
     for path in transition_paths:
@@ -556,11 +556,11 @@ class FirstStepModeJob(MultistrandJob):
       if not valid[i]:
         self._ms_results_invalid.append({
             'simulation_index': i+self.total_sims,
-            'stop_time': times[i],
+            'end_time': times[i],
             'type': 'timeout' if tags[i]==self._tag_id_dict[MS_TIMEOUT] else 'error',
             'seed': results[i].seed,
-            'start_state': results[i].start_state
-#            'stop_structure': **IS THIS AVAILABLE?
+            'start_structure': results[i].start_state,
+            'end_state': [list(v) for v in ms_options.interface.end_states[i]] # convert tuples to lists
         })
 
     self.total_sims += n
