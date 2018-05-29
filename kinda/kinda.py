@@ -215,7 +215,7 @@ class System(object):
 
     return rs
   def get_restingset(self, complex = None, strands = [], name = None, complex_name = None, spurious = False):
-    rs_list = self.get_restingsets(complex = complex, strands = strands, name = name, complex_name = name, spurious = spurious)
+    rs_list = self.get_restingsets(complex = complex, strands = strands, name = name, complex_name = complex_name, spurious = spurious)
     if len(rs_list) == 0:
       print "KinDA: ERROR: SystemStats.get_restingset() failed to find a resting set with the given criteria"
       return None
