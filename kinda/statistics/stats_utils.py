@@ -528,8 +528,8 @@ def export_data(sstats, filepath):
       }
     elif len(rsrxn.reactants) == 1:
       rsrxnstats_to_dict[rsrxn_to_id[rsrxn]] = {
-        'prob': '{0} +/- {1}'.format(stats.get_prob(1, max_sims = 0), stats.get_prob_error(max_sims=0)),
-        'k': '{0} +/- {1}'.format(stats.get_k(1, max_sims = 0), stats.get_k_error(max_sims=0)),
+        'prob': '{0} +/- {1}'.format(stats.get_prob(max_sims = 0), stats.get_prob_error(max_sims=0)),
+        'k': '{0} +/- {1}'.format(stats.get_k(max_sims = 0), stats.get_k_error(max_sims=0)),
         'simulation_data': sim_data,
         'invalid_simulation_data': stats.get_invalid_simulation_data(),
         'tag': stats.multijob_tag
