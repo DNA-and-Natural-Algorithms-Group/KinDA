@@ -300,13 +300,13 @@ class MultistrandJob(object):
       total_failure = total_sims - total_success - total_timeout
 
       if exp_add_sims is None:
-        table_update_func([calc_mean(), calc_error(), goal, "  |",
+        table_update_func([calc_mean(), calc_error(), goal, " |",
           "{:d}/{:d}".format(batch_sims_done, num_trials), 
           "{:d}/--".format(total_sims), 
           "{}/{}/{}".format(total_success, total_failure, total_timeout), 
           "0%"])
       else :
-        table_update_func([calc_mean(), calc_error(), goal, "  |",
+        table_update_func([calc_mean(), calc_error(), goal, " |",
           "{:d}/{:d}".format(batch_sims_done, num_trials), 
           "{:d}/{:d}".format(total_sims, exp_add_sims-batch_sims_done), 
           "{}/{}/{}".format(total_success, total_failure, total_timeout), 
@@ -329,12 +329,12 @@ class MultistrandJob(object):
           print '#    [MULTIPROCESSING OFF]'
 
       table_update_func = sim_utils.print_progress_table(
-          [stat, "error", "err goal", "  |", 
+          [stat, "error", "err goal", " |", 
             "batch sims", "done/needed", "S/F/T", "progress"],
-          col_widths = [10, 10, 10, 6, 17, 17, 17, 10],
+          col_widths = [10, 10, 10, 4, 17, 17, 17, 10],
           col_format_specs = ['{:.4}', '{:.4}', '{:.4}', '{}',
             '{}', '{}', '{}', '{}'])
-      table_update_func([calc_mean(), error, goal, "  |",
+      table_update_func([calc_mean(), error, goal, " |",
         "--/--", "--/--", "--/--/--", "--"])
 
     while not error < goal and num_sims < max_sims:
@@ -373,13 +373,13 @@ class MultistrandJob(object):
 
     if verbose:
       if exp_add_sims is None:
-        table_update_func([calc_mean(), error, goal, "  |",
+        table_update_func([calc_mean(), error, goal, " |",
           "{:d}/{:d}".format(num_sims, max_sims), 
           "{:d}/--".format(total_sims), 
           "{:d}/{:d}/{:d}".format(total_success, total_failure, total_timeout), 
           "0%"], inline=False) 
       else :
-        table_update_func([calc_mean(), error, goal, "  |",
+        table_update_func([calc_mean(), error, goal, " |",
           "{:d}/{:d}".format(num_sims, max_sims), 
           "{:d}/{:d}".format(total_sims, exp_add_sims), 
           "{:d}/{:d}/{:d}".format(total_success, total_failure, total_timeout), 

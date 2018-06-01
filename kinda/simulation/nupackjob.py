@@ -274,14 +274,14 @@ class NupackSampleJob(object):
 
       if exp_add_sims is None:
         assert num_sims + batch_sims_done == self.total_sims
-        update_func([complex_name, prob, error, goal, "  |", 
+        update_func([complex_name, prob, error, goal, " |", 
           "{:d}/{:d}".format(batch_sims_done,num_trials), 
           "{:d}/--".format(num_sims + batch_sims_done), 
           "{:d}/{:d}".format(total_success, total_failure), 
           "--"])
       else:
         tot_sims = self.total_sims
-        update_func([complex_name, prob, error, goal, "  |", 
+        update_func([complex_name, prob, error, goal, " |", 
             "{:d}/{:d}".format(batch_sims_done, num_trials), 
             "{:d}/{:d}".format(tot_sims, exp_add_sims-batch_sims_done), 
             "{:d}/{:d}".format(total_success, total_failure), 
@@ -303,9 +303,9 @@ class NupackSampleJob(object):
 
       # Prepare progress table
       update_func = print_progress_table(
-          ["complex", "prob", "error", "err goal", "  |", "batch sims", "done/needed", "S/F", "progress"],
-          [11, 10, 10, 10, 6, 16, 16, 12, 10], skip_header = True if verbose == 1 else False)
-      update_func([complex_name, prob, error, goal, "  |", "--/--", "--/--", "--/--", "--"])
+          ["complex", "prob", "error", "err goal", " |", "batch sims", "done/needed", "S/F", "progress"],
+          [11, 10, 10, 10, 4, 15, 15, 12, 10], skip_header = True if verbose == 1 else False)
+      update_func([complex_name, prob, error, goal, " |", "--/--", "--/--", "--/--", "--"])
 
     # Run simulations
     while not error <= goal and num_sims < max_sims:
@@ -341,7 +341,7 @@ class NupackSampleJob(object):
       tot_sims = self.total_sims
       total_success = self.get_complex_count(complex_name)
       total_failure = tot_sims - total_success
-      update_func([complex_name, prob, error, goal, "  |", 
+      update_func([complex_name, prob, error, goal, " |", 
         "{:d}/{:d}".format(num_sims, max_sims), 
         "{:d}/{:d}".format(tot_sims, exp_add_sims), 
         "{:d}/{:d}".format(total_success, total_failure), 

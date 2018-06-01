@@ -693,7 +693,7 @@ def _import_data_convert_version(sstats_dict, version):
     # add 'invalid_simulation_data' dict ms_results
     for data in sstats_dict['resting-set-reaction-stats'].values():
       invalid_idxs = filter(lambda i:data['simulation_data']['valid'][i]==0, range(len(data['simulation_data']['valid'])))
-      data['invalid_simulation_data'] = [{simulation_index: i} for i in invalid_idxs]
+      data['invalid_simulation_data'] = [{'simulation_index': i} for i in invalid_idxs]
     sstats_dict['version'] = 'v0.1.11'
 
   return sstats_dict
