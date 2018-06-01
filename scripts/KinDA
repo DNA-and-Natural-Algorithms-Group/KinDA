@@ -50,8 +50,10 @@ def init_parameter_dicts(args):
 
     kparams = {
         # System Parameters
-        'start_macrostate_mode': args.macrostate_mode if args.macrostate_mode else args.start_macrostate_mode,
-        'stop_macrostate_mode': args.macrostate_mode if args.macrostate_mode else args.stop_macrostate_mode,
+        'start_macrostate_mode': args.macrostate_mode if args.macrostate_mode else \
+                                 args.start_macrostate_mode,
+        'stop_macrostate_mode': args.macrostate_mode if args.macrostate_mode else \
+                                args.stop_macrostate_mode,
         'multistrand_similarity_threshold': args.similarity_threshold,
         'nupack_similarity_threshold': args.similarity_threshold,
 
@@ -71,6 +73,7 @@ def init_parameter_dicts(args):
         'unimolecular_scaling': 2.41686715e+06,
         'bimolecular_scaling': 8.01171383e+05,
         'simulation_time': args.multistrand_timeout,
+        'gt_enable': True, # Always True, to be consistent with NUPACK.
         'sodium': args.sodium,
         'magnesium': args.magnesium,
         'output_interval': -1,
@@ -92,13 +95,15 @@ def init_parameter_dicts(args):
 
     # More Session parameters
     rate_params = {
-        'relative_error':  args.error_goal if args.error_goal is not None else args.rate_error_goal,
+        'relative_error':  args.error_goal if args.error_goal is not None else \
+                           args.rate_error_goal,
         'min_batch_size':  args.rate_batch_size[0],
         'init_batch_size': args.rate_batch_size[1],
         'max_batch_size':  args.rate_batch_size[2],
-        'max_sims':        args.max_sims if args.max_sims is not None else args.rate_max_sims
+        'max_sims':        args.max_sims if args.max_sims is not None else \
+                           args.rate_max_sims
     }
-    rate_params['min_batch_size'] = min([rate_params['min_batch_size'], rate_params['max_sims']])
+    rate_params['min_batch_size']  = min([rate_params['min_batch_size'], rate_params['max_sims']])
     rate_params['init_batch_size'] = min([rate_params['init_batch_size'], rate_params['max_sims']])
 
     prob_params = {
@@ -108,7 +113,7 @@ def init_parameter_dicts(args):
         'max_batch_size':  args.prob_batch_size[2],
         'max_sims':        args.max_sims if args.max_sims is not None else args.prob_max_sims
     }
-    prob_params['min_batch_size'] = min([prob_params['min_batch_size'], prob_params['max_sims']])
+    prob_params['min_batch_size']  = min([prob_params['min_batch_size'], prob_params['max_sims']])
     prob_params['init_batch_size'] = min([prob_params['init_batch_size'], prob_params['max_sims']])
 
     return kparams, mparams, nparams, rate_params, prob_params
@@ -278,15 +283,21 @@ def main(args):
         KindaSystem = import_data(args.restore, import_pickle)
 
         for k,v in KindaSystem.initialization_params['kinda_params'].items():
-            if v != kparams[k]:
+            if v not in kparams:
+                print("# WARNING: Using undefined library paramter: {} = {} ".format(k, v))
+            elif v != kparams[k]:
                 print("# WARNING: recovered system uses",
                         "different KinDA paramter: {} = {}".format(k, v))
         for k,v in KindaSystem.initialization_params['multistrand_params'].items():
-            if v != mparams[k]:
+            if v not in mparams:
+                print("# WARNING: Using undefined Multistrand paramter: {} = {} ".format(k, v))
+            elif v != mparams[k]:
                 print("# WARNING: recovered system uses",
                         "different Multistrand paramter: {} = {}".format(k, v))
         for k,v in KindaSystem.initialization_params['nupack_params'].items():
-            if v != nparams[k]:
+            if v not in nparams:
+                print("# WARNING: Using undefined NUPACK paramter: {} = {} ".format(k, v))
+            elif v != nparams[k]:
                 print("# WARNING: recovered system uses",
                         "different NUPACK paramter: {} = {}".format(k, v))
 
@@ -475,7 +486,7 @@ def add_kinda_args(parser):
     system.add_argument('--similarity-threshold', type=float, 
             default = 0.51, metavar='<float>',
             help="""Similarity threshold to assign complexes to domain-level
-            macrostates (= 1-"max-domain-defect").""")
+            macrostates.""")
 
     system.add_argument('-T','--temperature', type=float, default=25, metavar='<float>',
             help="""Simulation temperature in Celsius.""")
