@@ -283,19 +283,19 @@ def main(args):
         KindaSystem = import_data(args.restore, import_pickle)
 
         for k,v in KindaSystem.initialization_params['kinda_params'].items():
-            if v not in kparams:
+            if k not in kparams:
                 print("# WARNING: Using undefined library paramter: {} = {} ".format(k, v))
             elif v != kparams[k]:
                 print("# WARNING: recovered system uses",
                         "different KinDA paramter: {} = {}".format(k, v))
         for k,v in KindaSystem.initialization_params['multistrand_params'].items():
-            if v not in mparams:
+            if k not in mparams:
                 print("# WARNING: Using undefined Multistrand paramter: {} = {} ".format(k, v))
             elif v != mparams[k]:
                 print("# WARNING: recovered system uses",
                         "different Multistrand paramter: {} = {}".format(k, v))
         for k,v in KindaSystem.initialization_params['nupack_params'].items():
-            if v not in nparams:
+            if k not in nparams:
                 print("# WARNING: Using undefined NUPACK paramter: {} = {} ".format(k, v))
             elif v != nparams[k]:
                 print("# WARNING: recovered system uses",
@@ -345,7 +345,7 @@ def main(args):
     calculate_all_reaction_rates(KindaSystem, unproductive, spurious, 
             args.backup, args.verbose, export_pickle, **rparams)
    
-    if args.backup:
+    if args.verbose and args.backup:
         print("\n# Results stored in {} using {} format.".format(args.backup,
             'PICKLE' if export_pickle else 'JSON'))
 

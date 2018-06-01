@@ -100,6 +100,10 @@ class System(object):
     make_stats() will also make stats objects for potential spurious reactions and resting sets
     """
 
+    # Filter out unimolecular reactions, if these are disabled.
+    if not self._kinda_params['enable_unimolecular_reactions']:
+      self._condensed_reactions = set(filter(lambda rxn: len(rxn.reactants)==2, self._condensed_reactions))
+
     # Create stats objects for reactions and resting sets
     # make_stats() will also make stats objects for potential spurious reactions and resting sets
     self._rs_to_stats, self._rxn_to_stats = stats_utils.make_stats(
@@ -196,9 +200,9 @@ class System(object):
       rxns = filter(lambda x: len(x.reactants)==arity, rxns)
 
     return filter(lambda x: x.has_reactants(reactants) and x.has_products(products), rxns)
-  def get_reaction(self, reactants = [], products = [], unproductive = None, spurious = None):
+  def get_reaction(self, **kwargs):
     """ Returns a single reaction matching the criteria given. """
-    rxns = self.get_reactions(reactants = reactants, products = products, unproductive = unproductive, spurious = spurious)
+    rxns = self.get_reactions(**kwargs)
     if len(rxns) == 0:
       print "KinDA: ERROR: SystemStats.get_reaction() failed to find a reaction with the given criteria."
       return None
@@ -237,7 +241,7 @@ class System(object):
 
     return rs
   def get_restingset(self, complex = None, strands = [], name = None, complex_name = None, spurious = False):
-    rs_list = self.get_restingsets(complex = complex, strands = strands, name = name, complex_name = name, spurious = spurious)
+    rs_list = self.get_restingsets(complex = complex, strands = strands, name = name, complex_name = complex_name, spurious = spurious)
     if len(rs_list) == 0:
       print "KinDA: ERROR: SystemStats.get_restingset() failed to find a resting set with the given criteria"
       return None

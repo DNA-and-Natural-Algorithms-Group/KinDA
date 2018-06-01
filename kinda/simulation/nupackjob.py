@@ -304,7 +304,7 @@ class NupackSampleJob(object):
       # Prepare progress table
       update_func = print_progress_table(
           ["complex", "prob", "error", "err goal", "  |", "batch sims", "done/needed", "S/F", "progress"],
-          [11, 10, 10, 10, 6, 17, 17, 17, 10], skip_header = True if verbose == 1 else False)
+          [11, 10, 10, 10, 6, 16, 16, 12, 10], skip_header = True if verbose == 1 else False)
       update_func([complex_name, prob, error, goal, "  |", "--/--", "--/--", "--/--", "--"])
 
     # Run simulations
@@ -321,7 +321,8 @@ class NupackSampleJob(object):
             min_batch_size)
         
       # Query Nupack
-      status_func(0)
+      if verbose:
+        status_func(0) 
       self.sample(num_trials, status_func = status_func if verbose else lambda x: None)
 
       # Update estimates and goal

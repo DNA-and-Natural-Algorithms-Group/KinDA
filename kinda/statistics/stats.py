@@ -140,6 +140,8 @@ class RestingSetRxnStats(object):
 
   def get_simulation_data(self):
     return self.multijob.get_simulation_data()
+  def get_invalid_simulation_data(self):
+    return self.multijob.get_invalid_simulation_data()
 
   def get_num_sims(self, tag = None):
     if tag is None:

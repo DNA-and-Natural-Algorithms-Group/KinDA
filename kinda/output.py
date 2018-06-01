@@ -24,7 +24,7 @@ def write_pil(KindaSystem, pil, spurious=False, unproductive=False):
         reactants = map(lambda x:x.name, rxn.reactants)
         products  = map(lambda x:x.name, rxn.products)
 
-        if k_1 > 0 :
+        if k_1 > 0 and k_2 > 0 :
             pil.write('reaction [k1 = {:12g} +/- {:12g} {:4s}] {} -> {}\n'.format(
                 float(k_1), float(k_1_err), '/M/s',
                 ' + '.join(reactants), '_'.join(reactants)))

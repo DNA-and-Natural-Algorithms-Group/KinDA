@@ -92,7 +92,7 @@ def to_Peppercorn(*args, **kargs):
  
   ## Extract all objects to be converted
   reactions = set(kargs.get('reactions', []))
-  complexes = set(sum([list(r.reactants | r.products) for r in reactions], [])
+  complexes = set(sum([list(r.reactants + r.products) for r in reactions], [])
                   + kargs.get('complexes', []))
   domains = set([d for c in complexes for d_list in c.base_domains() for d in d_list]
                 + sum([d.base_domains() for d in kargs.get('domains', [])], []))
