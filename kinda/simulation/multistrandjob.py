@@ -401,7 +401,7 @@ class FirstPassageTimeModeJob(MultistrandJob):
       MS_ERROR: -3,
     }
     self._tag_id_dict.update((t,i) for i,t in enumerate(sorted(self.tags)))
-  
+    
     self._stats_funcs['prob'] = (sim_utils.bernoulli_mean, sim_utils.bernoulli_std, sim_utils.bernoulli_error)
   
   def process_results(self, ms_options):
