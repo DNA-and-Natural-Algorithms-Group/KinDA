@@ -165,7 +165,7 @@ class NupackSampleJob(object):
     sigint_handler = signal.signal(signal.SIGINT, signal.SIG_IGN)
 
     # Create Pool instance and worker processes
-    k = multiprocessing.cpu_count()
+    k = min(multiprocessing.cpu_count(), num_samples)
     p = multiprocessing.Pool(processes = k)
 
     # Restore original SIGINT event handler (if possible)

@@ -48,14 +48,21 @@ def init_parameter_dicts(args):
     Not all parameters can set via commandline arguments, time will tell...
     """
 
+    if args.macrostate_mode == 'ordered-complex':
+        args.macrostate_mode = 'disassoc'
+    if args.start_macrostate_mode == 'ordered-complex':
+        args.start_macrostate_mode = 'disassoc'
+    if args.stop_macrostate_mode == 'ordered-complex':
+        args.stop_macrostate_mode = 'disassoc'
+
     kparams = {
         # System Parameters
         'start_macrostate_mode': args.macrostate_mode if args.macrostate_mode else \
                                  args.start_macrostate_mode,
         'stop_macrostate_mode': args.macrostate_mode if args.macrostate_mode else \
                                 args.stop_macrostate_mode,
-        'multistrand_similarity_threshold': args.similarity_threshold,
-        'nupack_similarity_threshold': args.similarity_threshold,
+        'multistrand_similarity_threshold': args.multistrand_similarity_threshold,
+        'nupack_similarity_threshold': args.nupack_similarity_threshold,
 
         # Session Parameters
         'multistrand_multiprocessing': not args.no_multiprocessing,
@@ -108,7 +115,7 @@ def init_parameter_dicts(args):
 
     prob_params = {
         'relative_error':  args.error_goal if args.error_goal is not None else args.prob_error_goal,
-        'min_batch_size':  args.rate_batch_size[0],
+        'min_batch_size':  args.prob_batch_size[0],
         'init_batch_size': args.prob_batch_size[1],
         'max_batch_size':  args.prob_batch_size[2],
         'max_sims':        args.max_sims if args.max_sims is not None else args.prob_max_sims
@@ -132,7 +139,7 @@ def peppercorn(pilstring, is_file = False, params=None):
     return pepper_write_pil(enum, fh = None, 
             detailed = True, condensed = True, composite = strands)
 
-def calculate_all_complex_probabilities(KindaSystem, spurious,
+def calculate_all_complex_probabilities(KindaSystem, spurious, nsth, multip = True,
         backup = None, verbose = 0, use_pickle = True, **kwargs):
     """ TODO
 
@@ -150,10 +157,15 @@ def calculate_all_complex_probabilities(KindaSystem, spurious,
     ## Analyze each resting set
     for e, rms in enumerate(restingsets, 1):
         if verbose:
-            print("\n# Analyzing resting set {}/{}: {}".format(e, len(restingsets), rms))
+            print("\n# Analyzing resting set {}/{}: {} with similarity threshold = {}".format(
+                e, len(restingsets), rms, nsth))
     
         # Get present stats object
         rms_stats = KindaSystem.get_stats(rms)
+        rms_stats.sampler._multiprocessing = multip
+        
+        if nsth != rms_stats.get_similarity_threshold():
+            rms_stats.set_similarity_threshold(nsth)
 
         # Query/calculate probabilities for all conformations 
         # (including the spurious conformation, denoted as None)
@@ -173,7 +185,7 @@ def calculate_all_complex_probabilities(KindaSystem, spurious,
                 #        rms_stats.get_conformation_prob_error(name, max_sims=0)))
             print("# Sum of probabilities: {}".format(tot))
 
-def calculate_all_reaction_rates(KindaSystem, unproductive, spurious, 
+def calculate_all_reaction_rates(KindaSystem, unproductive, spurious, multip = True,
         backup = None, verbose = 0, use_pickle = True, **kwargs):
     """Calculates reaction rates and error bars.
 
@@ -194,6 +206,7 @@ def calculate_all_reaction_rates(KindaSystem, unproductive, spurious,
     
         # Get stats object
         rxn_stats = KindaSystem.get_stats(rxn)
+        rxn_stats.multijob.multiprocessing = multip
     
         # Query/calculate k1 and k2 reaction rates to requested precision
         goal = kwargs['relative_error']
@@ -285,6 +298,13 @@ def main(args):
         for k,v in KindaSystem.initialization_params['kinda_params'].items():
             if k not in kparams:
                 print("# WARNING: Using undefined library paramter: {} = {} ".format(k, v))
+            elif k == 'nupack_multiprocessing' or k == 'multistrand_multiprocessing':
+                pass
+            elif k == 'nupack_similarity_threshold':
+                pass
+                #print("# WARNING: Using updated KinDA session paramter: {} = {}".format(k, v))
+            elif k == 'max_concentration':
+                pass
             elif v != kparams[k]:
                 print("# WARNING: recovered system uses",
                         "different KinDA paramter: {} = {}".format(k, v))
@@ -337,12 +357,31 @@ def main(args):
     #   1) calculate probabilites of being in a particular resting complex using Nupack
     #   2) calculate reaction rates using Multistrand
 
+    # Update complex concentration paramters...
+    c_max = dict(term.split('=') for term in args.c_max) if args.c_max else dict()
+    if args.verbose:
+        print("\n# Setting maximum concentrations")
+    restingsets = KindaSystem.get_restingsets(spurious = spurious)
+    for x in c_max.keys():
+        if x not in map(lambda r: r.name, restingsets):
+            print("# Ignoring c-max specification for unknown resting-set: {}".format(x))
+
+    for rms in restingsets:
+        rms_stats = KindaSystem.get_stats(rms)
+        try:
+            rms_stats.c_max = float(c_max[rms.name])
+        except KeyError:
+            rms_stats.c_max = args.max_concentration
+        if args.verbose:
+            print("# {} = {}".format(rms, rms_stats.c_max))
+
     # let's do 1)
-    calculate_all_complex_probabilities(KindaSystem, spurious,
+    calculate_all_complex_probabilities(KindaSystem, spurious, 
+            args.nupack_similarity_threshold, not args.no_multiprocessing,
             args.backup, args.verbose, export_pickle, **pparams)
    
     # let's do 2)
-    calculate_all_reaction_rates(KindaSystem, unproductive, spurious, 
+    calculate_all_reaction_rates(KindaSystem, unproductive, spurious, not args.no_multiprocessing,
             args.backup, args.verbose, export_pickle, **rparams)
    
     if args.verbose and args.backup:
@@ -353,7 +392,6 @@ def main(args):
     ######################
     # Print the results: #
     ######################
-
     if args.output is None:
         write_pil(KindaSystem, sys.stdout, spurious=spurious, unproductive=unproductive)
     else :
@@ -418,6 +456,17 @@ def add_kinda_args(parser):
             metavar='<float>',
             help="""Relative error goal for complex probabilities.""")
 
+    session.add_argument('-s', '--max-sims', type=int, default = None,
+            metavar='<int>', 
+            help="""If provided, overwrites both --rate-max-sims and
+            --prob-max-sims. --max-sims 0 will turn off all simulations.""")
+
+    session.add_argument('--rate-max-sims', type=int, default = 1000, metavar='<int>',
+            help="""Maxum number of Multistrand simulations for this Session.""")
+
+    session.add_argument('--prob-max-sims', type=int, default = 1000, metavar='<int>',
+            help="""Maxum number of NUPACK simulations for this Session.""")
+
     session.add_argument('--rate-batch-size', type=int, nargs=3, 
             default = [40, 80, 400], metavar='<int>',
             help="""Adjust batch size for Multistrand simulations. 
@@ -437,20 +486,15 @@ def add_kinda_args(parser):
             help="""Adjust batch size for NUPACK stochastic backtracking. 
             Equivalent behavior to --rate-batch-size. """)
 
-    session.add_argument('-s', '--max-sims', type=int, default = None,
-            metavar='<int>', 
-            help="""If provided, overwrites both --rate-max-sims and
-            --prob-max-sims. --max-sims 0 will turn off all simulations.""")
-
-    session.add_argument('--rate-max-sims', type=int, default = 1000, metavar='<int>',
-            help="""Maxum number of Multistrand simulations for this Session.""")
-
-    session.add_argument('--prob-max-sims', type=int, default = 1000, metavar='<int>',
-            help="""Maxum number of NUPACK simulations for this Session.""")
-
     session.add_argument('--max-concentration', type=float, default = 1e-7, 
             metavar='<float>',
             help="""Maximum concentration of any resting complex in the system.""")
+
+    session.add_argument("--c-max", nargs='+', metavar='<str>=<flt>',
+            help="""Vector of maximum restingset concentrations.  E.g. \"--c-max
+            S=100e-9 C=10e-9\" overwrites the maximum concentation value for
+            species "S" and "C". The default value for all species is set with
+            --max-concentration.""")
 
     session.add_argument('--multistrand-timeout', type=float, default = 1.0, 
             metavar='<float>',
@@ -459,34 +503,51 @@ def add_kinda_args(parser):
     session.add_argument('--no-multiprocessing', action="store_true",
             help="""Switch off multiprocessing for Multistrand and NUPACK.""")
 
+    session.add_argument('--nupack-similarity-threshold', type=float, 
+            default = 0.51, metavar='<float>',
+            help="""Calculate complex probabilities (p-approximation) using this 
+            similarity threshold. Setting a higher threshold can lead to unexpected 
+            results for macrostates that contain more than one complex, as
+            (equally likely) transitions between the complexes along branch
+            migration domains are not part of this specification.  """)
+
     # System parameters
     system.add_argument('--macrostate-mode', action="store",
-            choices=('count-by-complex', 'count-by-domain', 'disassoc'),
+            choices=('ordered-complex', 'count-by-complex', 'count-by-domain'),
             default = None, 
-            help="""Use corresponding Multistrand macrostate model. If
+            help="""Use corresponding Multistrand macrostate model. 
+
+                (1) ordered-complex: A complex with strands in specific order.
+
+                (2) count-by-complex: Use p-approximation for complexes. That is,
+                  the number of correctly paired and unpaired bases(!) devided by
+                  total number of bases.
+
+                (3) count-by-domain: Use p-approximation for each domain. That
+                  is, the number of correctly paired and unpaired bases devided
+                  by total number of bases in that domain. 
+                
+            Use --multistrand-similarity-threshold to select if a given structure
+            is within the count-by-domain or count-by-complex macrostate.  If
             provided, overwrites both --start-macrostate-mode and
-            --stop-macrostate-mode.""")
+            --stop-macrostate-mode. Defaults are set there. """)
 
     system.add_argument('--start-macrostate-mode', action="store",
-            choices=('count-by-complex', 'count-by-domain', 'disassoc'),
-            default = 'disassoc', 
-            help="""Use corresponding Multistrand macrostate model for sampling
-            of initial conformation.""")
+            choices=('ordered-complex', 'count-by-complex', 'count-by-domain'),
+            default = 'ordered-complex', 
+            help="""Use corresponding Multistrand macrostate definition for
+            sampling of initial conformation.""")
 
     system.add_argument('--stop-macrostate-mode', action="store", 
-            choices=('count-by-complex', 'count-by-domain', 'disassoc'),
-            default = 'disassoc',
+            choices=('ordered-complex', 'count-by-complex', 'count-by-domain'),
+            default = 'ordered-complex', 
             help="""Stop a Multistrand simulation whenever a trajectory reaches
-            one of these possible macrostate definitions. 
-                - disassoc: A given set of ordered complexes.
-                - count-by-complex: Number of base-pairs in complex > th
-                - count-by-domain: Number of base-pairs per domain > th
-            where th = --similarity-threshold. """)
+            this macrostate definition. """)
 
-    system.add_argument('--similarity-threshold', type=float, 
+    system.add_argument('--multistrand-similarity-threshold', type=float, 
             default = 0.51, metavar='<float>',
-            help="""Similarity threshold to assign complexes to domain-level
-            macrostates.""")
+            help="""Similarity threshold to assign complexes to count-by-domain or 
+            count-by-complex macrostate-mode.""")
 
     system.add_argument('-T','--temperature', type=float, default=25, metavar='<float>',
             help="""Simulation temperature in Celsius.""")
