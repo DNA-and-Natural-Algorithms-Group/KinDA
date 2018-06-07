@@ -82,8 +82,16 @@ class MultistrandJob(object):
       MS_ERROR: -3,
       'overall': 0
     }
-    self._ms_results = {'valid': np.array([], dtype=np.int8), 'tags': np.array([], np.int64), 'times': np.array([])}
-    self._ms_results_buff = {'valid': np.array([], dtype=np.int8), 'tags': np.array([], np.int64), 'times': np.array([])}
+    self._ms_results = {
+        'valid': np.array([], dtype=np.int8), 
+        'tags': np.array([], np.int64), 
+        'times': np.array([])
+        }
+    self._ms_results_buff = {
+        'valid': np.array([], dtype=np.int8), 
+        'tags': np.array([], np.int64), 
+        'times': np.array([])
+        }
     self._ms_results_invalid = [] # extra information about invalid simulations, like timeouts
 
     self.total_sims = 0
@@ -169,6 +177,16 @@ class MultistrandJob(object):
       self._ms_results[k] = self._ms_results_buff[k]
       if len(v) > 0:
         np.copyto(self._ms_results_buff[k], v)
+    self.total_sims = len(self._ms_results['tags'])
+
+  def add_simulation_data(self, ms_results):
+    # copy data from ms_results to self._ms_results_buff, while preserving data types of
+    # numpy arrays in self._ms_results_buff
+    dim = len(ms_results['tags'])
+
+    for k,v in ms_results.iteritems():
+      self._ms_results_buff[k] = np.append(self._ms_results_buff[k], v)
+      self._ms_results[k] = self._ms_results_buff[k]
     self.total_sims = len(self._ms_results['tags'])
 
   def get_invalid_simulation_data(self):
@@ -259,7 +277,7 @@ class MultistrandJob(object):
     n = len(results)
 
     times = [r.time for r in results]
-    tags = [self._tag_id_dict[r.tag] for r in results]
+    tags  = [self._tag_id_dict[r.tag] for r in results]
     valid = [t!=self._tag_id_dict[MS_TIMEOUT] and t!=self._tag_id_dict[MS_ERROR] for t in tags]
 
     self._ms_results_buff['valid'][self.total_sims:self.total_sims+n] = valid
@@ -294,6 +312,9 @@ class MultistrandJob(object):
     """Runs simulations to reduce the error to rel_goal*mean or until max_sims is reached."""
 
     def status_func(batch_sims_done):
+      # Show updated mean and error based on finished simulations. Do not update the 
+      # Goal and exp_add_sims though, after all we don't want to bias these estimates
+      # toward fast reactions at runtime ...
       total_sims = self.total_sims
       total_success = (self._ms_results['tags']==self._tag_id_dict[reaction]).sum()
       total_timeout = total_sims - int((self._ms_results['valid']).sum())
@@ -308,9 +329,9 @@ class MultistrandJob(object):
       else :
         table_update_func([calc_mean(), calc_error(), goal, " |",
           "{:d}/{:d}".format(batch_sims_done, num_trials), 
-          "{:d}/{:d}".format(total_sims, exp_add_sims-batch_sims_done), 
+          "{:d}/{:d}".format(total_sims, max(0, exp_add_sims-batch_sims_done)), 
           "{}/{}/{}".format(total_success, total_failure, total_timeout), 
-          "{:d}%".format(100*total_sims/(total_sims+exp_add_sims-batch_sims_done))])
+          "{:3d}%".format(100*total_sims/(total_sims+max(0, exp_add_sims-batch_sims_done)))])
 
     def calc_mean():
       return self._stats_funcs[stat][0](self._tag_id_dict[reaction], self._ms_results)
@@ -334,18 +355,20 @@ class MultistrandJob(object):
           col_widths = [10, 10, 10, 4, 17, 17, 17, 10],
           col_format_specs = ['{:.4}', '{:.4}', '{:.4}', '{}',
             '{}', '{}', '{}', '{}'])
-      table_update_func([calc_mean(), error, goal, " |",
+      table_update_func([calc_mean(), error, goal, " |"
         "--/--", "--/--", "--/--/--", "--"])
 
     while not error < goal and num_sims < max_sims:
       # Estimate additional trials based on inverse square root relationship
       # between error and number of trials
-      if error == float('inf') or goal == 0.0:
+      if self.total_sims == 0 :
         num_trials = min(max_sims-num_sims, init_batch_size)
         exp_add_sims = None
+      elif error == float('inf') or goal == 0.0:
+        num_trials = min(max_sims-num_sims, max_batch_size)
+        exp_add_sims = None
       else:
-        reduction = error / goal
-        exp_add_sims = int(self.total_sims * (reduction**2 - 1) + 1)
+        exp_add_sims = int(self.total_sims * ((error / goal)**2 - 1) + 1)
         num_trials = max(min(max_batch_size, exp_add_sims, self.total_sims + 1), min_batch_size)
       num_trials = min(num_trials, max_sims - num_sims)
         

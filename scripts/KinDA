@@ -149,7 +149,7 @@ def calculate_all_complex_probabilities(KindaSystem, spurious, nsth, multip = Tr
         kwargs (dict): Arguments that are passed on to get_conformation_probs() of the
             kinda.statistics.stats.RestingSetRxnStats() object.
 
-    Doublecheck: Probability of the spurious conformation None.
+    Double check: Probability of the spurious conformation None.
     """
     ## Get resting sets from database, but don't do nothing yet
     restingsets = KindaSystem.get_restingsets(spurious = spurious)
@@ -180,9 +180,6 @@ def calculate_all_complex_probabilities(KindaSystem, spurious, nsth, multip = Tr
             for c in rms.complexes + [None]:
                 name = None if c is None else c.name
                 tot += rms_stats.get_conformation_prob(name, max_sims=0)
-                #print("# {}, {} +/- {}".format(name, 
-                #        rms_stats.get_conformation_prob(name, max_sims=0), 
-                #        rms_stats.get_conformation_prob_error(name, max_sims=0)))
             print("# Sum of probabilities: {}".format(tot))
 
 def calculate_all_reaction_rates(KindaSystem, unproductive, spurious, multip = True,
@@ -233,6 +230,114 @@ def calculate_all_reaction_rates(KindaSystem, unproductive, spurious, multip = T
         if (rxn_stats.get_num_sims() - num) and backup :
             export_data(KindaSystem, args.backup, use_pickle)
 
+def merge_databases(system, databases, use_pickle):
+    """Merges multiple database files 
+    
+    Returns: 
+        KinDA.System()
+    """
+    import numpy as np
+    if use_pickle:
+        import pickle
+    else:
+        import json
+
+    for db in databases:
+        print('importing {}'.format(db))
+        if use_pickle:
+            sstats_dict = pickle.load(open(db, "rb"))
+        else:
+            sstats_dict = json.load(open(db))
+
+        cx_to_id = {}
+        id_to_cx = {}
+        for cx_id, data in sstats_dict['complexes'].iteritems():
+            cx_to_id[data['name']] = cx_id
+            id_to_cx[cx_id] = data['name']
+
+        rs_to_id = {}
+        id_to_rs = {}
+        for rs_id, data in sstats_dict['resting-sets'].iteritems():
+            rs_to_id[data['name']] = rs_id
+            id_to_rs[rs_id] = data['name']
+
+        cx_to_cx = dict((cplx.name, cplx) for cplx in system._complexes)
+        cx_to_rs = dict((cplx.name, rset) \
+                for rset in system._restingsets for cplx in rset.complexes)
+
+        for rs_id, data in sstats_dict['resting-set-stats'].iteritems():
+            # now we need to add the conformation probability data to the RestingSetStats
+            #print(rs_id)
+            rs = cx_to_rs[id_to_rs[rs_id]]
+            stats = system.get_stats(rs)
+            if stats is None:
+                raise Exception("Cannot find resting set: {}".format(rs))
+            # Now dig into the rabbit hole:
+            # Extract the NupackSampleJob from RestingSetStats and add the raw data.
+            nupackjob = stats.get_nupackjob()
+            num_sims = 0
+            for key, val in data.iteritems():
+                if key == 'similarity_threshold':
+                    threshold = val
+                elif key == 'c_max':
+                    stats.c_max = val
+                else:
+                    cx = cx_to_cx[id_to_cx[key]]
+                    tot_data = list(nupackjob.get_complex_prob_data(complex_name = cx.name))
+                    tot_data += list(val['similarity_data'])
+                    nupackjob.set_complex_prob_data(cx.name, tot_data)
+                    #NOTE: I think it should be += here
+                    num_sims = len(val['similarity_data'])
+                    #print(rs, cx, num_sims)
+            nupackjob.total_sims += num_sims
+            stats.set_similarity_threshold(threshold)
+ 
+        rxn_to_id = {}
+        id_to_rxn = {}
+        for rxn_id, data in sstats_dict['reactions'].iteritems():
+            rxn_to_id['name'] = rxn_id
+            id_to_rxn[rxn_id] = data['name']
+
+        con_to_id = {}
+        id_to_con = {}
+        for con_id, data in sstats_dict['resting-set-reactions'].iteritems():
+            con_to_id['name'] = con_id
+            id_to_con[con_id] = data['name']
+
+        rxn_to_obj = dict((x.name, x) for x in system._condensed_reactions)
+        
+        seen = set()
+        for con_id, data in sstats_dict['resting-set-reaction-stats'].iteritems():
+            #print('con_id', con_id)
+            rxnobj = rxn_to_obj[id_to_con[con_id]]
+            stats = system.get_stats(rxnobj)
+            if stats == None:
+                raise Exception("Cannot find resting set reaction: {}".format(rxn))
+
+            if tuple(sorted(rxnobj.reactants)) in seen:
+                continue
+
+            seen.add(tuple(sorted(rxnobj.reactants)))
+
+            # Now dig into the rabbit hole:
+            # Extract the MultistrandJob for the given start condition and add the data.
+            multijob = stats.get_multistrandjob()
+            assert stats.multijob_tag == data['tag'] # reaction description
+
+            num_sims = len(data['simulation_data']['tags'])
+            sim_data = {key:np.array(d) for key,d in data['simulation_data'].iteritems()}
+
+            multijob.add_simulation_data(sim_data) # adds the data.
+
+            if multijob.get_invalid_simulation_data():
+                raise NotImplementedError('remove this line')
+                inval = multijob.get_invalid_simulation_data()
+                inval += data['invalid_simulation_data']
+            else :
+                inval = data['invalid_simulation_data']
+
+            multijob.set_invalid_simulation_data(inval)
+
 def main(args):
     """Calculate DSD system parameters using Mulstistrand and NUPACK.
 
@@ -240,8 +345,8 @@ def main(args):
     derived parameters from every calculation so far, and updates them whenever
     new values or smaller error bars are requested.
 
-    We destinguish "system paramters", which have to be consisten when
-    restoring data from a previously created database file (e.g. temperatur,
+    We distinguish "system parameters", which have to be consistent when
+    restoring data from a previously created database file (e.g. temperature,
     material, etc.) and "session parameters", which can be changed freely (e.g.
     error goals, parallelization, etc.).
 
@@ -259,7 +364,7 @@ def main(args):
     # Import/Export
     if args.database:
         if (args.restore_json or args.backup_json or args.restore or args.backup):
-            raise SystemExit('You may not specify any other I/O paramters when using --database.')
+            raise SystemExit('You may not specify any other I/O parameters when using --database.')
         args.restore = args.backup = args.database
 
     import_pickle = False if args.restore_json else True
@@ -295,31 +400,29 @@ def main(args):
 
         KindaSystem = import_data(args.restore, import_pickle)
 
+        session_params = set(['nupack_multiprocessing', 'multistrand_multiprocessing', 
+                'nupack_similarity_threshold', 'max_concentration'])
+
         for k,v in KindaSystem.initialization_params['kinda_params'].items():
             if k not in kparams:
-                print("# WARNING: Using undefined library paramter: {} = {} ".format(k, v))
-            elif k == 'nupack_multiprocessing' or k == 'multistrand_multiprocessing':
-                pass
-            elif k == 'nupack_similarity_threshold':
-                pass
-                #print("# WARNING: Using updated KinDA session paramter: {} = {}".format(k, v))
-            elif k == 'max_concentration':
+                print("# WARNING: Using undefined library parameter: {} = {} ".format(k, v))
+            elif k in session_params:
                 pass
             elif v != kparams[k]:
                 print("# WARNING: recovered system uses",
-                        "different KinDA paramter: {} = {}".format(k, v))
+                        "different KinDA parameter: {} = {}".format(k, v))
         for k,v in KindaSystem.initialization_params['multistrand_params'].items():
             if k not in mparams:
-                print("# WARNING: Using undefined Multistrand paramter: {} = {} ".format(k, v))
+                print("# WARNING: Using undefined Multistrand parameter: {} = {} ".format(k, v))
             elif v != mparams[k]:
                 print("# WARNING: recovered system uses",
-                        "different Multistrand paramter: {} = {}".format(k, v))
+                        "different Multistrand parameter: {} = {}".format(k, v))
         for k,v in KindaSystem.initialization_params['nupack_params'].items():
             if k not in nparams:
-                print("# WARNING: Using undefined NUPACK paramter: {} = {} ".format(k, v))
+                print("# WARNING: Using undefined NUPACK parameter: {} = {} ".format(k, v))
             elif v != nparams[k]:
                 print("# WARNING: recovered system uses",
-                        "different NUPACK paramter: {} = {}".format(k, v))
+                        "different NUPACK parameter: {} = {}".format(k, v))
 
     else :
         if not systeminput :
@@ -332,7 +435,7 @@ def main(args):
             raise SystemExit('ERROR: No complexes found.')
         elif not (det and rss and con): 
             if args.verbose:
-                print('# Enumerating using peppercornenumerator-{} with default paramters.'.format(
+                print('# Enumerating using peppercornenumerator-{} with default parameters.'.format(
                     peppercornenumerator.__version__))
             pilstring = peppercorn(systeminput, args.input_filename is not None)
             cxs, det, rss, con = read_pil(pilstring, is_file=False)
@@ -342,22 +445,15 @@ def main(args):
         KindaSystem = kinda.System(cxs, rss, det, con, enumeration = False, 
                 kinda_params = kparams, multistrand_params = mparams, nupack_params = nparams)
 
-        if args.database and os.path.exists(args.database):
-            # Always needs to load the full database, independent on which
-            # reactions have been specified as input. If less reactions are given,
-            # then we need to make sure that only these reactions are actually
-            # quried later.  If more reactions are given, then that just means we
-            # extend the database.
-            if args.verbose:
-                print('# Importing data from {}.'.format(args.database))
-            raise NotImplementedError('need to merge updates')
-            import_system(KindaSystem, args.database)
+    if args.merge:
+        print('# Merging results from given database files:')
+        merge_databases(KindaSystem, args.merge, import_pickle)
 
     # Now that we have the Kinda System setup, we can do two things:
-    #   1) calculate probabilites of being in a particular resting complex using Nupack
+    #   1) calculate probabilities of being in a particular resting complex using NUPACK
     #   2) calculate reaction rates using Multistrand
 
-    # Update complex concentration paramters...
+    # Update complex concentration parameters...
     c_max = dict(term.split('=') for term in args.c_max) if args.c_max else dict()
     if args.verbose:
         print("\n# Setting maximum concentrations")
@@ -384,6 +480,8 @@ def main(args):
     calculate_all_reaction_rates(KindaSystem, unproductive, spurious, not args.no_multiprocessing,
             args.backup, args.verbose, export_pickle, **rparams)
    
+    if args.backup and not os.path.exists(args.backup):
+        export_data(KindaSystem, args.backup, export_pickle)
     if args.verbose and args.backup:
         print("\n# Results stored in {} using {} format.".format(args.backup,
             'PICKLE' if export_pickle else 'JSON'))
@@ -403,13 +501,13 @@ def main(args):
 def add_kinda_args(parser):
     interface = parser.add_argument_group('KinDA I/O parameters')
     session   = parser.add_argument_group('KinDA session parameters')
-    system    = parser.add_argument_group('KinDA system paramters')
+    system    = parser.add_argument_group('KinDA system parameters')
 
     parser.add_argument('--version', action='version', version='%(prog)s ' + kinda.__version__)
     parser.add_argument( '-v', '--verbose', action='count', default=0,
         help="Print more output (-vv for extra debugging information)")
 
-    # I/O paramters
+    # I/O parameters
     interface.add_argument('input_filename', default=None, nargs='?', metavar='<str>',
             help="Path to the input file.")
 
@@ -435,6 +533,11 @@ def add_kinda_args(parser):
 
     interface.add_argument('--force', action='store_true',
         help="""Overwrite existing files.""")
+
+    interface.add_argument('--merge', default=None, nargs='+', metavar='<str>',
+        help="""Merge a list of database files into your primary analysis
+        setup.  Be careful, there (intentionally) no sanity checks for system
+        parameters of merged databases. """)
 
     # Session parameters
     session.add_argument('--unproductive-reactions', action='store_true',
@@ -462,10 +565,10 @@ def add_kinda_args(parser):
             --prob-max-sims. --max-sims 0 will turn off all simulations.""")
 
     session.add_argument('--rate-max-sims', type=int, default = 1000, metavar='<int>',
-            help="""Maxum number of Multistrand simulations for this Session.""")
+            help="""Maximum number of Multistrand simulations for this Session.""")
 
     session.add_argument('--prob-max-sims', type=int, default = 1000, metavar='<int>',
-            help="""Maxum number of NUPACK simulations for this Session.""")
+            help="""Maximum number of NUPACK simulations for this Session.""")
 
     session.add_argument('--rate-batch-size', type=int, nargs=3, 
             default = [40, 80, 400], metavar='<int>',
@@ -475,8 +578,8 @@ def add_kinda_args(parser):
                 - Second argument: initial batch size 
                 - Third argument: maximum batch size 
 
-            When using multiple cores, the batch size is devided by the number
-            of cores.  A smaller batch size can lead to slower runtime when
+            When using multiple cores, the batch size is divided by the number
+            of cores.  A smaller batch size can lead to slower run time when
             using multiple cores, as all parallel jobs have to finish in order
             to determine whether a new batch gets submitted. A large batch size
             can lead to excess work in order to reach your error goals.""")
@@ -492,7 +595,7 @@ def add_kinda_args(parser):
 
     session.add_argument("--c-max", nargs='+', metavar='<str>=<flt>',
             help="""Vector of maximum restingset concentrations.  E.g. \"--c-max
-            S=100e-9 C=10e-9\" overwrites the maximum concentation value for
+            S=100e-9 C=10e-9\" overwrites the maximum concentration value for
             species "S" and "C". The default value for all species is set with
             --max-concentration.""")
 
@@ -520,11 +623,11 @@ def add_kinda_args(parser):
                 (1) ordered-complex: A complex with strands in specific order.
 
                 (2) count-by-complex: Use p-approximation for complexes. That is,
-                  the number of correctly paired and unpaired bases(!) devided by
+                  the number of correctly paired and unpaired bases(!) divided by
                   total number of bases.
 
                 (3) count-by-domain: Use p-approximation for each domain. That
-                  is, the number of correctly paired and unpaired bases devided
+                  is, the number of correctly paired and unpaired bases divided
                   by total number of bases in that domain. 
                 
             Use --multistrand-similarity-threshold to select if a given structure

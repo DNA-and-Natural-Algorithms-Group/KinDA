@@ -304,7 +304,9 @@ class NupackSampleJob(object):
       # Prepare progress table
       update_func = print_progress_table(
           ["complex", "prob", "error", "err goal", " |", "batch sims", "done/needed", "S/F", "progress"],
-          [11, 10, 10, 10, 4, 15, 15, 12, 10], skip_header = True if verbose == 1 else False)
+          col_widths = [11, 10, 10, 10, 4, 15, 15, 12, 10], 
+          col_format_specs = ['{}', '{:.6f}', '{:1.4g}', '{:1.4g}', '{}', '{}', '{}', '{}', '{}'],
+          skip_header = True if verbose == 1 else False)
       update_func([complex_name, prob, error, goal, " |", "--/--", "--/--", "--/--", "--"])
 
     # Run simulations
