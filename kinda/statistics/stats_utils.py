@@ -664,6 +664,9 @@ def _import_data_convert_version(sstats_dict, version):
       invalid_idxs = filter(lambda i:data['simulation_data']['valid'][i]==0, range(len(data['simulation_data']['valid'])))
       data['invalid_simulation_data'] = [{'simulation_index': i} for i in invalid_idxs]
     sstats_dict['version'] = 'v0.1.11'
+  elif major == 0 and minor == 1 and subminor <= 11:
+    # placeholder, no special handling needed
+    sstats_dict['version'] = 'v0.1.12'
 
   return sstats_dict
     
