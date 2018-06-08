@@ -6,6 +6,7 @@ kinda_params = {
   'multistrand_multiprocessing': True,
   'nupack_multiprocessing': True,
   'enable_unimolecular_reactions': False,
+  'unimolecular_k1_scale': 1000,  # any value >= 1000 should be sufficient
   'max_concentration': 1e-7  # Provides a default max concentration for each resting set, used for system-level scores
 }
 

@@ -115,6 +115,7 @@ def make_RestingSetRxnStats(restingsets, detailed_rxns, condensed_rxns, kinda_pa
       job = FirstPassageTimeModeJob(
           reactants,
           stop_conditions,
+          unimolecular_k1_scale = kinda_params['unimolecular_k1_scale'],
           boltzmann_selectors = boltzmann_selectors,
           multiprocessing = multiprocessing,
           multistrand_params = multistrand_params
@@ -518,10 +519,10 @@ def export_data(sstats, filepath):
     sim_data = {key: d.tolist() for key,d in stats.get_simulation_data().iteritems()}
     if len(rsrxn.reactants) == 2:
       rsrxnstats_to_dict[rsrxn_to_id[rsrxn]] = {
-        'prob': '{0} +/- {1}'.format(stats.get_prob(1, max_sims = 0), stats.get_prob_error(max_sims=0)),
-        'kcoll': '{0} +/- {1}'.format(stats.get_kcoll(1, max_sims = 0), stats.get_kcoll_error(max_sims=0)),
-        'k1': '{0} +/- {1}'.format(stats.get_k1(1, max_sims = 0), stats.get_k1_error(max_sims=0)),
-        'k2': '{0} +/- {1}'.format(stats.get_k2(1, max_sims = 0), stats.get_k2_error(max_sims=0)),
+        'prob': '{0} +/- {1}'.format(stats.get_prob(max_sims = 0), stats.get_prob_error(max_sims=0)),
+        'kcoll': '{0} +/- {1}'.format(stats.get_kcoll(max_sims = 0), stats.get_kcoll_error(max_sims=0)),
+        'k1': '{0} +/- {1}'.format(stats.get_k1(max_sims = 0), stats.get_k1_error(max_sims=0)),
+        'k2': '{0} +/- {1}'.format(stats.get_k2(max_sims = 0), stats.get_k2_error(max_sims=0)),
         'simulation_data': sim_data,
         'invalid_simulation_data': stats.get_invalid_simulation_data(),
         'tag': stats.multijob_tag
@@ -529,7 +530,8 @@ def export_data(sstats, filepath):
     elif len(rsrxn.reactants) == 1:
       rsrxnstats_to_dict[rsrxn_to_id[rsrxn]] = {
         'prob': '{0} +/- {1}'.format(stats.get_prob(max_sims = 0), stats.get_prob_error(max_sims=0)),
-        'k': '{0} +/- {1}'.format(stats.get_k(max_sims = 0), stats.get_k_error(max_sims=0)),
+        'k1': '{0} +/- {1}'.format(stats.get_k1(max_sims = 0), stats.get_k1_error(max_sims=0)),
+        'k2': '{0} +/- {1}'.format(stats.get_k2(max_sims = 0), stats.get_k2_error(max_sims=0)),
         'simulation_data': sim_data,
         'invalid_simulation_data': stats.get_invalid_simulation_data(),
         'tag': stats.multijob_tag
