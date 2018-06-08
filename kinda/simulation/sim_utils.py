@@ -218,17 +218,21 @@ class uni_k1_mean(object):
   def __init__(self, unimolecular_k1_scale):
     self.unimolecular_k1_scale = unimolecular_k1_scale
   def __call__(self, success_tag, ms_results):
-    return bernoulli_mean(success_tag, ms_results) * uni_kfast(ms_results, self.unimolecular_k1_scale)
+    return float(bernoulli_mean(success_tag, ms_results) * uni_kfast(ms_results, self.unimolecular_k1_scale))
 class uni_k1_std(object):
   def __init__(self, unimolecular_k1_scale):
     self.unimolecular_k1_scale = unimolecular_k1_scale
   def __call__(self, success_tag, ms_results):
-    return bernoulli_error(success_tag, ms_results) * uni_kfast(ms_results, self.unimolecular_k1_scale)
+    err = bernoulli_error(success_tag, ms_results) * uni_kfast(ms_results, self.unimolecular_k1_scale)
+    if math.isnan(err):  return float('inf')
+    else:  return float(err)
 class uni_k1_error(object):
   def __init__(self, unimolecular_k1_scale):
     self.unimolecular_k1_scale = unimolecular_k1_scale
   def __call__(self, success_tag, ms_results):
-    return bernoulli_error(success_tag, ms_results) * uni_kfast(ms_results, self.unimolecular_k1_scale)
+    err = bernoulli_error(success_tag, ms_results) * uni_kfast(ms_results, self.unimolecular_k1_scale)
+    if math.isnan(err):  return float('inf')
+    else:  return float(err)
 
 def uni_k2_mean(success_tag, ms_results):
   return rate_mean(success_tag, ms_results)
