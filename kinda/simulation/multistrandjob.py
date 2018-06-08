@@ -361,7 +361,7 @@ class MultistrandJob(object):
 
 class FirstPassageTimeModeJob(MultistrandJob):
   
-  def __init__(self, start_state, stop_conditions, **kargs):
+  def __init__(self, start_state, stop_conditions, unimolecular_k1_scale = 1000, **kargs):
       
     super(FirstPassageTimeModeJob, self).__init__(start_state,
                                                   stop_conditions,
@@ -377,6 +377,13 @@ class FirstPassageTimeModeJob(MultistrandJob):
     self._tag_id_dict.update((t,i) for i,t in enumerate(sorted(self.tags)))
     
     self._stats_funcs['prob'] = (sim_utils.bernoulli_mean, sim_utils.bernoulli_std, sim_utils.bernoulli_error)
+    self._stats_funcs['k1'] = (
+        sim_utils.uni_k1_mean(unimolecular_k1_scale), # these are actually classes so they can be picklable
+        sim_utils.uni_k1_std(unimolecular_k1_scale),  # I should probably rethink the whole organization
+        sim_utils.uni_k1_error(unimolecular_k1_scale) # of all the stats functions
+    )
+    self._stats_funcs['k2'] = (sim_utils.uni_k2_mean, sim_utils.uni_k2_std, sim_utils.uni_k2_error)
+
   
   def process_results(self, ms_options):
     results = ms_options.interface.results

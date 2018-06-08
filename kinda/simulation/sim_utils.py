@@ -202,3 +202,41 @@ def k2_error(success_tag, ms_results):
     return float(time_err / time_mean**2)
   else:
     return float('inf')
+
+def uni_kfast(ms_results, unimolecular_k1_scale):
+  tags_set = set(ms_results['tags'])
+  k2_all = [uni_k2_mean(t, ms_results) for t in tags_set]
+  p_all = [bernoulli_mean(t, ms_results) for t in tags_set]
+  kfast_all = [k2/p for k2,p in zip(k2_all, p_all) if not math.isnan(k2)]
+  if len(kfast_all) > 0:
+    return unimolecular_k1_scale * max(kfast_all)
+  else:
+    return float('nan')
+
+# this is super ugly because damn pickling again
+class uni_k1_mean(object):
+  def __init__(self, unimolecular_k1_scale):
+    self.unimolecular_k1_scale = unimolecular_k1_scale
+  def __call__(self, success_tag, ms_results):
+    return float(bernoulli_mean(success_tag, ms_results) * uni_kfast(ms_results, self.unimolecular_k1_scale))
+class uni_k1_std(object):
+  def __init__(self, unimolecular_k1_scale):
+    self.unimolecular_k1_scale = unimolecular_k1_scale
+  def __call__(self, success_tag, ms_results):
+    err = bernoulli_error(success_tag, ms_results) * uni_kfast(ms_results, self.unimolecular_k1_scale)
+    if math.isnan(err):  return float('inf')
+    else:  return float(err)
+class uni_k1_error(object):
+  def __init__(self, unimolecular_k1_scale):
+    self.unimolecular_k1_scale = unimolecular_k1_scale
+  def __call__(self, success_tag, ms_results):
+    err = bernoulli_error(success_tag, ms_results) * uni_kfast(ms_results, self.unimolecular_k1_scale)
+    if math.isnan(err):  return float('inf')
+    else:  return float(err)
+
+def uni_k2_mean(success_tag, ms_results):
+  return rate_mean(success_tag, ms_results)
+def uni_k2_std(success_tag, ms_results):
+  return rate_std(success_tag, ms_results)
+def uni_k2_error(success_tag, ms_results):
+  return rate_error(success_tag, ms_results)
