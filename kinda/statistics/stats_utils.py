@@ -53,14 +53,23 @@ def make_RestingSetRxnStats(restingsets, detailed_rxns, condensed_rxns, kinda_pa
   
   # Determine all possible sets of reactants
   # Each reaction may have 1 or 2 reactants
-  all_reactants = set(
-      [
-          tuple(sorted([r1, r2], key = lambda rs: rs.id))
-          for r1, r2
-          in it.product(restingsets, restingsets)
-      ] +
-      [(r,) for r in restingsets]
-  )
+  if kinda_params['enable_unimolecular_reactions']:
+    all_reactants = set(
+        [
+            tuple(sorted([r1, r2], key = lambda rs: rs.id))
+            for r1, r2
+            in it.product(restingsets, restingsets)
+        ] +
+        [(r,) for r in restingsets]
+    )
+  else:
+    all_reactants = set(
+        [
+            tuple(sorted([r1,r2], key = lambda rs: rs.id))
+            for r1, r2
+            in it.product(restingsets, restingsets)
+        ]
+    )
   
   # Make a Multistrand simulation job for each reactant group
   reactants_to_mjob = {}
