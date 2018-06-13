@@ -115,6 +115,7 @@ def make_RestingSetRxnStats(restingsets, detailed_rxns, condensed_rxns,
       job = FirstPassageTimeModeJob(
           reactants,
           stop_conditions,
+          unimolecular_k1_scale = kinda_params['unimolecular_k1_scale'],
           boltzmann_selectors = boltzmann_selectors,
           multiprocessing = multiprocessing,
           multistrand_params = multistrand_params
@@ -543,7 +544,8 @@ def export_data(sstats, filepath, use_pickle = False):
     elif len(rsrxn.reactants) == 1:
       rsrxnstats_to_dict[rsrxn_to_id[rsrxn]] = {
         'prob': '{0} +/- {1}'.format(stats.get_prob(max_sims = 0), stats.get_prob_error(max_sims=0)),
-        'k': '{0} +/- {1}'.format(stats.get_k(max_sims = 0), stats.get_k_error(max_sims=0)),
+        'k1': '{0} +/- {1}'.format(stats.get_k1(max_sims = 0), stats.get_k1_error(max_sims=0)),
+        'k2': '{0} +/- {1}'.format(stats.get_k2(max_sims = 0), stats.get_k2_error(max_sims=0)),
         'simulation_data': sim_data,
         'invalid_simulation_data': stats.get_invalid_simulation_data(),
         'tag': stats.multijob_tag
@@ -701,6 +703,9 @@ def _import_data_convert_version(sstats_dict, version):
       invalid_idxs = filter(lambda i:data['simulation_data']['valid'][i]==0, range(len(data['simulation_data']['valid'])))
       data['invalid_simulation_data'] = [{'simulation_index': i} for i in invalid_idxs]
     sstats_dict['version'] = 'v0.1.11'
+  elif major == 0 and minor == 1 and subminor <= 11:
+    # placeholder, no special handling needed
+    sstats_dict['version'] = 'v0.1.12'
 
   return sstats_dict
     

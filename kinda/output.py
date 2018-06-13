@@ -1,6 +1,6 @@
 from __future__ import absolute_import
 
-def write_pil(KindaSystem, pil, spurious=False, unproductive=False):
+def write_pil(KindaSystem, pil, spurious=False, unproductive=False, molarity='M', time='s', prefix=None):
     """Write the KindaSystem object into a proper *.pil format.
 
     Args:
@@ -12,6 +12,41 @@ def write_pil(KindaSystem, pil, spurious=False, unproductive=False):
     NOTE: Eventually, this function should return more than just the CRN. That 
         means info about domains, complexes, strands (ugh), etc.
     """
+
+    I = 0 # counts number of intermediate species.
+
+    def format_rate_units(rate, arity, molarity, time):
+        """ Reaction objects *always* specify rate in /M and /s.
+        """
+        if time == 's':
+            pass
+        elif time == 'm':
+            rate *= 60
+        elif time == 'h':
+            rate *= 3600
+        else :
+            raise NotImplementedError
+    
+        if molarity == 'M':
+            pass
+        elif molarity == 'mM':
+            if arity[0] > 1:
+                factor = arity[0] - 1
+                rate /= (factor * 1e3)
+        elif molarity == 'uM':
+            if arity[0] > 1:
+                factor = arity[0] - 1
+                rate /= (factor * 1e6)
+        elif molarity == 'nM':
+            if arity[0] > 1:
+                factor = arity[0] - 1
+                rate /= (factor * 1e9)
+        else :
+            raise NotImplementedError
+    
+        return rate
+
+
     pil.write('\n# Condensed reactions\n')
     for rxn in KindaSystem.get_reactions(spurious=spurious, unproductive=unproductive):
         stats = KindaSystem.get_stats(rxn)
@@ -23,23 +58,34 @@ def write_pil(KindaSystem, pil, spurious=False, unproductive=False):
 
         reactants = map(lambda x:x.name, rxn.reactants)
         products  = map(lambda x:x.name, rxn.products)
+        if prefix :
+            inter = prefix + str(I)
+        else :
+            inter = '_'.join(sorted(reactants) + ['to'] + sorted(products))
 
         if k_1 > 0 and k_2 > 0 :
             pil.write('reaction [k1 = {:12g} +/- {:12g} {:4s}] {} -> {}\n'.format(
-                float(k_1), float(k_1_err), '/M/s',
-                ' + '.join(reactants), '_'.join(reactants)))
+                format_rate_units(k_1, (len(reactants), 1), molarity, time), 
+                format_rate_units(k_1_err, (len(reactants), 1), molarity, time), 
+                '/{}'.format(molarity)*len(reactants)+'/s',
+                ' + '.join(reactants), inter))
 
             pil.write('reaction [k2 = {:12g} +/- {:12g} {:4s}] {} -> {}\n'.format(
-                float(k_2), float(k_2_err), '/s',
-                '_'.join(reactants), ' + '.join(products)))
+                format_rate_units(k_2, (1,len(products)), molarity, time), 
+                format_rate_units(k_2_err, (1,len(products)), molarity, time), '/s',
+                inter, ' + '.join(products)))
         else :
             pil.write('# reaction [k1 = {:12g} +/- {:12g} {:4s}] {} -> {}\n'.format(
-                float(k_1), float(k_1_err), '/M/s',
-                ' + '.join(reactants), '_'.join(reactants)))
+                format_rate_units(k_1, (len(reactants), 1), molarity, time), 
+                format_rate_units(k_1_err, (len(reactants), 1), molarity, time), 
+                '/{}'.format(molarity)*len(reactants)+'/s',
+                ' + '.join(reactants), inter))
 
             pil.write('# reaction [k2 = {:12g} +/- {:12g} {:4s}] {} -> {}\n'.format(
-                float(k_2), float(k_2_err), '/s',
-                '_'.join(reactants), ' + '.join(products)))
+                format_rate_units(k_2, (1,len(products)), molarity, time), 
+                format_rate_units(k_2_err, (1,len(products)), molarity, time), '/s',
+                inter, ' + '.join(products)))
+        I += 1
 
     pil.write('\n# Resting macrostate probabilities\n')
     restingsets = KindaSystem.get_restingsets(spurious=spurious)

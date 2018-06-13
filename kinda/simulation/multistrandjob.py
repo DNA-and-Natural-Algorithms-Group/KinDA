@@ -309,29 +309,47 @@ class MultistrandJob(object):
       sims_per_update = 1, 
       sims_per_worker = 1,
       verbose = 0):
-    """Runs simulations to reduce the error to rel_goal*mean or until max_sims is reached."""
+    """Stochastic simulations to reduce the error to rel_goal*mean or until max_sims is reached.
+    
+    Args:
+      rel_goal (float): The realtive error goal.
+      max_sims (int): Maximal number of sampled conformations.
+      reaction (string, optional): The tag of the reaction.
+      stat (string, optional): The statistics to be collected. 
+      init_batch_size (int, optional): Batch size for sampling when no data 
+        has been collected.
+      min_batch_size (int, optional): Minimum batch size for sampling before
+        new error-bars are calculated.  
+      max_batch_size (int, optional): Maximum batch size for sampling before 
+        new error-bars are calculated.
+      verbose (int, optional): Print a progress table. 0: silent mode,
+        1: print the rows of a table. 2: print header and rows of a table,
+        3: start a new row for every new batch. 4: start a new row whenever
+        there is new data available. Defaults to 2.
+    """
 
-    def status_func(batch_sims_done):
+    def status_func(batch_sims_done, inline=True):
       # Show updated mean and error based on finished simulations. Do not update the 
       # Goal and exp_add_sims though, after all we don't want to bias these estimates
       # toward fast reactions at runtime ...
+      if verbose > 3: inline = False
       total_sims = self.total_sims
       total_success = (self._ms_results['tags']==self._tag_id_dict[reaction]).sum()
       total_timeout = total_sims - int((self._ms_results['valid']).sum())
       total_failure = total_sims - total_success - total_timeout
 
       if exp_add_sims is None:
-        table_update_func([calc_mean(), calc_error(), goal, " |",
+        table_update_func([mean, error, goal, " |",
           "{:d}/{:d}".format(batch_sims_done, num_trials), 
           "{:d}/--".format(total_sims), 
           "{}/{}/{}".format(total_success, total_failure, total_timeout), 
-          "0%"])
+          "      {}".format('--')], inline) 
       else :
-        table_update_func([calc_mean(), calc_error(), goal, " |",
+        table_update_func([mean, error, goal, " |",
           "{:d}/{:d}".format(batch_sims_done, num_trials), 
           "{:d}/{:d}".format(total_sims, max(0, exp_add_sims-batch_sims_done)), 
           "{}/{}/{}".format(total_success, total_failure, total_timeout), 
-          "{:3d}%".format(100*total_sims/(total_sims+max(0, exp_add_sims-batch_sims_done)))])
+          "est{:4d}%".format(100*total_sims/(total_sims+max(0, exp_add_sims-batch_sims_done)))], inline)
 
     def calc_mean():
       return self._stats_funcs[stat][0](self._tag_id_dict[reaction], self._ms_results)
@@ -340,7 +358,8 @@ class MultistrandJob(object):
 
     num_sims = 0
     error = calc_error()
-    goal = rel_goal * calc_mean()
+    mean = calc_mean()
+    goal = rel_goal * mean
 
     if verbose:
       if verbose > 1:
@@ -350,12 +369,10 @@ class MultistrandJob(object):
           print '#    [MULTIPROCESSING OFF]'
 
       table_update_func = sim_utils.print_progress_table(
-          [stat, "error", "err goal", " |", 
-            "batch sims", "done/needed", "S/F/T", "progress"],
-          col_widths = [10, 10, 10, 4, 17, 17, 17, 10],
-          col_format_specs = ['{:.4}', '{:.4}', '{:.4}', '{}',
-            '{}', '{}', '{}', '{}'])
-      table_update_func([calc_mean(), error, goal, " |"
+          [stat, "error", "err goal", " |", "batch sims", "done/needed", "S/F/T", "progress"],
+          col_widths = [10, 10, 10, 4, 17, 17, 17, 9],
+          col_format_specs = ['{:.4}', '{:.4}', '{:.4}', '{}', '{}', '{}', '{}', '{}'])
+      table_update_func([mean, error, goal, " |"
         "--/--", "--/--", "--/--/--", "--"])
 
     while not error < goal and num_sims < max_sims:
@@ -378,11 +395,12 @@ class MultistrandJob(object):
           sims_per_worker = sims_per_worker, 
           status_func = status_func if verbose else lambda x: None)
       if verbose:
-        status_func(num_trials)
+        status_func(num_trials, inline=(verbose <= 2))
 
       num_sims += num_trials
       error = calc_error()
-      goal = rel_goal * calc_mean()
+      mean = calc_mean()
+      goal = rel_goal * mean
 
     total_sims = self.total_sims
     total_success = (self._ms_results['tags']==self._tag_id_dict[reaction]).sum()
@@ -396,21 +414,21 @@ class MultistrandJob(object):
 
     if verbose:
       if exp_add_sims is None:
-        table_update_func([calc_mean(), error, goal, " |",
+        table_update_func([mean, error, goal, " |",
           "{:d}/{:d}".format(num_sims, max_sims), 
           "{:d}/--".format(total_sims), 
           "{:d}/{:d}/{:d}".format(total_success, total_failure, total_timeout), 
-          "0%"], inline=False) 
+          "      {}".format('--')], inline=False) 
       else :
         table_update_func([calc_mean(), error, goal, " |",
           "{:d}/{:d}".format(num_sims, max_sims), 
           "{:d}/{:d}".format(total_sims, exp_add_sims), 
           "{:d}/{:d}/{:d}".format(total_success, total_failure, total_timeout), 
-          "{:3d}%".format(100*total_sims/(total_sims+exp_add_sims))], inline=False) 
+          "{:7d}%".format(100*total_sims/(total_sims+exp_add_sims))], inline=False) 
 
 class FirstPassageTimeModeJob(MultistrandJob):
   
-  def __init__(self, start_state, stop_conditions, **kargs):
+  def __init__(self, start_state, stop_conditions, unimolecular_k1_scale = 1000, **kargs):
       
     super(FirstPassageTimeModeJob, self).__init__(start_state,
                                                   stop_conditions,
@@ -426,6 +444,13 @@ class FirstPassageTimeModeJob(MultistrandJob):
     self._tag_id_dict.update((t,i) for i,t in enumerate(sorted(self.tags)))
     
     self._stats_funcs['prob'] = (sim_utils.bernoulli_mean, sim_utils.bernoulli_std, sim_utils.bernoulli_error)
+    self._stats_funcs['k1'] = (
+        sim_utils.uni_k1_mean(unimolecular_k1_scale), # these are actually classes so they can be picklable
+        sim_utils.uni_k1_std(unimolecular_k1_scale),  # I should probably rethink the whole organization
+        sim_utils.uni_k1_error(unimolecular_k1_scale) # of all the stats functions
+    )
+    self._stats_funcs['k2'] = (sim_utils.uni_k2_mean, sim_utils.uni_k2_std, sim_utils.uni_k2_error)
+
   
   def process_results(self, ms_options):
     results = ms_options.interface.results

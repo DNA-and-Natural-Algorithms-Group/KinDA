@@ -247,27 +247,35 @@ class NupackSampleJob(object):
       init_batch_size = 50, 
       min_batch_size = 50, 
       max_batch_size = 1000,
-      verbose = 0):
-    """ Continue querying Nupack for secondary structures sampled from the Boltzmann distribution
+      verbose = 2):
+    """Stochastic sampling of secondary structures until the error-bars are satisified.
+
+    Querys NUPACK for secondary structures sampled from the Boltzmann distribution
     until the standard error of the estimated probability for the given complex_name
     is at most rel_goal*complex_prob, or max_sims conformations have been sampled.
     If no complex_name is given, the halting condition is based on the error
     for the spurious conformation probability.
 
-    num_trials = is the batch size. This value is always between min and max
-      batch size, it starts with initial batch size and then gets calculated.
-      This number gets devided by the number of cores. 
-
-    num_sims = The number of finished simulations.
-    max_sims = The maximum number of simulations.
-    exp_add_sims = An estimate of how many simulations are still needed to reach the error goal.
-      # Initially None, 
-
+    Args:
+      rel_goal (float): The realtive error goal.
+      max_sims (int): Maximal number of sampled conformations.
+      complex_name (str, optional): Standard error for sampling this complex.
+        Defaults to None, the probability of a spurious conformation.
+      init_batch_size (int, optional): Batch size for sampling when no data 
+        has been collected.
+      min_batch_size (int, optional): Minimum batch size for sampling before
+        new error-bars are calculated.  
+      max_batch_size (int, optional): Maximum batch size for sampling before 
+        new error-bars are calculated.
+      verbose (int, optional): Print a progress table. 0: silent mode,
+        1: print the rows of a table. 2: print header and rows of a table,
+        3: start a new row for every new batch. 4: start a new row whenever
+        there is new data available. Defaults to 2.
     """
-    def status_func(batch_sims_done):
-      prob = self.get_complex_prob(complex_name)
-      error = self.get_complex_prob_error(complex_name)
-      goal = rel_goal * prob
+    def status_func(batch_sims_done, inline=True):
+      # Update only the right part of the separator. We don't want to bias the
+      # left side with temporary results from fast simulations.
+      if verbose > 3: inline = False
       total_sims = self.total_sims
       total_success = self.get_complex_count(complex_name)
       total_failure = total_sims - total_success
@@ -276,20 +284,19 @@ class NupackSampleJob(object):
         assert num_sims + batch_sims_done == self.total_sims
         update_func([complex_name, prob, error, goal, " |", 
           "{:d}/{:d}".format(batch_sims_done,num_trials), 
-          "{:d}/--".format(num_sims + batch_sims_done), 
+          "{:d}/--".format(total_sims), 
           "{:d}/{:d}".format(total_success, total_failure), 
-          "--"])
+          "      {}".format('--')], inline) 
       else:
-        tot_sims = self.total_sims
         update_func([complex_name, prob, error, goal, " |", 
             "{:d}/{:d}".format(batch_sims_done, num_trials), 
-            "{:d}/{:d}".format(tot_sims, exp_add_sims-batch_sims_done), 
+            "{:d}/{:d}".format(total_sims, max(0,exp_add_sims-batch_sims_done)), 
             "{:d}/{:d}".format(total_success, total_failure), 
-            "{:3d}%".format(100*(tot_sims+batch_sims_done)/
-              (tot_sims+exp_add_sims-batch_sims_done))]) 
-      
+            "est{:4d}%".format(100*total_sims/
+              (total_sims+max(0,exp_add_sims-batch_sims_done)))], inline) 
+ 
     # Get initial values
-    num_sims = 0
+    num_sims = 0 # The number of finished simulations.
     prob = self.get_complex_prob(complex_name)
     error = self.get_complex_prob_error(complex_name)
     goal = rel_goal * prob
@@ -304,7 +311,7 @@ class NupackSampleJob(object):
       # Prepare progress table
       update_func = print_progress_table(
           ["complex", "prob", "error", "err goal", " |", "batch sims", "done/needed", "S/F", "progress"],
-          col_widths = [11, 10, 10, 10, 4, 15, 15, 12, 10], 
+          col_widths = [11, 10, 10, 10, 4, 15, 15, 12, 9], 
           col_format_specs = ['{}', '{:.6f}', '{:1.4g}', '{:1.4g}', '{}', '{}', '{}', '{}', '{}'],
           skip_header = True if verbose == 1 else False)
       update_func([complex_name, prob, error, goal, " |", "--/--", "--/--", "--/--", "--"])
@@ -326,6 +333,8 @@ class NupackSampleJob(object):
       if verbose:
         status_func(0) 
       self.sample(num_trials, status_func = status_func if verbose else lambda x: None)
+      if verbose:
+        status_func(num_trials, inline=(verbose <= 2))
 
       # Update estimates and goal
       num_sims += num_trials
@@ -333,13 +342,9 @@ class NupackSampleJob(object):
       error = self.get_complex_prob_error(complex_name)
       goal = rel_goal * prob
 
-    if error == float('inf'):
-      exp_add_sims = None
-    else:
-      exp_add_sims = max(0, int(self.total_sims * ((error/goal)**2 - 1) + 1))
+    exp_add_sims = max(0, int(self.total_sims * ((error/goal)**2 - 1) + 1))
 
     if verbose: # Return result
-      assert exp_add_sims is not None
       tot_sims = self.total_sims
       total_success = self.get_complex_count(complex_name)
       total_failure = tot_sims - total_success
@@ -347,10 +352,10 @@ class NupackSampleJob(object):
         "{:d}/{:d}".format(num_sims, max_sims), 
         "{:d}/{:d}".format(tot_sims, exp_add_sims), 
         "{:d}/{:d}".format(total_success, total_failure), 
-        "{:3d}%".format(100*tot_sims/(tot_sims+exp_add_sims))], inline=False) 
+        "{:7d}%".format(100*tot_sims/max([0,tot_sims+exp_add_sims]))], inline=False) 
     return num_sims
 
-  # NOTE: rename to get_suboptimal_structures
+  # NOTE: actually, these are sampled suboptimal structures
   def get_top_MFE_structs(self, num):
     strands = next(iter(self.restingset.complexes)).strands
     strand_seqs = [strand.sequence for strand in strands]
