@@ -170,7 +170,7 @@ def calculate_all_complex_probabilities(KindaSystem, spurious, nsth, multip = Tr
         # Query/calculate probabilities for all conformations 
         # (including the spurious conformation, denoted as None)
         num = rms_stats.get_num_sims()
-        rms_stats.get_conformation_probs(verbose = verbose, **kwargs)
+        rms_stats.get_conformation_probs(verbose = verbose, spurious = False, **kwargs)
         
         if num != rms_stats.get_num_sims() and backup :
             export_data(KindaSystem, args.backup, use_pickle)
@@ -230,113 +230,131 @@ def calculate_all_reaction_rates(KindaSystem, unproductive, spurious, multip = T
         if (rxn_stats.get_num_sims() - num) and backup :
             export_data(KindaSystem, args.backup, use_pickle)
 
-def merge_databases(system, databases, use_pickle):
-    """Merges multiple database files 
+def get_dsd_objects(system):
+    # Initialize DSD objects from current system.
+    from dsdobjects import DSD_Complex, DSD_RestingSet, DSD_Reaction
+    from dsdobjects import clear_memory
+    clear_memory()
+
+    dsdCX = {}
+    for dna_cplx in system.complexes:
+        sequence = []
+        structure= []
+        for p, strand in enumerate(dna_cplx.base_domains()):
+            pos = 0
+            for q, dom in enumerate(strand):
+                sequence.append(dom.name)
+                if dna_cplx.bound_to(p,q+pos) is None:
+                    structure.append('.')
+                elif (p,q+pos) < dna_cplx.bound_to(p,q+pos):
+                    #print((p,q+pos), dna_cplx.bound_to(p,q+pos))
+                    structure.append('(')
+                else:
+                    structure.append(')')
+                pos += dom.length
+            sequence.append('+')
+            structure.append('+')
+        sequence = sequence[:-1]
+        structure = structure[:-1]
+        dsd_cplx = DSD_Complex(sequence, structure, name=dna_cplx.name)
+        dsdCX[dsd_cplx.name] = dsd_cplx
+
+    #for k, v in dsdCX.items():
+    #    print(v, v.kernel_string)
+
+    dsdRS = {}
+    for dna_rset in system._restingsets:
+        dsd_rset = DSD_RestingSet(map(lambda cx: dsdCX[cx.name], dna_rset.complexes), name=dna_rset.name)
+        dsdRS[dsd_rset.name]=dsd_rset
+
+    #for k, v in dsdRS.items():
+    #    print(k, v.kernel_string)
+
+    dsdDET = set()
+    for dna_rxn in system._detailed_reactions:
+        reactants = map(lambda cx: dsdCX[cx.name], dna_rxn.reactants)
+        products = map(lambda cx: dsdCX[cx.name], dna_rxn.products)
+        dsdDET.add(DSD_Reaction(reactants, products, rtype='detailed'))
+
+    #for det in dsdDET:
+    #    print('d', det)
+
+    dsdCON = {}
+    for dna_rxn in system._condensed_reactions:
+        reactants = map(lambda cx: dsdCX[cx.name], dna_rxn.reactants)
+        products = map(lambda cx: dsdCX[cx.name], dna_rxn.products)
+        #dsdCON.add(DSD_Reaction(reactants, products, rtype='condensed'))
+        dsdCON[DSD_Reaction(reactants, products, rtype='condensed')] = dna_rxn
+
+    #for con in dsdCON:
+    #    print('c', con)
+
+    return dsdCX, dsdRS, dsdDET, dsdCON
+
+
+def merge_databases(refsystem, databases, use_pickle):
+    """Merges multiple database files into your current system.
+
+    Args:
+        refsystem (kinda.System): The current system.
     
     Returns: 
-        KinDA.System()
+        None
     """
     import numpy as np
-    if use_pickle:
-        import pickle
-    else:
-        import json
+    refCX, refRS, refDET, refCON = get_dsd_objects(refsystem)
 
     for db in databases:
-        print('importing {}'.format(db))
-        if use_pickle:
-            sstats_dict = pickle.load(open(db, "rb"))
-        else:
-            sstats_dict = json.load(open(db))
+        print('# Importing {}'.format(db))
+        newsys = import_data(db, use_pickle)
 
-        cx_to_id = {}
-        id_to_cx = {}
-        for cx_id, data in sstats_dict['complexes'].iteritems():
-            cx_to_id[data['name']] = cx_id
-            id_to_cx[cx_id] = data['name']
+        newCX, newRS, newDET, newCON = get_dsd_objects(newsys)
 
-        rs_to_id = {}
-        id_to_rs = {}
-        for rs_id, data in sstats_dict['resting-sets'].iteritems():
-            rs_to_id[data['name']] = rs_id
-            id_to_rs[rs_id] = data['name']
-
-        cx_to_cx = dict((cplx.name, cplx) for cplx in system._complexes)
-        cx_to_rs = dict((cplx.name, rset) \
-                for rset in system._restingsets for cplx in rset.complexes)
-
-        for rs_id, data in sstats_dict['resting-set-stats'].iteritems():
-            # now we need to add the conformation probability data to the RestingSetStats
-            #print(rs_id)
-            rs = cx_to_rs[id_to_rs[rs_id]]
-            stats = system.get_stats(rs)
-            if stats is None:
+        for rs in newsys._restingsets:
+            assert refRS[rs.name] == newRS[rs.name]
+            refstats = refsystem.get_stats(rs)
+            if refstats is None:
                 raise Exception("Cannot find resting set: {}".format(rs))
-            # Now dig into the rabbit hole:
-            # Extract the NupackSampleJob from RestingSetStats and add the raw data.
-            nupackjob = stats.get_nupackjob()
-            num_sims = 0
-            for key, val in data.iteritems():
-                if key == 'similarity_threshold':
-                    threshold = val
-                elif key == 'c_max':
-                    stats.c_max = val
-                else:
-                    cx = cx_to_cx[id_to_cx[key]]
-                    tot_data = list(nupackjob.get_complex_prob_data(complex_name = cx.name))
-                    tot_data += list(val['similarity_data'])
-                    nupackjob.set_complex_prob_data(cx.name, tot_data)
-                    #NOTE: I think it should be += here
-                    num_sims = len(val['similarity_data'])
-                    #print(rs, cx, num_sims)
+            nupackjob = refstats.get_nupackjob()
+
+            # Now transfer the data:
+            newstats = newsys.get_stats(rs)
+            for cx in rs.complexes:
+                ref_data = list(nupackjob.get_complex_prob_data(cx.name))
+                new_data = list(newstats.get_conformation_prob_data(cx.name))
+                nupackjob.set_complex_prob_data(cx.name, ref_data + new_data)
+                num_sims = len(new_data)
             nupackjob.total_sims += num_sims
-            stats.set_similarity_threshold(threshold)
- 
-        rxn_to_id = {}
-        id_to_rxn = {}
-        for rxn_id, data in sstats_dict['reactions'].iteritems():
-            rxn_to_id['name'] = rxn_id
-            id_to_rxn[rxn_id] = data['name']
+            nupackjob.update_complex_counts()
 
-        con_to_id = {}
-        id_to_con = {}
-        for con_id, data in sstats_dict['resting-set-reactions'].iteritems():
-            con_to_id['name'] = con_id
-            id_to_con[con_id] = data['name']
-
-        rxn_to_obj = dict((x.name, x) for x in system._condensed_reactions)
-        
         seen = set()
-        for con_id, data in sstats_dict['resting-set-reaction-stats'].iteritems():
-            #print('con_id', con_id)
-            rxnobj = rxn_to_obj[id_to_con[con_id]]
-            stats = system.get_stats(rxnobj)
-            if stats == None:
-                raise Exception("Cannot find resting set reaction: {}".format(rxn))
+        for con, new_rxn in newCON.iteritems():
+            ref_rxn = refCON[con]
+            refstats = refsystem.get_stats(ref_rxn)
+            if refstats == None:
+                raise Exception("Cannot find resting set reaction: {}".format(con))
 
-            if tuple(sorted(rxnobj.reactants)) in seen:
+            if tuple(sorted(con.reactants)) in seen:
                 continue
+            seen.add(tuple(sorted(con.reactants)))
+            multijob = refstats.get_multistrandjob()
 
-            seen.add(tuple(sorted(rxnobj.reactants)))
+            # Now transfer the data:
+            newstats = newsys.get_stats(new_rxn)
+            assert refstats.multijob_tag == newstats.multijob_tag
 
-            # Now dig into the rabbit hole:
-            # Extract the MultistrandJob for the given start condition and add the data.
-            multijob = stats.get_multistrandjob()
-            assert stats.multijob_tag == data['tag'] # reaction description
-
-            num_sims = len(data['simulation_data']['tags'])
-            sim_data = {key:np.array(d) for key,d in data['simulation_data'].iteritems()}
-
+            sim_data = newstats.get_simulation_data()
             multijob.add_simulation_data(sim_data) # adds the data.
 
             if multijob.get_invalid_simulation_data():
                 raise NotImplementedError('remove this line')
                 inval = multijob.get_invalid_simulation_data()
-                inval += data['invalid_simulation_data']
+                inval += newstats.get_invalid_simulation_data()
             else :
-                inval = data['invalid_simulation_data']
+                inval = newstats.get_invalid_simulation_data()
 
             multijob.set_invalid_simulation_data(inval)
+
 
 def main(args):
     """Calculate DSD system parameters using Mulstistrand and NUPACK.
@@ -571,7 +589,7 @@ def add_kinda_args(parser):
             help="""Maximum number of NUPACK simulations for this Session.""")
 
     session.add_argument('--rate-batch-size', type=int, nargs=3, 
-            default = [40, 80, 400], metavar='<int>',
+            default = [40, 80, 1000], metavar='<int>',
             help="""Adjust batch size for Multistrand simulations. 
 
                 - First argument: minimum batch size 
@@ -585,7 +603,7 @@ def add_kinda_args(parser):
             can lead to excess work in order to reach your error goals.""")
 
     session.add_argument('--prob-batch-size', type=int, nargs=3, 
-            default = [40, 80, 400], metavar='<int>',
+            default = [40, 80, 1000], metavar='<int>',
             help="""Adjust batch size for NUPACK stochastic backtracking. 
             Equivalent behavior to --rate-batch-size. """)
 

@@ -325,7 +325,7 @@ class MultistrandJob(object):
       verbose (int, optional): Print a progress table. 0: silent mode,
         1: print the rows of a table. 2: print header and rows of a table,
         3: start a new row for every new batch. 4: start a new row whenever
-        there is new data available. Defaults to 2.
+        there is new data available. Defaults to 0.
     """
 
     def status_func(batch_sims_done, inline=True):
