@@ -61,7 +61,7 @@ def print_progress_table(col_headers, col_widths = None, col_init_data = None,
 def time_mean(success_tag, ms_results):
   """ Returns the average success time of a simulation. """
   success_times = np.ma.array(ms_results['times'], mask=(ms_results['tags']!=success_tag))
-  n_s = np.sum(~success_times.mask)
+  n_s = int(np.sum(~success_times.mask))
   if n_s > 0:
     return float(success_times.mean())
   else:
@@ -69,7 +69,7 @@ def time_mean(success_tag, ms_results):
 def time_std(success_tag, ms_results):
   """ Returns the sample standard deviation for a successful simulation time. """
   success_times = np.ma.array(ms_results['times'], mask=(ms_results['tags']!=success_tag))
-  n_s = np.sum(~success_times.mask)
+  n_s = int(np.sum(~success_times.mask))
   if n_s > 1:
     return float(success_times.std(ddof=1))
   else:
@@ -77,7 +77,7 @@ def time_std(success_tag, ms_results):
 def time_error(success_tag, ms_results):
   """ Returns the standard error on the mean simulation time. """
   success_times = np.ma.array(ms_results['times'], mask=(ms_results['tags']!=success_tag))
-  n_s = np.sum(~success_times.mask)
+  n_s = int(np.sum(~success_times.mask))
   if n_s > 1:
     return float(success_times.std(ddof=1) / math.sqrt(n_s))
   else:
@@ -89,7 +89,7 @@ def rate_mean(success_tag, ms_results):
   the correct estimate for the rate is the harmonic mean of the r's.
   If no data has been collected, returns NaN."""
   success_times = np.ma.array(ms_results['times'], mask=(ms_results['tags']!=success_tag))
-  n_s = np.sum(~success_times.mask)
+  n_s = int(np.sum(~success_times.mask))
   if n_s > 0:
     return float(1./success_times.mean())
   else:
@@ -105,7 +105,7 @@ def rate_error(success_tag, ms_results):
   rate as the error in the times.
   If 1 or fewer data points are collected, returns float('inf')."""
   success_times = np.ma.array(ms_results['times'], mask=(ms_results['tags']!=success_tag))
-  n_s = np.sum(~success_times.mask)
+  n_s = int(np.sum(~success_times.mask))
   if n_s > 1:
     time_mean = success_times.mean()
     time_error = success_times.std(ddof=1) / math.sqrt(n_s)
@@ -119,8 +119,8 @@ def kcoll_mean(success_tag, ms_results):
   from Multistrand trajectories.
   If no kcoll values have been collected for this reaction, returns NaN. """
   success_kcolls = np.ma.array(ms_results['kcoll'], mask=(ms_results['tags']!=success_tag))
-  n = np.sum(ms_results['valid'])
-  n_s = np.sum(~success_kcolls.mask)
+  n = int(np.sum(ms_results['valid']))
+  n_s = int(np.sum(~success_kcolls.mask))
   if n_s > 0:
     return float(success_kcolls.mean())
   elif n > 1:
@@ -131,7 +131,7 @@ def kcoll_std(success_tag, ms_results):
   """ Computes the standard deviation on kcoll, given the sampled values.
   If less than 2 kcoll values have been collected for this reaction, returns float('inf'). """
   success_kcolls = np.ma.array(ms_results['kcoll'], mask=(ms_results['tags']!=success_tag))
-  n_s = np.sum(~success_kcolls.mask)
+  n_s = int(np.sum(~success_kcolls.mask))
   if n_s > 1:
     return float(success_kcolls.std(ddof=1))
   else:
@@ -139,7 +139,7 @@ def kcoll_std(success_tag, ms_results):
 def kcoll_error(success_tag, ms_results):
   """ Computes the standard error on the expected value of kcoll.  """
   success_kcolls = np.ma.array(ms_results['kcoll'], mask=(ms_results['tags']!=success_tag))
-  n_s = np.sum(~success_kcolls.mask)
+  n_s = int(np.sum(~success_kcolls.mask))
   if n_s > 1:
     return float(success_kcolls.std(ddof=1) / math.sqrt(n_s))
   else:
@@ -149,8 +149,8 @@ def k1_mean(success_tag, ms_results):
   """ Reports the expected value of k1, the rate constant for
   the bimolecular step of a resting-set reaction. """
   success_kcolls = np.ma.array(ms_results['kcoll'], mask=(ms_results['tags']!=success_tag))
-  n = np.sum(ms_results['valid'])
-  n_s = np.sum(~success_kcolls.mask)
+  n = int(np.sum(ms_results['valid']))
+  n_s = int(np.sum(~success_kcolls.mask))
   tags = ms_results['tags']
   if n_s > 0:
     return float(np.sum(success_kcolls) / (n + 2.0))
@@ -166,10 +166,10 @@ def k1_error(success_tag, ms_results):
   """ Reports the standard error on the expected value of k1.
   See the KinDA paper for a derivation. """
   success_kcolls = np.ma.array(ms_results['kcoll'], mask=(ms_results['tags']!=success_tag))
-  n = np.sum(ms_results['valid'])
-  n_s = np.sum(~success_kcolls.mask)
+  n = int(np.sum(ms_results['valid']))
+  n_s = int(np.sum(~success_kcolls.mask))
   if n_s > 0:
-    gamma = np.sum(success_kcolls)
+    gamma = float(np.sum(success_kcolls))
     return float(gamma/(n+2.) * math.sqrt((2.*n - n_s + 1.) / (n_s * (n+3.))))
   else:
     return float('inf')
@@ -177,8 +177,8 @@ def k1_error(success_tag, ms_results):
 def bernoulli_mean(success_tag, ms_results):
   """ Expectation of the bernoulli random variable S_i based on Bayesian analysis """
   tag_mask = ms_results['tags']==success_tag
-  n = np.sum(ms_results['valid'])
-  n_s = tag_mask.sum()
+  n = int(np.sum(ms_results['valid']))
+  n_s = int(tag_mask.sum())
   return (n_s + 1.0) / (n + 2.0)
 def bernoulli_std(success_tag, ms_results):
   """ Returns the standard deviation of the bernoulli random variable S_i
@@ -189,8 +189,8 @@ def bernoulli_std(success_tag, ms_results):
 def bernoulli_error(success_tag, ms_results):
   """ Returns the standard error of the mean of S_i. """
   tag_mask = ms_results['tags']==success_tag
-  n = np.sum(ms_results['valid'])
-  n_s = tag_mask.sum()
+  n = int(np.sum(ms_results['valid']))
+  n_s = int(tag_mask.sum())
   return math.sqrt((n_s+1.0)*(n-n_s+1)/((n+3)*(n+2)*(n+2)));
  
 def k2_mean(success_tag, ms_results):
@@ -198,7 +198,7 @@ def k2_mean(success_tag, ms_results):
   unimolecular step of a resting-set reaction. """
   success_kcolls = np.ma.array(ms_results['kcoll'], mask=(ms_results['tags']!=success_tag))
   success_t2s = np.ma.array(ms_results['times'], mask=(ms_results['tags']!=success_tag))
-  n_s = np.sum(~success_t2s.mask)
+  n_s = int(np.sum(~success_t2s.mask))
   if n_s > 0:
     return float(np.sum(success_kcolls) / np.sum(success_kcolls*success_t2s))
   else:
@@ -209,7 +209,7 @@ def k2_std(success_tag, ms_results):
 def k2_error(success_tag, ms_results):
   success_kcolls = np.ma.array(ms_results['kcoll'], mask=(ms_results['tags']!=success_tag))
   success_t2s = np.ma.array(ms_results['times'], mask=(ms_results['tags']!=success_tag))
-  n_s = np.sum(~success_t2s.mask)
+  n_s = int(np.sum(~success_t2s.mask))
   if n_s > 1:
     time_mean = np.sum(success_kcolls*success_t2s) / np.sum(success_kcolls)
     time_std = math.sqrt(np.sum(success_kcolls * (success_t2s - time_mean)**2) / (np.sum(success_kcolls)-1))
