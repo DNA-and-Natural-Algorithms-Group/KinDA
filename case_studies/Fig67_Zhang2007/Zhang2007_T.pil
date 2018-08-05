@@ -1,0 +1,22 @@
+# ORIGINAL SYSTEM BUT WITH MODIFIED TOEHOLDS TO MAKE t3 STRONGER AND t5 WEAKER
+sequence d1 = CTTTCCTACA : 10
+sequence d2 = CCTACGTCTCCAACTAACTTACGG : 24
+sequence t3 = CGCG : 4
+sequence d4 = CATTCAATACCCTACG : 16
+sequence t5 = TATTAA : 6
+sequence d6 = CCACATACATCATATT : 16
+
+strand F = d2 t3 d4 : 44
+strand C = d4 t5 : 22
+strand OB = d1 d2 : 34
+strand SB = d6 t3 d4 : 36
+strand LB = t5* d4* t3* d2* : 50
+
+structure Fuel = F : ...
+structure Catalyst = C : ..
+structure Substrate = OB + SB + LB : .(+.((+.)))
+structure Waste = F + LB : (((+.)))
+structure Signal = SB : ...
+structure Output = OB : ..
+structure Intermediate = OB + C + LB : .(+((+)).)
+
