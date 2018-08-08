@@ -1,4 +1,4 @@
-# KinDA: Kinetic DNA system analyzer
+# KinDA: Kinetic DNA strand displacement analyzer
 
 This package provides a framework for analyzing the kinetic behavior
 of domain-level strand displacement (DSD) reaction networks with
