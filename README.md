@@ -1,4 +1,4 @@
-# KinDA: Kinetic DNA strand-displacement Analyzer 
+# KinDA: Kinetic DNA strand displacement analyzer
 
 This package provides a framework for analyzing the kinetic behavior
 of domain-level strand displacement (DSD) reaction networks with
@@ -139,6 +139,6 @@ The initialization function for the `System` object accepts an optional keyword 
 0.1
 
 ## Authors
-Joseph Berleant, Chris Berlind, Joseph Schaeffer, and Erik Winfree
+Joseph Berleant, Chris Berlind, Stefan Badelt, Frits Dannenberg, Joseph Schaeffer, and Erik Winfree
 
 

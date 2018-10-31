@@ -1,0 +1,27 @@
+# From Groves et al., "Computing in mammalian cells with nucleic acid strand exchange" (Nature 2016)
+# AND mechanism (Figure 3)
+ 
+# domains
+sequence a = GTAGGAGTGGAGGTGA : 16
+sequence t1 = GGGAAT : 6
+sequence t2 = TCTTAC : 6
+sequence b = CAACACACACACACCC : 16
+sequence t3 = TGATGA : 6
+sequence t4 = AACTAC : 6
+ 
+# strands
+strand InA_top = a* t2 : 0
+strand InA_bot = t1 a  : 0
+strand InB_top = b* t3  : 0
+strand InB_bot = t4 b  : 0
+strand AND_top = t3* b t2* a : 0
+strand AND_bot = a* t1* b* t4* : 0
+ 
+#
+# complexes
+structure InA = InA_top + InA_bot : (.+.)
+structure InB = InB_top + InB_bot : (.+.)
+structure AND = AND_top + AND_bot : .(.(+).).
+structure AND_InB = InB_top + AND_top + AND_bot + InB_bot : ((+)).(+).((+))
+structure AND_Sig = AND_top + InA_top + InB_top : ((((+))+))
+structure AND_Waste = InB_bot + InA_bot + AND_bot : ((+((+))))

@@ -11,9 +11,10 @@ formed as a (nested) conjunction or disjunction of five base macrostate types
   EXACT_MACROSTATE        Given a complex of specific structure, this
                           corresponds to all system microstates in which
                           this exact complex exists.
-  DISASSOC_MACROSTATE     Given a complex, this corresponds to all system
+  ORDERED-COMPLEX_MACROSTATE     Given a complex, this corresponds to all system
                           microstates in which there exists a complex with
                           the same strands in the same order.
+                          Multistrand calls these DISASSOC macrostates.
   BOUND_MACROSTATE        Given a complex of a single strand, this corresponds
                           to all system microstates in which there exists a
                           complex with this strand and at least one other
@@ -44,7 +45,7 @@ class Macrostate(object):
   id_counter = 0
   types = {'exact': 0,
            'bound': 1,
-           'disassoc': 2,
+           'ordered-complex': 2,
            'loose': 3,
            'count': 4,
            'conjunction': 5,
@@ -59,7 +60,7 @@ class Macrostate(object):
                                               automatic name is given if
                                               this is ommitted.
     type [type=str]                        -- Macrostate type. One of
-                                              'exact', 'disassoc', 'bound',
+                                              'exact', 'ordered-complex', 'bound',
                                               'count', 'loose', 
                                               'conjunction', or 'disjunction'.
                                               The first 5
@@ -89,7 +90,7 @@ class Macrostate(object):
     self._macrostate_type = Macrostate.types[kargs['type']]
     if self._macrostate_type == Macrostate.types['exact']:
       self._complex = kargs['complex']
-    elif self._macrostate_type == Macrostate.types['disassoc']:
+    elif self._macrostate_type == Macrostate.types['ordered-complex']:
       self._complex = kargs['complex']
     elif self._macrostate_type == Macrostate.types['bound']:
       self._complex = kargs['complex']
@@ -134,8 +135,8 @@ class Macrostate(object):
   def __str__(self):
     if self._macrostate_type == Macrostate.types['exact']:
       return "Macrostate({}, {})".format('EXACT', str(self._complex))
-    elif self._macrostate_type == Macrostate.types['disassoc']:
-      return "Macrostate({}, {})".format('DISASSOC', str(self._complex))
+    elif self._macrostate_type == Macrostate.types['ordered-complex']:
+      return "Macrostate({}, {})".format('ORDERED-COMPLEX', str(self._complex))
     elif self._macrostate_type == Macrostate.types['bound']:
       return "Macrostate({}, {})".format('BOUND', str(self._complex))
     elif self._macrostate_type == Macrostate.types['count']:

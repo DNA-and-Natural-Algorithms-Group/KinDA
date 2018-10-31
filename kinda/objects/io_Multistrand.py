@@ -74,7 +74,7 @@ def to_Multistrand_macrostates(macrostates, ms_complexes):
     if m_dnf.type == Macrostate.types['exact']:
       c = ms_complexes[m_dnf.complex]
       ms_macrostates[m] = [MS.Macrostate(m.name, [(c, EXACT, 0)])]
-    elif m_dnf.type == Macrostate.types['disassoc']:
+    elif m_dnf.type == Macrostate.types['ordered-complex']:
       c = ms_complexes[m_dnf.complex]
       ms_macrostates[m] = [MS.Macrostate(m.name, [(c, DISASSOC, 0)])]
     elif m_dnf.type == Macrostate.types['bound']:

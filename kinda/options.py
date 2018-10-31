@@ -1,6 +1,6 @@
 kinda_params = {
-  'stop_macrostate_mode': 'disassoc', # may be 'disassoc', 'count-by-complex', 'count-by-domain'
-  'start_macrostate_mode': 'disassoc', # may be 'disassoc', 'count-by-complex', 'count-by-domain'
+  'stop_macrostate_mode': 'ordered-complex', # may be 'ordered-complex', 'count-by-complex', 'count-by-domain'
+  'start_macrostate_mode': 'ordered-complex', # may be 'ordered-complex', 'count-by-complex', 'count-by-domain'
   'multistrand_similarity_threshold': 0.51,
   'nupack_similarity_threshold': 0.51,
   'multistrand_multiprocessing': True,
