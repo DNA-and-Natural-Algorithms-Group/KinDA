@@ -99,7 +99,7 @@ def make_RestingSetRxnStats(restingsets, detailed_rxns, condensed_rxns, kinda_pa
       ]
     
     # Make Boltzmann sampling selector functions for each reactant
-    start_macrostate_mode = kinda_params.get('start_macrostate_mode', 'disassoc')
+    start_macrostate_mode = kinda_params.get('start_macrostate_mode', 'ordered-complex')
     similarity_threshold = kinda_params['multistrand_similarity_threshold']
     boltzmann_selectors = [
         create_boltzmann_selector(
@@ -293,7 +293,7 @@ def create_stop_macrostate(state, tag, spurious, options):
   from a given system state consisting of a list of complexes/resting sets.
   This procedure is as follows:
     1. For each resting set, create a Macrostate corresponding to the value of 'stop_macrostate_mode':
-       a) 'disassoc': Create a DISSASSOC Macrostate corresponding to the strands of the resting set.
+       a) 'ordered-complex': Create a ORDERED-COMPLEX Macrostate corresponding to the strands of the resting set.
           Because we assume that no two resting sets share the same list of ordered strands, this
           is often sufficient. This is also the fastest mode for Multistrand simulations.
        b) 'count-by-complex': Create a DISJUNCTION macrostate of COUNT macrostates, where each
@@ -304,7 +304,7 @@ def create_stop_macrostate(state, tag, spurious, options):
        of the Macrostate for each resting set in the system state.
   One way to optimize this procedure would be to allow the creation of many
   macrostates from a list of system states, where each CONJUNCTION Macrostate
-  could share the underlying DISASSOC/LOOSE/EXACT Macrostates. It's not clear
+  could share the underlying ORDERED-COMPLEX/LOOSE/EXACT Macrostates. It's not clear
   if this would have a significant performance increase.
   Note that there is no way to represent a macrostate consisting of states with
   2 or more of a certain complex.
@@ -313,15 +313,15 @@ def create_stop_macrostate(state, tag, spurious, options):
 
   mode = options['stop_macrostate_mode']
 
-  if mode not in ['disassoc', 'count-by-complex', 'count-by-domain']:
-    print "WARNING: Unknown stop_condition_mode '{}'. Assuming 'disassoc'.".format(mode)
-    mode = 'disassoc'
+  if mode not in ['ordered-complex', 'count-by-complex', 'count-by-domain']:
+    print "WARNING: Unknown stop_condition_mode '{}'. Assuming 'ordered-complex'.".format(mode)
+    mode = 'ordered-complex'
 
   obj_to_mstate = {}
   for obj in set(state):
     assert(obj._object_type == 'resting-set')
-    if mode == 'disassoc' or spurious:
-      obj_to_mstate[obj] = dna.Macrostate(type = 'disassoc', complex = next(iter(obj.complexes)))
+    if mode == 'ordered-complex' or spurious:
+      obj_to_mstate[obj] = dna.Macrostate(type = 'ordered-complex', complex = next(iter(obj.complexes)))
     elif mode == 'count-by-complex':
       defect = 1 - options['multistrand_similarity_threshold']
       obj_to_mstate[obj] = restingset_count_by_complex_macrostate(obj, defect)
@@ -337,7 +337,7 @@ def create_stop_macrostate(state, tag, spurious, options):
 
 ## Boltzmann sample-and-select functions must be picklable
 ## to be used with the multiprocessing library
-class DisassocSelector(object):
+class OrderedComplexSelector(object):
   def __init__(self, restingset):
     self._restingset = restingset # not actually used
   def __call__(self, struct):
@@ -369,7 +369,7 @@ def create_boltzmann_selector(restingset, mode, similarity_threshold = None):
   """ Creates a 'selector' function that takes a secondary structure
   description for this resting set and returns True if it satisfies the given
   mode and similarity threshold. Available modes are:
-    disassoc: any secondary structure with the same ordered strands
+    ordered-complex: any secondary structure with the same ordered strands
     count-by-complex: any secondary structure where the fractional defect over
       the entire complex is within 1-similarity_threshold of any of the conformations
       in the given resting set
@@ -380,8 +380,8 @@ def create_boltzmann_selector(restingset, mode, similarity_threshold = None):
   which should be taken from the space of possible secondary structures with the resting set's
   strand ordering.
   """
-  if mode == 'disassoc':
-    return DisassocSelector(restingset)
+  if mode == 'ordered-complex':
+    return OrderedComplexSelector(restingset)
   elif mode == 'count-by-complex':
     assert similarity_threshold is not None
     return CountByComplexSelector(restingset, similarity_threshold)
@@ -675,9 +675,13 @@ def _import_data_convert_version(sstats_dict, version):
       invalid_idxs = filter(lambda i:data['simulation_data']['valid'][i]==0, range(len(data['simulation_data']['valid'])))
       data['invalid_simulation_data'] = [{'simulation_index': i} for i in invalid_idxs]
     sstats_dict['version'] = 'v0.1.11'
-  elif major == 0 and minor == 1 and subminor <= 11:
-    # placeholder, no special handling needed
-    sstats_dict['version'] = 'v0.1.12'
+  elif major == 0 and minor == 1 and subminor <= 12:
+    # change macrostate mode name from 'disassoc' to 'ordered-complex'
+    if sstats_dict['initialization_params']['kinda_params']['start_macrostate_mode'] == 'disassoc':
+      sstats_dict['initialization_params']['kinda_params']['start_macrostate_mode'] = 'ordered-complex'
+    if sstats_dict['initialization_params']['kinda_params']['stop_macrostate_mode'] == 'disassoc':
+      sstats_dict['initialization_params']['kinda_params']['stop_macrostate_mode'] = 'ordered-complex'
+    sstats_dict['version'] = 'v0.1.13'
 
   return sstats_dict
     
