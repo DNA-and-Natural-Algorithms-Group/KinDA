@@ -46,8 +46,8 @@ def simulate(sim_mode, **params):
 
     ## Run simulations
     rxn_stats = sstats.get_stats(rxn)
-    rxn_stats.get_k1(**params)
-    rxn_stats.get_k2(**params)
+    rxn_stats.get_k1(verbose=1, **params)
+    rxn_stats.get_k2(verbose=1, **params)
 
     end_time = time.time()
  

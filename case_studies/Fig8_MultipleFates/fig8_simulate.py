@@ -61,8 +61,8 @@ for i,r in enumerate(rxns):
   stats = sstats.get_stats(r)
 
   # Query k1 and k2 reaction rates
-  stats.get_k1(**params)
-  stats.get_k2(**params)
+  stats.get_k1(verbose=1, **params)
+  stats.get_k2(verbose=1, **params)
   print 'k1:', stats.get_k1(max_sims=0), '+/-', stats.get_k1_error(max_sims=0)
   print 'k2:', stats.get_k2(max_sims=0), '+/-', stats.get_k2_error(max_sims=0)
   
@@ -88,7 +88,7 @@ elif MODE == 'publication':
     'max_sims':       100000
   }
 
-stats.get_conformation_probs(**params)
+stats.get_conformation_probs(verbose=1, **params)
 
 print "\nResults of analyzing 'Gate' resting set:"
 cnames = [c.name for c in rs_gate.complexes] + [None]

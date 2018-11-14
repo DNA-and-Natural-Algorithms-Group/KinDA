@@ -48,13 +48,6 @@ def init_parameter_dicts(args):
     Not all parameters can set via commandline arguments, time will tell...
     """
 
-    if args.macrostate_mode == 'ordered-complex':
-        args.macrostate_mode = 'disassoc'
-    if args.start_macrostate_mode == 'ordered-complex':
-        args.start_macrostate_mode = 'disassoc'
-    if args.stop_macrostate_mode == 'ordered-complex':
-        args.stop_macrostate_mode = 'disassoc'
-
     kparams = {
         # System Parameters
         'start_macrostate_mode': args.macrostate_mode if args.macrostate_mode else \
