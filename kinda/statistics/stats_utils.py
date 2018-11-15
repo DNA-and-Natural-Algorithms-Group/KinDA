@@ -658,7 +658,15 @@ def import_data(filepath):
   return sstats
 
 def _import_data_convert_version(sstats_dict, version):
-  major, minor, subminor = [int(v) for v in version[1:].split('.')]
+  version_parts = [int(v) for v in version[1:].split('.')]
+  if len(version_parts) == 2:
+    major, minor = version_parts
+    subminor = -1
+  elif len(version_parts) == 3:
+    major, minor, subminor = version_parts
+  else:
+    print "KinDA: ERROR: Invalid version number {}. Conversion failed. Simulations and statistical calculations may fail.".format(version)
+
   if major == 0 and minor == 1 and subminor <= 5:
     print "KinDA: ERROR: Invalid version number {}. Conversion failed. Simulations and statistical calculations may fail.".format(version)
   elif major == 0 and minor == 1 and subminor <= 7:
