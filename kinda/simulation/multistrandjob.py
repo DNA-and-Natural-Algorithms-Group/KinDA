@@ -163,7 +163,7 @@ class MultistrandJob(object):
     # copy data from ms_results to self._ms_results_buff, while preserving data types of
     # numpy arrays in self._ms_results_buff
     for k,v in ms_results.iteritems():
-      self._ms_results_buff[k].resize(len(v))
+      self._ms_results_buff[k].resize(len(v), refcheck=False)
       self._ms_results[k] = self._ms_results_buff[k]
       if len(v) > 0:
         np.copyto(self._ms_results_buff[k], v)
