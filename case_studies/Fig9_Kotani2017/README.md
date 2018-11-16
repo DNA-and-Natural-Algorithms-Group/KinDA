@@ -34,7 +34,7 @@ avoid warnings.
 
 ## Plot your data
 Once your error goals are satisfied, use the output of KinDA for further analysis:
-```
+```sh
 ~$ KinDA -s 0 -r kotani2017_F2_ms10_T55.db > kotani2017_F2_ms10_T55_kinda.pil
 ```
 For example, you can use the `pilsimulator`, which is an executable provided by
