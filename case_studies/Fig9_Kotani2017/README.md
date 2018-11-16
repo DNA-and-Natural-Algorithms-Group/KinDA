@@ -39,7 +39,7 @@ Once your error goals are satisfied, use the output of KinDA for further analysi
 ```
 For example, you can use the `pilsimulator`, which is an executable provided by
 the `peppercornenumerator` library to simulate it: 
-```
+```sh
 ~$ cat kotani2017_F2_ms10_T55_kinda.pil | pilsimulator --atol 1e-13 --rtol 1e-13 --mxstep 100000 \
                                                        --t0 0.01 --t-log 10000 --t8 360000 \
                                                        --pyplot-labels C1 S1 S2 R D I1 e51 P1 P2 P3 \
@@ -56,8 +56,8 @@ data on a single reaction, remove all other condensed rections and resting
 macrostates from the input file (e.g. as shown in
 `kotani2017_F2_rxn_RpS2_to_e51.pil`). 
 
-```
-cat kotani2017_F2_rxn_RpS2_to_e51.pil | KinDA -v -T 55 --multistrand-timeout 10 \
+```sh
+~$ cat kotani2017_F2_rxn_RpS2_to_e51.pil | KinDA -v -T 55 --multistrand-timeout 10 \
                                               --macrostate-mode count-by-domain \
                                               -b kotani2017_F2_rxn_RpS2_to_e51_T55.db \
                                               -e 0.4 \
@@ -68,7 +68,7 @@ cat kotani2017_F2_rxn_RpS2_to_e51.pil | KinDA -v -T 55 --multistrand-timeout 10 
 ### A rarely successful reaction 
 The reaction {I1 + P1 -> S1 + C1} is rarely successful. To speed up your data
 collection, you can run multiple invokations in parallel:
-```console
+```sh
 ~$ cat kotani2017_F2_slow_rxn.pil | KinDA -v -T 55 --multistrand-timeout 10 \
                                        -b kotani2017_F2_ms10_T55_1.db \
                                        --prob-max-sims 0 \
@@ -79,7 +79,7 @@ collection, you can run multiple invokations in parallel:
                                        --rate-max-sims 1000000 --rate-batch-size ...
 ```
 then merge the files with the original database:
-```
+```sh
 ~$ KinDA -v -s 0 \
     -T 55 --multistrand-timeout 10 \ # to avoid warnings
     -d kotani2017_F2_ms10_T55.db \
