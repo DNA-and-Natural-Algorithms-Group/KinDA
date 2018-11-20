@@ -212,7 +212,7 @@ class NupackSampleJob(object):
 
     ## For each complex in the resting set, add the number of sampled secondary structures
     ## that satisfy the similarity threshold to the running complex count.
-    spurious_similarities = np.full(len(sampled), 1.)
+    spurious_similarities = np.full(len(sampled), True)
     for c in self.restingset.complexes:
       similarities = np.array([1-utils.max_domain_defect(s, c.structure) for s in sampled])
       num_similar = np.sum(similarities >= self.similarity_threshold)
@@ -233,7 +233,7 @@ class NupackSampleJob(object):
   def update_complex_counts(self):
     ## Recalculate complex counts
     self._complex_counts = [0] * len(self._complex_tags)
-    spurious_similarities = np.full(self.total_sims, 1.)
+    spurious_similarities = np.full(self.total_sims, True)
     for c in self.restingset.complexes:
       similarities = self._data[c.name]
       num_similar = np.sum(similarities >= self.similarity_threshold)
