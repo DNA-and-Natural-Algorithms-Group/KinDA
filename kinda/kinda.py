@@ -61,9 +61,11 @@ class System(object):
     )
 
     if enumeration :
-      self.enumerate(peppercorn_params)
+      self._peppercorn_params = dict(options.peppercorn_params, **peppercorn_params)
+      self.enumerate()
     else:
-      self._peppercorn_params = None
+      self._peppercorn_params = {}
+      self._enum_job = None
 
     # Make stats objects separately, not during initialization. You may want to 
     # specify or query parameters before ...
@@ -77,9 +79,8 @@ class System(object):
     # session parameters and *then* make the stats_objects.
     self.make_stats_objects()
 
-  def enumerate(self, peppercorn_params):
+  def enumerate(self):
     from .enumeration.enumeratejob import EnumerateJob
-    self._peppercorn_params = dict(options.peppercorn_params, **peppercorn_params)
 
     # Create enumeration object
     enum_job = EnumerateJob(
@@ -89,6 +90,7 @@ class System(object):
     )
 
     # Incorporate enumerated data
+    self._enum_job = enum_job
     self._complexes = set(enum_job.get_complexes())
     self._restingsets = set(enum_job.get_restingsets())
     self._detailed_reactions = set(enum_job.get_reactions())
@@ -132,7 +134,7 @@ class System(object):
       'kinda_params': self._kinda_params.copy(),
       'multistrand_params': self._multistrand_params.copy(),
       'nupack_params': self._nupack_params.copy(),
-      'peppercorn_params': self._peppercorn_params.copy() if self._peppercorn_params else None
+      'peppercorn_params': self._peppercorn_params.copy()
     }
   @property
   def kinda_params(self):
