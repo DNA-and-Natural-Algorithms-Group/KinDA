@@ -1,0 +1,38 @@
+sequence a  = CAGTCCCAAGTCACCACCTAGC : 22
+sequence b  = GCACTCGCGATACGAGGCCTGG
+sequence c  = CCAGATCAGCAGCCATTCGTTC
+
+#sequence a* = GCTAGGTGGTGACTTGGGACTG
+#sequence b* = CCAGGCCTCGTATCGCGAGTGC
+#sequence c* = GAACGAATGGCTGCTGATCTGG
+
+sequence T2  = TT : 2
+sequence t1  = CCGTTT : 6
+sequence t2  = ACATCC
+sequence t3  = CCTCTACTCA : 10
+
+#sequence t1* = AAACGG
+#sequence t2* = GGATGT 
+#sequence t3* = TGAGTAGAGG
+
+sequence d1s = CCAAACCTTCATCTTC : 16
+sequence d2  =                   TACTCG : 6
+sequence d   = CTCCAAACCTTCATCTTCTACTCG
+
+#sequence d*  = CGAGTAGAAGATGAAGGTTTGGAG
+
+S1 = d1s T2 b( a( t2( + ) ) c*( t1* + ) )
+S2 = t1( c( a( + t2* ) b*( d2 t3 + ) ) )
+C1 = t1 c a
+
+P1 = t2* a*( c*( t1*( + ) ) )
+I1 = d1s T2 b( a t2 + c )
+I2 = d1s T2 b( a( t2( + ) ) b*( d2 t3 + ) c*( t1* + ) )
+
+P2 = d1s T2 b( a( t2( + ) ) ) d2 t3
+P3 = b( c*( t1* + ) )
+
+R = d1s( d2( + t3* ) )
+
+D = d1s d2
+RW = d1s( T2 b( a( t2( + ) ) ) d2( t3( + ) ) )

@@ -9,14 +9,11 @@
 ####        make_ComplexStats
 ####        calc_intended_rxn_score
 
-
-## IMPORTS
-
 import sys
-
-import itertools as it
-
+import json
+import pickle
 import numpy as np
+import itertools as it
 
 from .. import __version__ as KINDA_VERSION
 from .. import objects as dna
@@ -24,6 +21,8 @@ from .. import options
 from ..simulation.multistrandjob import FirstPassageTimeModeJob, FirstStepModeJob
 from .stats import RestingSetRxnStats, RestingSetStats
 
+class SystemStatsImportError(Exception):
+  pass
 
 ## GLOBALS
 def listminuslist(minuend, subtrahend):
@@ -39,13 +38,14 @@ def listminuslist(minuend, subtrahend):
 # Utilities for making Stats objects #
 ######################################
 
-def make_RestingSetRxnStats(restingsets, detailed_rxns, condensed_rxns, kinda_params = {}, multistrand_params = {}):
+def make_RestingSetRxnStats(restingsets, detailed_rxns, condensed_rxns, 
+    kinda_params = {}, multistrand_params = {}):
   """ A convenience function, creating a dict mapping
   reactions to stats objects such that all stats objects
   with the same reactants share a Multistrand job object
   for improved efficiency. """
 
-  print "KinDA: Constructing internal KinDA objects...\r",
+  #print "KinDA: Constructing internal KinDA objects...\r",
   sys.stdout.flush()
 
   # Initialize set of spurious reactions
@@ -131,8 +131,8 @@ def make_RestingSetRxnStats(restingsets, detailed_rxns, condensed_rxns, kinda_pa
       )
     reactants_to_mjob[reactants] = job
 
-    print "KinDA: Constructing internal KinDA objects... {}%\r".format(100*i/len(all_reactants)),
-    sys.stdout.flush()
+    #print "KinDA: Constructing internal KinDA objects... {}%\r".format(100*i/len(all_reactants)),
+    #sys.stdout.flush()
     
   # Create RestingSetRxnStats object for each reaction
   rxn_to_stats = {}
@@ -145,9 +145,11 @@ def make_RestingSetRxnStats(restingsets, detailed_rxns, condensed_rxns, kinda_pa
     )
     rxn_to_stats[rxn] = stats
 
-  # Create a RestingSetRxnStats object for each spurious reaction between a set of reactants
-  # The "unproductive" reaction will be included either as a valid reaction (if it was enumerated) or spurious if not.
-  # However, note that by default we modify Peppercorn enumeration to include all unproductive reactions.
+  # Create a RestingSetRxnStats object for each spurious reaction between a set
+  # of reactants The "unproductive" reaction will be included either as a valid
+  # reaction (if it was enumerated) or spurious if not.  However, note that by
+  # default we modify Peppercorn enumeration to include all unproductive
+  # reactions.
   for rxn in spurious_rxns:
     stats = RestingSetRxnStats(
         reactants = rxn.reactants,
@@ -157,7 +159,7 @@ def make_RestingSetRxnStats(restingsets, detailed_rxns, condensed_rxns, kinda_pa
     )
     rxn_to_stats[rxn] = stats
 
-  print "KinDA: Constructing internal KinDA objects... Done!"
+  #print "KinDA: Constructing internal KinDA objects... Done!"
 
   return rxn_to_stats
   
@@ -393,15 +395,20 @@ def make_RestingSetStats(restingsets, kinda_params = {}, nupack_params = {}):
   """ A convenience function to make RestingSetStats objects for
   a list of given RestingSets. Returns a dict mapping the RestingSets
   to their corresponding stats objects. """
-  rs_to_stats = {rs: RestingSetStats(rs, kinda_params = kinda_params, nupack_params = nupack_params) for rs in restingsets}
+  rs_to_stats = {
+      rs: RestingSetStats(rs, 
+        kinda_params = kinda_params, 
+        nupack_params = nupack_params) for rs in restingsets}
   return rs_to_stats
   
-def make_stats(complexes, restingsets, detailed_rxns, condensed_rxns, kinda_params = {}, multistrand_params = {}, nupack_params = {}):
+def make_stats(complexes, restingsets, detailed_rxns, condensed_rxns, 
+        kinda_params = {}, multistrand_params = {}, nupack_params = {}):
   """ Creates a RestingSetRxnStats object for each resting-set reaction
   and a RestingSetStats object for each resting set. """
 
   # Make RestingSetRxnStats objects for condensed reactions and predicted spurious reactions.
-  rxn_to_stats = make_RestingSetRxnStats(restingsets, detailed_rxns, condensed_rxns, kinda_params, multistrand_params)
+  rxn_to_stats = make_RestingSetRxnStats(restingsets, 
+          detailed_rxns, condensed_rxns, kinda_params, multistrand_params)
 
   # Collect all resting sets, including spurious ones predicted by make_RestingSetRxnStats()
   # and make RestingSetStats for each.
@@ -436,7 +443,8 @@ def calc_spurious_rxn_score(system_stats, relative_error = 0.5, max_sims = 500):
   max_depletion = 0.0
   for rs in system_stats.get_restingsets():
     stats = system_stats.get_stats(rs)
-    max_depletion = max(max_depletion, stats.get_permanent_depletion(relative_error, max_sims = max_sims))
+    max_depletion = max(max_depletion, 
+            stats.get_permanent_depletion(relative_error, max_sims = max_sims))
   return max_depletion
 
 def calc_unproductive_rxn_score(system_stats, relative_error = 0.5, max_sims = 500):
@@ -454,7 +462,7 @@ def calc_unproductive_rxn_score(system_stats, relative_error = 0.5, max_sims = 5
 #       Import/Export Utilities      #
 ######################################
 
-def export_data(sstats, filepath):
+def export_data(sstats, filepath, use_pickle = False):
   """ Exports data of this KinDA object so that it can be imported in a later Python session.
   Does not export the entire KinDA object (only the XXXStats data that has been collected).
   Data is exported in JSON format.
@@ -476,9 +484,11 @@ def export_data(sstats, filepath):
   strands = set(sum([c.strands for c in complexes], []))
   domains = set(sum([s.base_domains() for s in strands], []))
 
-  ## Note: We destroy the domain hierarchy and only store "base" domains. This could be potentially bad.
-  domain_to_id = {dom: 'dom{0}_{1}'.format(dom.id, dom.name) for dom in domains} # id #s are guaranteed to be unique within a Python session
-  domain_to_dict = {d_id: {'name': d.name, 'sequence': str(d.sequence)} for d,d_id in domain_to_id.iteritems()}
+  # Note: We destroy the domain hierarchy and only store "base" domains. 
+  domain_to_id = {dom: 'dom{0}_{1}'.format(dom.id, dom.name) for dom in domains} 
+  # id #s are guaranteed to be unique within a Python session
+  domain_to_dict = {
+      d_id: {'name': d.name, 'sequence': str(d.sequence)} for d,d_id in domain_to_id.iteritems()}
 
   strand_to_id = {strand: 'strand{0}_{1}'.format(strand.id, strand.name) for strand in strands}
   strand_to_dict = {}
@@ -490,7 +500,8 @@ def export_data(sstats, filepath):
   complex_to_dict = {}
   for c, c_id in complex_to_id.iteritems():
     cpx_strands = [strand_to_id[s] for s in c.strands]
-    complex_to_dict[c_id] = {'name': c.name, 'strands': cpx_strands, 'structure': c.structure.to_dotparen()}
+    complex_to_dict[c_id] = {
+        'name': c.name, 'strands': cpx_strands, 'structure': c.structure.to_dotparen()}
 
   rs_to_id = {rs: 'rs{0}_{1}'.format(rs.id, rs.name) for rs in restingsets}
   rs_to_dict = {}
@@ -515,10 +526,13 @@ def export_data(sstats, filepath):
   rsstats_to_dict = {}
   for rs in restingsets:
     stats = sstats.get_stats(rs)
-    rsstats_to_dict[rs_to_id[rs]] = {'similarity_threshold': stats.get_similarity_threshold(), 'c_max': stats.c_max}
+    rsstats_to_dict[rs_to_id[rs]] = {
+        'similarity_threshold': stats.get_similarity_threshold(), 'c_max': stats.c_max}
     for c in rs.complexes:
       rsstats_to_dict[rs_to_id[rs]][complex_to_id[c]] = {
-        'prob': '{0} +/- {1}'.format(stats.get_conformation_prob(c.name, 1, max_sims=0), stats.get_conformation_prob_error(c.name, max_sims=0)),
+        'prob': '{0} +/- {1}'.format(
+          stats.get_conformation_prob(c.name, 1, max_sims=0), 
+          stats.get_conformation_prob_error(c.name, max_sims=0)),
         'similarity_data': list(stats.get_conformation_prob_data(c.name))
       }
 
@@ -546,8 +560,6 @@ def export_data(sstats, filepath):
         'tag': stats.multijob_tag
       }
 
-  #print rsrxn_to_id
-
   # Prepare the overall dict object to be JSON-ed
   sstats_dict = {
     'domains': domain_to_dict,
@@ -562,20 +574,38 @@ def export_data(sstats, filepath):
     'version': KINDA_VERSION
   }
   
-  import json
-  f = open(filepath, 'w')
-  json.dump(sstats_dict, f)
+  if use_pickle : 
+    pickle.dump(sstats_dict, open(filepath, "wb"))
+  else :
+    json.dump(sstats_dict, open(filepath, 'w'))
 
-def import_data(filepath):
-  """ Imports a KinDA object as exported in the format specified by export_data() """
-  import json
-  f = open(filepath)
-  sstats_dict = json.load(f)
+  return
+
+def import_data(filepath, use_pickle = False):
+  """ Imports a KinDA object as exported in the format specified by export_data() 
+
+  Imports:
+    - domains, strands, complexes, reactions, resting-sets, resting-set reactions
+    - resting-set stats:
+        => similarity-threshold 
+        => c_max (concentration maximum to calculate temporary depletion)
+        => list of simulation results
+            - loaded int "nupackjob"
+    - resting-set reaction stats:
+        => load
+
+  
+  """
+
+  if use_pickle:
+    sstats_dict = pickle.load(open(filepath, "rb"))
+  else:
+    sstats_dict = json.load(open(filepath))
 
   if 'version' not in sstats_dict:
-    print "KinDA: WARNING: Imported data file has no version number. Assuming KinDA {}.".format(KINDA_VERSION)
+    print "# KinDA: WARNING: Imported data file has no version number. Assuming KinDA {}.".format(KINDA_VERSION)
   elif sstats_dict['version'] != KINDA_VERSION:
-    print "KinDA: WARNING: Attempting conversion from KinDA {}.".format(sstats_dict['version'], KINDA_VERSION)
+    print "# KinDA: WARNING: Attempting conversion from KinDA {}.".format(sstats_dict['version'], KINDA_VERSION)
     sstats_dict = _import_data_convert_version(sstats_dict, sstats_dict['version'])
 
   domains = {}
@@ -590,7 +620,8 @@ def import_data(filepath):
   complexes = {}
   for complex_id, data in sstats_dict['complexes'].iteritems():
     cpx_strands = [strands[s_id] for s_id in data['strands']]
-    complexes[complex_id] = dna.Complex(name = data['name'], strands = cpx_strands, structure = data['structure'])
+    complexes[complex_id] = dna.Complex(name = data['name'], 
+        strands = cpx_strands, structure = data['structure'])
 
   restingsets = {}
   for rs_id, data in sstats_dict['resting-sets'].iteritems():
@@ -601,32 +632,36 @@ def import_data(filepath):
   for rxn_id, data in sstats_dict['reactions'].iteritems():
     reactants = [complexes[c_id] for c_id in data['reactants']]
     products = [complexes[c_id] for c_id in data['products']]
-    reactions[rxn_id] = dna.Reaction(name = data['name'], reactants = reactants, products = products)
+    reactions[rxn_id] = dna.Reaction(name = data['name'], 
+        reactants = reactants, products = products)
 
   rs_reactions = {}
   for rsrxn_id, data in sstats_dict['resting-set-reactions'].iteritems():
     reactants = [restingsets[rs_id] for rs_id in data['reactants']]
     products = [restingsets[rs_id] for rs_id in data['products']]
-    rs_reactions[rsrxn_id] = dna.RestingSetReaction(name = data['name'], reactants = reactants, products = products)
+    rs_reactions[rsrxn_id] = dna.RestingSetReaction(name = data['name'], 
+        reactants = reactants, products = products)
     
-  if 'initialization_params' in sstats_dict:
-    kinda_params = sstats_dict['initialization_params']['kinda_params']
-    multistrand_params = sstats_dict['initialization_params']['multistrand_params']
-    nupack_params = sstats_dict['initialization_params']['nupack_params']
-    peppercorn_params = sstats_dict['initialization_params']['peppercorn_params']
-  else:
-    kinda_params = {}
-    multistrand_params = {}
-    nupack_params = {}
-    peppercorn_params = {}
+  kparams = sstats_dict['initialization_params']['kinda_params']
+  mparams = sstats_dict['initialization_params']['multistrand_params']
+  nparams = sstats_dict['initialization_params']['nupack_params']
+  pparams = sstats_dict['initialization_params']['peppercorn_params']
 
   from .. import kinda
-  sstats = kinda.System(complexes = complexes.values(), restingsets = restingsets.values(), detailed_reactions = reactions.values(), condensed_reactions = rs_reactions.values(), enumeration = False, kinda_params = kinda_params, multistrand_params = multistrand_params, nupack_params = nupack_params, peppercorn_params = peppercorn_params)
+  sstats = kinda.System(complexes = complexes.values(), 
+          restingsets = restingsets.values(), 
+          detailed_reactions = reactions.values(), 
+          condensed_reactions = rs_reactions.values(),
+          enumeration = False,
+          kinda_params = kparams, 
+          multistrand_params = mparams, 
+          nupack_params = nparams,
+          peppercorn_params = pparams)
   
   for rs_id, data in sstats_dict['resting-set-stats'].iteritems():
     stats = sstats.get_stats(restingsets[rs_id])
     if stats == None:
-      print "Warning: Could not match up stored statistics for {0} with a resting set in the new KinDA object.".format(restingsets[rs_id])
+      print "Warning: Could not match up stored statistics for {0}.".format(restingsets[rs_id])
       continue
     nupackjob = stats.get_nupackjob()
     num_sims = 0
@@ -638,6 +673,7 @@ def import_data(filepath):
       else:
         c = complexes[key]
         nupackjob.set_complex_prob_data(c.name, np.array(val['similarity_data']))
+        #NOTE: I think it should be += here
         num_sims = len(val['similarity_data'])
     nupackjob.total_sims = num_sims
     stats.set_similarity_threshold(threshold)
@@ -649,6 +685,7 @@ def import_data(filepath):
       continue
     multijob = stats.get_multistrandjob()
     stats.multijob_tag = data['tag']
+
     num_sims = len(data['simulation_data']['tags'])
     sim_data = {key:np.array(d) for key,d in data['simulation_data'].iteritems()}
     multijob.set_simulation_data(sim_data)

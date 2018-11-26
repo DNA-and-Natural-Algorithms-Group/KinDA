@@ -3,35 +3,50 @@
 #
 # Misc utility functions used by simulation code
 
+from __future__ import print_function
+
 import sys
 import math
 import numpy as np
 
 from multistrand.options import Options as MSOptions
 
-def print_progress_table(col_headers, col_widths = None, col_init_data = None, col_format_specs = None):
-  """ Pretty prints a progress table to provide status updates when running simulations
-  involving Nupack or Multistrand. Returns a progress update function that can be called
-  with new column values to update the status shown to the user.
-  col_headers is a list of header strings for each column in the table.
-  col_widths (if given) is a list of ints giving the width of each column. The header
-  strings and data strings are clipped to one less than the column width.
-  col_init_data allows initial data to be displayed the first time the table is printed. 
+def print_progress_table(col_headers, col_widths = None, col_init_data = None, 
+    col_format_specs = None, skip_header=False):
+  """ Live updates on progress with NUPACK and Multistrand computations.
+
+  Note: This table has two rows. The 
+
+  Args:
+    col_headers (list(str)): The header of the table.
+    col_widths (list(int), optional): Spacing of the table columns. Strings are
+      clipped to width-1. (?)
+    col_intit_data (list(), optional): Prints initial data into the first row.
+    col_format_specs (list(), optional): ?
+
+  Returns:
+    A progress update function which overwrites the data row (or the last line on screen).
   """
 
-  def update_progress(col_data):
+  def update_progress(col_data, inline=True):
+    """Print new data to your progress table."""
     str_data = [('{:<'+str(w-1)+'}').format(f.format(d))[:w-1] for d,w,f in zip(col_data, col_widths, col_format_specs)]
-    print ' '.join(str_data), '\r',
+    print("#    {}{}".format(' '.join(str_data), "\r" if inline else "\n"), end='')
     sys.stdout.flush()
 
   if col_widths is None:
     col_widths = [max(len(h)+1, 8) for h in col_headers]
+  else:
+    assert len(col_widths) == len(col_headers)
 
   if col_format_specs is None:
     col_format_specs = ['{}'] * len(col_headers)
+  else:
+    assert len(col_format_specs) == len(col_headers)
 
   header = ' '.join([(h+' '*(w-1))[:w-1] for h,w in zip(col_headers, col_widths)])
-  print header
+  if not skip_header:
+    print("#    {}".format(header))
 
   if col_init_data is not None:
     update_progress(col_init_data)

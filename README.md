@@ -136,7 +136,7 @@ The file `kinda/options.py` contains optional arguments that may be modified to 
 The initialization function for the `System` object accepts an optional keyword argument for each of these `dict`s. Each keyword argument should be supplied as a `dict` object, whose key-value pairs will override the defaults in `kinda/options.py`. 
 
 ## Version
-0.1
+0.2
 
 ## Authors
 Joseph Berleant, Chris Berlind, Stefan Badelt, Frits Dannenberg, Joseph Schaeffer, and Erik Winfree

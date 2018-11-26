@@ -49,8 +49,8 @@ for i, r in enumerate(rxns):
   rxn_stats = sstats.get_stats(r)
 
   # Query k1 and k2 reaction rates to requested precision
-  rxn_stats.get_k1(**params)
-  rxn_stats.get_k2(**params)
+  rxn_stats.get_k1(verbose=1, **params)
+  rxn_stats.get_k2(verbose=1, **params)
   print "k1: {} +/- {}".format(rxn_stats.get_k1(max_sims=0), rxn_stats.get_k1_error(max_sims=0))
   print "k2: {} +/- {}".format(rxn_stats.get_k2(max_sims=0), rxn_stats.get_k2_error(max_sims=0))
 
@@ -92,7 +92,7 @@ for i,rs in enumerate(restingsets):
   rs_stats = sstats.get_stats(rs)
 
   # Query probabilities for all conformations (including the spurious conformation, denoted as None)
-  rs_stats.get_conformation_probs(**params)
+  rs_stats.get_conformation_probs(verbose=1, **params)
   for c in rs.complexes:
     print c.name, rs_stats.get_conformation_prob(c.name,max_sims=0), '+/-', rs_stats.get_conformation_prob_error(c.name,max_sims=0)
 

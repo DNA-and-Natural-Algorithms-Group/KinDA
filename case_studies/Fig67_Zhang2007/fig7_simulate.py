@@ -167,8 +167,8 @@ for i, r in enumerate(desired_rxns):
   rxn_stats = sstats.get_stats(r)
 
   # Query k1 and k2 reaction rates to requested precision
-  rxn_stats.get_k1(**params)
-  rxn_stats.get_k2(**params_uni)
+  rxn_stats.get_k1(verbose=1, **params)
+  rxn_stats.get_k2(verbose=1, **params_uni)
   print "k1: {} +/- {}".format(rxn_stats.get_k1(max_sims=0), rxn_stats.get_k1_error(max_sims=0))
   print "k2: {} +/- {}".format(rxn_stats.get_k2(max_sims=0), rxn_stats.get_k2_error(max_sims=0))
 
@@ -185,8 +185,8 @@ for i, r in enumerate(leak_rxns):
   rxn_stats = sstats.get_stats(r)
 
   # Query k1 and k2 reaction rates to requested precision
-  rxn_stats.get_k1(**params)
-  rxn_stats.get_k2(**params_uni)
+  rxn_stats.get_k1(verbose=1, **params)
+  rxn_stats.get_k2(verbose=1, **params_uni)
   print "k1: {} +/- {}".format(rxn_stats.get_k1(max_sims=0), rxn_stats.get_k1_error(max_sims=0))
   print "k2: {} +/- {}".format(rxn_stats.get_k2(max_sims=0), rxn_stats.get_k2_error(max_sims=0))
 
@@ -203,8 +203,8 @@ for i, r in enumerate(unproductive_rxns):
   rxn_stats = sstats.get_stats(r)
 
   # Query k1 and k2 reaction rates to requested precision
-  rxn_stats.get_k1(**params)
-  rxn_stats.get_k2(**params_uni)
+  rxn_stats.get_k1(verbose=1, **params)
+  rxn_stats.get_k2(verbose=1, **params_uni)
   print "k1: {} +/- {}".format(rxn_stats.get_k1(max_sims=0), rxn_stats.get_k1_error(max_sims=0))
   print "k2: {} +/- {}".format(rxn_stats.get_k2(max_sims=0), rxn_stats.get_k2_error(max_sims=0))
 
@@ -256,7 +256,7 @@ for i,rs in enumerate(restingsets):
   # Query probabilities for all conformations (excluding the spurious conformation, denoted as None)
   for c in rs.complexes:
     if not c.name == None:
-      rs_stats.get_conformation_prob(c.name,**params)
+      rs_stats.get_conformation_prob(c.name,verbose=1,**params)
   for c in rs.complexes:
     print c.name, rs_stats.get_conformation_prob(c.name,max_sims=0), '+/-', rs_stats.get_conformation_prob_error(c.name,max_sims=0)
 

@@ -28,11 +28,12 @@ kinda_obj = kinda.from_pil(pilpath, kinda_params = {'max_concentration': 1e-7})
 restingsets = kinda_obj.get_restingsets() # Get all resting sets
 
 ##   2) Get reactions in the system that you're interested in
-rxns = kinda_obj.get_reactions(spurious = False, unproductive=False) # Get all reactions that were enumerated and not unproductive
 ## Try:
-# rxns = kinda_obj.get_reactions(reactants = [restingsets[0], restingsets[1]], spurious = True) # Get all spurious reactions involving restingsets[0] and restingsets[1]
-# rxns = kinda_obj.get_reactions() # Get all reactions
-# rxns = kinda_obj.get_reactions(spurious = True) # Get only spurious reactions
+rxns = kinda_obj.get_reactions(reactants = [restingsets[0], restingsets[1]], spurious = True) # Get all spurious reactions involving restingsets[0] and restingsets[1]
+rxns = kinda_obj.get_reactions() # Get all reactions
+rxns = kinda_obj.get_reactions(spurious = True) # Get only spurious reactions
+## Default:
+rxns = kinda_obj.get_reactions(spurious = False, unproductive=False) # Get all reactions that were enumerated and not unproductive
 
 ##   3) Print the reactions out so you can see what's going on...
 print "Reactions between", restingsets[0], "and", restingsets[1], ":"
@@ -46,16 +47,15 @@ rxn = rxns[0] # Select the first reaction (you can choose a different one if you
 rxn_stats = kinda_obj.get_stats(rxn)
 
 ##   6) Use the Stats object to get data!
-#k1 = rxn_stats.get_k1(0.5, init_batch_size = 200) # Get an estimate for k1 with 50% error
-#k2 = rxn_stats.get_k2(0.25, max_sims = 500) # Get an estimate for k2 with 25% error
-# prob = rxn_stats.get_prob(0.25) # Estimate the probability that a random Multistrand trajectory will follow this reaction (not necessarily physically significant)
-# k_coll = rxn_stats.get_kcoll(0.25) # Estimate k_coll with 25% error
-
+k1 = rxn_stats.get_k1(0.5, init_batch_size = 50, max_sims=500, verbose = 1) # Get an estimate for k1 with 50% error
+k2 = rxn_stats.get_k2(0.25, init_batch_size = 50, max_sims = 500, verbose = 1) # Get an estimate for k2 with 25% error
+prob = rxn_stats.get_prob(0.25, verbose = 1) # Estimate the probability that a random Multistrand trajectory will follow this reaction (not necessarily physically significant)
+k_coll = rxn_stats.get_kcoll(0.25, verbose = 1) # Estimate k_coll with 25% error
 
 #### To analyze a resting set in detail...
 
 ##   1) Get the resting set you want
-restingsets = kinda_obj.get_restingsets() # Get all resting sets
+restingsets = list(kinda_obj.get_restingsets()) # Get all resting sets
 print "Resting Sets: "
 for i, rs in enumerate(restingsets):
   print "{0}: {1}".format(i, rs)
@@ -73,19 +73,26 @@ confs = [c.name for c in restingset.complexes] # Get all conformation names in t
 confs.append(None) # None refers to spurious conformations (that aren't similar to any expected conformations)
 print "Conformation probabilities for resting set {0}".format(restingset)
 for c in confs:
-  p = rs_stats.get_conformation_prob(c, .025)
+  p = rs_stats.get_conformation_prob(c, .025, max_sims = 500)
   print "\t{0}: {1}%".format(c, p*100)
+
 ## Getting the top 10 MFE structures
 mfe_structs = rs_stats.get_top_MFE_structs(10)
 print "Top 10 MFE structures for resting set {0}".format(restingset)
 for i,s in enumerate(mfe_structs):
   print "\t{0}: {1} ({2})".format(i, s[0], s[1])
+
+kinda.export_data(kinda_obj, 'analyze.db')
+kinda_obj = kinda.import_data('analyze.db')
+
+# DOES NOT WORK!!!
 ## Getting the (fractional) reactant depletion due to unproductive reactions
-# unproductive_depletion = rs_stats.get_temp_depletion(0.5) # Get depletion with 50% error on any relevant reaction rate
+#unproductive_depletion = rs_stats.get_temp_depletion(0.5) # Get depletion with 50% error on any relevant reaction rate
 ## Getting the rate constant of reactant depletion due to spurious reactions (units: /s)
-# spurious_depletion = rs_stats.get_perm_depletion(0.5) # Get depletion with 50% error on any relevant reaction rate
+#spurious_depletion = rs_stats.get_perm_depletion(0.5) # Get depletion with 50% error on any relevant reaction rate
 
 #### To get a system-level score, use the convenience functions in stats_utils.py
-# stats_utils.calc_unproductive_rxn_score(kinda_obj)
-# stats_utils.calc_spurious_rxn_score(kinda_obj, t_max = 1.0)
+#kinda.statistics.stats_utils.calc_unproductive_rxn_score(kinda_obj)
+#kinda.statistics.stats_utils.calc_spurious_rxn_score(kinda_obj)
 
+print 'done'

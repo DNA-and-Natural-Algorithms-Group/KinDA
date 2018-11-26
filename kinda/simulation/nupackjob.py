@@ -17,43 +17,45 @@ from .. import nupack, options
 from sim_utils import print_progress_table
 
 
-## GLOBALS
-def sample_global(args):
+# NUPACK interface
+def sample_global((self, num_samples)):
   """ Global function for calling NUPACK, used for multiprocessing  """
-  self = args[0]
-  num_samples = args[1]
 
-  ## Set up arguments/options for Nupack call
+  # Set up arguments/options for Nupack call
   strands = next(iter(self.restingset.complexes)).strands
-  strand_seqs = [strand.sequence
-                  for strand
-                  in strands]
+  strand_seqs = [strand.sequence for strand in strands]
 
-  ## Call Nupack
+  # Call Nupack
   structs = nupack.sample(strand_seqs, num_samples, **self._nupack_params)
 
-  ## Convert each Nupack sampled structure (a dot-paren string) into a DNAObjects Complex object and process.
+  # Convert each Nupack sampled structure (a dot-paren string) into a
+  # DNAObjects Complex object and process.
   sampled = [Complex(strands = strands, structure = s) for s in structs]
 
   return sampled
 
-
-
-## CLASSES
-
 class NupackSampleJob(object):
-  """ The NupackSampleJob class implements basic statistics collection using Nupack.
-  This class collects statistics on a particular resting set, including the probabilities
-  of the constituent complexes.
-  Use sample() to request a certain number of secondary structures from the Boltzmann distribution (using Nupack).
-  Use get_complex_prob() to request the probability estimate for a particular complex.
-  The similarity threshold may be changed with set_similarity_threshold().
+  """Calculate complex probabilities within resting sets using NUPACK.
+
+  Args:
+    restingset (dna.RestingSet()): A set of complexes with the same strand order.
+    similarity_threshold: Overwrites the nupack_similarity_threshold paramter.
+        One can update the similarity threshold at any time using
+        set_similarity_threshold().
+    multiprocessing (bool, optional): Distribute computation to all available
+        cores. Defaults to True.
+    nupack_params (dict): A dictionary with parameter for NUPACK.
+
+  Use sample() to request a certain number of secondary structures from the
+  Boltzmann distribution (using Nupack). Use get_complex_prob() to request the
+  probability estimate for a particular complex. To update results for a new
+  similarity threshold use set_similarity_threshold().
   """
 
-  def __init__(self, restingset, similarity_threshold = None, multiprocessing = True, nupack_params = {}):
-    """ Constructs a NupackSampleJob object with the given resting set and similarity threshold.
-    If similarity threshold is not given, the value in options.py (kinda_params['nupack_similarity_threshold'])
-    is used. """
+  verbose = 1
+
+  def __init__(self, restingset, similarity_threshold = None, 
+               multiprocessing = True, nupack_params = {}):
 
     # Store options
     self._multiprocessing = multiprocessing
@@ -72,21 +74,24 @@ class NupackSampleJob(object):
     self.total_sims = 0
 
     # Set similarity threshold, using default value in options.py if none specified
-    if similarity_threshold == None:  similarity_threshold = options.kinda_params['nupack_similarity_threshold']
+    if similarity_threshold is None:  
+      similarity_threshold = options.kinda_params['nupack_similarity_threshold']
     self.set_similarity_threshold(similarity_threshold)
 
   @property
   def restingset(self):
     return self._restingset
+
   @property
   def complex_names(self):
     return sorted([c.name for c in self.restingset.complexes], key = lambda k: self._complex_tags[k])
+
   @property
   def complex_counts(self):
     return self._complex_counts[:]
 
   def get_complex_index(self, complex_name):
-    """ Returns the unique index associated with this complex name (mainly for internal use). """
+    """Returns the unique index associated with this complex name. """
     assert complex_name in self._complex_tags, "Complex tag {0} not found in resting set {1}".format(complex_name, self.restingset)
     return self._complex_tags[complex_name]
         
@@ -100,6 +105,7 @@ class NupackSampleJob(object):
     N = self.total_sims
     Nc = self.get_complex_count(complex_name)
     return (Nc + 1.0)/(N + 2)
+
   def get_complex_prob_error(self, complex_name = None):
     """ Returns the standard error on the conformation probability associated with the given complex_name.
     complex_name should match the name field of one of the complex in the resting set used to
@@ -108,15 +114,17 @@ class NupackSampleJob(object):
       SE = (n+1)*(N-n+1)/((N+3)*(N+2)*(N+2))
     to avoid artifacts when n=0,N.
     """
-    Nc = self.get_complex_count(complex_name)
-    N = self.total_sims;
-    return math.sqrt((Nc+1.0)*(N-Nc+1)/((N+3)*(N+2)*(N+2)));
+    index = self.get_complex_index(complex_name)
+    Nc = self._complex_counts[index]
+    N = self.total_sims
+    return math.sqrt((Nc+1.0)*(N-Nc+1)/((N+3)*(N+2)*(N+2)))
 
   def get_complex_prob_data(self, complex_name = None):
     """ Returns raw sampling data for the given complex_name.
     Data is returned as a list consisting of float values, where each float value is 1 minus the
     maximum fractional defect for any domain in that sampled secondary structure. """
     return self._data[complex_name]
+
   def set_complex_prob_data(self, complex_name, data):
     """ Set the raw sampling data for the given complex_name.
     Should be used only when importing an old KinDA session to restore state. """
@@ -126,7 +134,8 @@ class NupackSampleJob(object):
     """ Returns the total number of sampled secondary structures. """
     return self.total_sims
   def get_complex_count(self, complex_name = None):
-    return self._complex_counts[self.get_complex_index(complex_name)]
+    # TODO: fix me, why is the int necessary here if complex_name = None???
+    return int(self._complex_counts[self.get_complex_index(complex_name)])
 
   def set_similarity_threshold(self, similarity_threshold):
     """ Modifies the similarity threshold used to classify each sampled secondary structure as one of
@@ -140,22 +149,24 @@ class NupackSampleJob(object):
     ## Recalculate complex counts for new similarity threshold
     self.update_complex_counts()
 
-  def sample(self, **params):
+  def sample(self, num_samples, status_func = lambda x: None):
     """ Calls sample_multiprocessing or sample_singleprocessing depending on the value of
     self._multiprocessing """
-    if self._multiprocessing:
-      self.sample_multiprocessing(**params)
-    else:
-      self.sample_singleprocessing(**params)
 
-  def sample_multiprocessing(self, num_samples, samples_per_worker = None, status_func = lambda:None):
+    if self._multiprocessing:
+      self.sample_multiprocessing(num_samples, status_func = status_func)
+    else:
+      self.sample_singleprocessing(num_samples, status_func = status_func)
+
+  def sample_multiprocessing(self, num_samples, 
+      status_func = lambda x: None):
     """ Runs sample() in multiple processes. """
 
     # Temporarily remove SIGINT event handler from current process
     sigint_handler = signal.signal(signal.SIGINT, signal.SIG_IGN)
 
     # Create Pool instance and worker processes
-    k = multiprocessing.cpu_count()
+    k = min(multiprocessing.cpu_count(), num_samples)
     p = multiprocessing.Pool(processes = k)
 
     # Restore original SIGINT event handler (if possible)
@@ -163,31 +174,27 @@ class NupackSampleJob(object):
     signal.signal(signal.SIGINT, sigint_handler)
 
     # Setup args for each process
-    if samples_per_worker is None:
-      samples_per_worker = num_samples / k
-      args = [(self, samples_per_worker+1)] * (num_samples % k)
-      args += [(self, samples_per_worker)] * (k - (num_samples % k))
-    else:
-      args = [(self, samples_per_worker)] * (num_samples / samples_per_worker)
-      if num_samples%samples_per_worker > 0:  args+= [(self, num_samples%samples_per_worker)]
+    samples_per_worker = int(num_samples / k)
+    args = [(self, samples_per_worker+1)] * (num_samples % k)
+    args += [(self, samples_per_worker)] * (k - (num_samples % k))
 
     it = p.imap_unordered(sample_global, args)
     p.close()
 
     try:
       sims_completed = 0
-      for res in it:
-        self.add_sampled_complexes(res)
-        sims_completed += len(res)
+      for cplx in it:
+        self.add_sampled_complexes(cplx)
+        sims_completed += len(cplx)
         status_func(sims_completed)
     except KeyboardInterrupt:
       print "SIGINT: Ending NUPACK sampling prematurely..."
       p.terminate()
       p.join()
       raise KeyboardInterrupt
+    return
 
-
-  def sample_singleprocessing(self, num_samples, status_func=lambda:None):
+  def sample_singleprocessing(self, num_samples, status_func = lambda x: None):
     """ Queries Nupack for num_samples secondary structures, sampled from the Boltzmann distribution
     of secondary structures for this resting set. The sampled secondary structures are automatically
     processed to compute new estimates for each conformation probability.
@@ -237,48 +244,78 @@ class NupackSampleJob(object):
     spurious_idx = self.get_complex_index(None)
     self._complex_counts[spurious_idx] = np.sum(spurious_similarities)
       
-    
-  def reduce_error_to(self, rel_goal, max_sims, complex_name = None, init_batch_size = 50, min_batch_size = 50, max_batch_size = 1000):
-    """ Continue querying Nupack for secondary structures sampled from the Boltzmann distribution
+  def reduce_error_to(self, rel_goal, max_sims, complex_name = None, 
+      init_batch_size = 50, 
+      min_batch_size = 50, 
+      max_batch_size = 1000,
+      verbose = 0):
+    """Stochastic sampling of secondary structures until the error-bars are satisified.
+
+    Querys NUPACK for secondary structures sampled from the Boltzmann distribution
     until the standard error of the estimated probability for the given complex_name
     is at most rel_goal*complex_prob, or max_sims conformations have been sampled.
     If no complex_name is given, the halting condition is based on the error
     for the spurious conformation probability.
+
+    Args:
+      rel_goal (float): The realtive error goal.
+      max_sims (int): Maximal number of sampled conformations.
+      complex_name (str, optional): Standard error for sampling this complex.
+        Defaults to None, the probability of a spurious conformation.
+      init_batch_size (int, optional): Batch size for sampling when no data 
+        has been collected.
+      min_batch_size (int, optional): Minimum batch size for sampling before
+        new error-bars are calculated.  
+      max_batch_size (int, optional): Maximum batch size for sampling before 
+        new error-bars are calculated.
+      verbose (int, optional): Print a progress table. 0: silent mode,
+        1: print the rows of a table. 2: print header and rows of a table,
+        3: start a new row for every new batch. 4: start a new row whenever
+        there is new data available. Defaults to 0.
     """
-    def status_func(batch_sims_done):
-      prob = self.get_complex_prob(complex_name)
-      error = self.get_complex_prob_error(complex_name)
-      goal = rel_goal * prob
+    def status_func(batch_sims_done, inline=True):
+      # Update only the right part of the separator. We don't want to bias the
+      # left side with temporary results from fast simulations.
+      if verbose > 3: inline = False
       total_sims = self.total_sims
       total_success = self.get_complex_count(complex_name)
       total_failure = total_sims - total_success
+
       if exp_add_sims is None:
-        update_func([complex_name, prob, error, goal, (batch_sims_done,num_trials), (total_sims,"--",total_success,total_failure), "--"])
+        assert num_sims + batch_sims_done == self.total_sims
+        update_func([complex_name, prob, error, goal, " |", 
+          "{:d}/{:d}".format(batch_sims_done,num_trials), 
+          "{:d}/--".format(total_sims), 
+          "{:d}/{:d}".format(total_success, total_failure), 
+          "      {}".format('--')], inline) 
       else:
-        update_func([complex_name, prob, error, goal, (batch_sims_done,num_trials), (total_sims,total_sims+exp_add_sims-batch_sims_done, total_success, total_failure), 100*total_sims/(total_sims+exp_add_sims-batch_sims_done)]) 
-      
-    
+        update_func([complex_name, prob, error, goal, " |", 
+            "{:d}/{:d}".format(batch_sims_done, num_trials), 
+            "{:d}/{:d}".format(total_sims, max(0,exp_add_sims-batch_sims_done)), 
+            "{:d}/{:d}".format(total_success, total_failure), 
+            "est{:4d}%".format(100*total_sims/
+              (total_sims+max(0,exp_add_sims-batch_sims_done)))], inline) 
+ 
     # Get initial values
-    num_sims = 0
+    num_sims = 0 # The number of finished simulations.
     prob = self.get_complex_prob(complex_name)
     error = self.get_complex_prob_error(complex_name)
     goal = rel_goal * prob
 
-    # Check if simulations are needed, return if not
-    if error <= goal or num_sims >= max_sims:  return
+    if verbose:
+      if verbose > 1:
+        if self._multiprocessing:
+          print '#    [MULTIPROCESSING ON] (over %d cores)'%multiprocessing.cpu_count()
+        else:
+          print '#    [MULTIPROCESSING OFF]'
 
-    if self._multiprocessing:
-      print '[MULTIPROCESSING ON] (over %d cores)'%multiprocessing.cpu_count()
-    else:
-      print '[MULTIPROCESSING OFF]'
-
-    # Prepare progress table
-    update_func = print_progress_table(
-        ["complex", "prob", "error", "err goal", "batch sims", "total sims (S,F)", "progress"],
-        col_widths = [11, 10, 10, 10, 17, 35, 10],
-        col_format_specs = ['{}','{:.4}','{:.4}','{:.4}','{0[0]}/{0[1]}','{0[0]}/{0[1]} ({0[2]},{0[3]})','{}%']
-    )
-    update_func([complex_name, prob, error, goal, ("--","--"), ("--","--","--","--"), "--"])
+      # Prepare progress table
+      update_func = print_progress_table(
+          ["complex", "prob", "error", "err goal", " |", "batch sims", "done/needed", "S/F", "progress"],
+          col_widths = [11, 10, 10, 10, 4, 15, 15, 12, 9], 
+          col_format_specs = ['{}', '{:.6f}', '{:1.4g}', '{:1.4g}', '{}', '{}', '{}', '{}', '{}'],
+          skip_header = True if verbose == 1 else False)
+      update_func([complex_name, prob, error, goal, " |", "--/--", "--/--", "--/--", "--"])
 
     # Run simulations
     while not error <= goal and num_sims < max_sims:
@@ -288,12 +325,17 @@ class NupackSampleJob(object):
         num_trials = init_batch_size
         exp_add_sims = None
       else:
-        reduction = error / goal
-        exp_add_sims = int(self.total_sims * (reduction**2 - 1) + 1)
-        num_trials = max(min(max_batch_size, exp_add_sims, max_sims - num_sims, self.total_sims + 1), min_batch_size)
+        exp_add_sims = max(0, int(self.total_sims * ((error/goal)**2 - 1) + 1))
+        num_trials = max(
+            min(max_batch_size, exp_add_sims, max_sims - num_sims, self.total_sims + 1), 
+            min_batch_size)
         
       # Query Nupack
-      self.sample(num_samples = num_trials, status_func = status_func)
+      if verbose:
+        status_func(0) 
+      self.sample(num_trials, status_func = status_func if verbose else lambda x: None)
+      if verbose:
+        status_func(num_trials, inline=(verbose <= 2))
 
       # Update estimates and goal
       num_sims += num_trials
@@ -301,16 +343,20 @@ class NupackSampleJob(object):
       error = self.get_complex_prob_error(complex_name)
       goal = rel_goal * prob
 
-    if self.total_sims == 0:
-      exp_add_sims = 0
-    else:
-      exp_add_sims = max(0, int(self.total_sims * ((error/goal)**2 - 1) + 1))
-    total_sims = self.total_sims
-    total_success = self.get_complex_count(complex_name)
-    total_failure = total_sims - total_success
-    update_func([complex_name, prob, error, goal, ("--","--"), (self.total_sims,self.total_sims+exp_add_sims,total_success,total_failure), 100*self.total_sims/(self.total_sims+exp_add_sims)])
-    print
+    exp_add_sims = max(0, int(self.total_sims * ((error/goal)**2 - 1) + 1))
 
+    if verbose: # Return result
+      tot_sims = self.total_sims
+      total_success = self.get_complex_count(complex_name)
+      total_failure = tot_sims - total_success
+      update_func([complex_name, prob, error, goal, " |", 
+        "{:d}/{:d}".format(num_sims, max_sims), 
+        "{:d}/{:d}".format(tot_sims, exp_add_sims), 
+        "{:d}/{:d}".format(total_success, total_failure), 
+        "{:7d}%".format(100*tot_sims/max([0,tot_sims+exp_add_sims]))], inline=False) 
+    return num_sims
+
+  # NOTE: actually, these are sampled suboptimal structures
   def get_top_MFE_structs(self, num):
     strands = next(iter(self.restingset.complexes)).strands
     strand_seqs = [strand.sequence for strand in strands]
