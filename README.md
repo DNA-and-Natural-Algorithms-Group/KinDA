@@ -11,6 +11,12 @@ behavior of resting macrostates and condensed reactions are collected using
 Multistrand (https://github.com/DNA-and-Natural-Algorithms-Group/multistrand),
 and may be computed at a desired level of precision using KinDA.
 
+The principles underlying KinDA are introduced in the paper
+"Automated sequence-level analysis of kinetics and thermodynamics for domain-level DNA strand-displacement systems",
+by Joseph Berleant, Christopher Berlind, Stefan Badelt, Frits Dannenberg, Joseph Schaeffer and Erik Winfree,
+Journal of The Royal Society Interface, 2018
+(https://royalsocietypublishing.org/doi/full/10.1098/rsif.2018.0107).
+
 ## Trying out KinDA (Public AWS Image)
 
 The easiest way to test out KinDA is through the publicly available Amazon Web Services (AWS) Amazon Machine Image (AMI). This image is available to all AWS users, and can be found in the "Community AMIs" section when creating a new EC2 instance, using the search query "KinDA v0.2".
@@ -26,10 +32,10 @@ KinDA requires Python 2.7+ to run. Python 3+ is not yet supported.
 
 Prior to installing KinDA, make sure you have the following packages installed:
 * Multistrand (https://github.com/DNA-and-Natural-Algorithms-Group/multistrand)
-* Nupack 3.2.2+
+* NUPACK 3.2.2+ (http://www.nupack.org)
 
 In addition, ensure the environment variable `NUPACKHOME` is set to the base directory
-of your Nupack files.
+of your NUPACK files.
 
 KinDA will automatically install the following packages, if necessary:
 * Peppercorn enumerator (https://github.com/DNA-and-Natural-Algorithms-Group/peppercornenumerator)
@@ -61,10 +67,9 @@ If you just want to see a script run, but don't have much time, try the (still n
 $ python -i analyze.py simple.pil
 ```
 
-You can make all this quicker (or slower) by changing the accuracy target and sampling limits, which are given in `analyze.py`.
+You can make all this quicker (or slower) by changing the accuracy target and sampling limits, which are given in `analyze.py`.  The comments are hopefully self-explanatory.
 
-
-### Quickstart: Pure Python scripts
+### Gentle introduction: Pure Python scripts
 KinDA objects can be created directly in a Python script using the `kinda.objects` package. For example:
 ```
 # simple.py
@@ -104,7 +109,7 @@ system.get_stats(reaction).get_k2(relative_error = 0.5, max_sims = 500)
 # Similar functions can be used to get information about resting sets (i.e. resting macrostates)
 ```
 
-### Input format
+### Gentle introduction: Input format
 
 Currently, PIL Files must be input in old-style PIL notation. Support for new-style (kernel) notation
 is planned for a future release.
@@ -144,8 +149,12 @@ structure Output = OB : ..
 structure Intermediate = OB + C + LB : .(+((+)).)
 ```
 
+### A deeper dive: The case studies
+
+The directory `case_studies` contains scripts used to run the simulations described in the paper. Note that the simulations for Figure 9 were performed using a commandline script (here, placed in `scripts/KinDA`) and thus that directory needs to be on the path to run the examples in the Figure 9 directory's `README.md`.
+
 ## Configuration Options
-The file `kinda/options.py` contains optional arguments that may be modified to change the default behavior of Multistrand, Peppercorn, Nupack, and KinDA. This file must be modified prior to installation to set the default behavior.
+The file `kinda/options.py` contains optional arguments that may be modified to change the default behavior of Multistrand, Peppercorn, NUPACK, and KinDA. This file must be modified prior to installation to set the default behavior.
 
 `kinda/options.py` contains four `dict` objects:
 * `kinda_params`: General parameters for KinDA and its interactions with Multistrand, NUPACK, and Peppercorn
