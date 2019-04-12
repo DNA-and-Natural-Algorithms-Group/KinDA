@@ -11,7 +11,19 @@ behavior of resting macrostates and condensed reactions are collected using
 Multistrand (https://github.com/DNA-and-Natural-Algorithms-Group/multistrand),
 and may be computed at a desired level of precision using KinDA.
 
-## Dependencies
+## Trying out KinDA (Public AWS Image)
+
+The easiest way to test out KinDA is through the publicly available Amazon Web Services (AWS) Amazon Machine Image (AMI). This image is available to all AWS users, and can be found in the "Community AMIs" section when creating a new EC2 instance, using the search query "KinDA v0.2".
+
+A note about AWS regions: The KinDA AMI is currently only available in AWS's four U.S. subdivisions. If you are having trouble finding this AMI, your AWS region may be set outside the U.S. Please contact the project team if you cannot switch your account's region setting and would like us to copy the image to a new region.
+
+## Setup and Installation
+
+The following instructions are intended for users wishing to setup KinDA on their own machine. They should not be necessary if using the public AWS AMI, which has KinDA and all its dependencies pre-installed.
+
+### Dependencies
+KinDA requires Python 2.7+ to run. Python 3+ is not yet supported.
+
 Prior to installing KinDA, make sure you have the following packages installed:
 * Multistrand (https://github.com/DNA-and-Natural-Algorithms-Group/multistrand)
 * Nupack 3.2.2+
@@ -23,7 +35,7 @@ KinDA will automatically install the following packages, if necessary:
 * Peppercorn enumerator (https://github.com/DNA-and-Natural-Algorithms-Group/peppercornenumerator)
 
 
-## Installation
+### Installation
 ```bash
 $ python setup.py install
 ```
@@ -32,13 +44,12 @@ or
 $ python setup.py install --user
 ```
 
-## Quickstart using the example script "analyze.py"
+## Getting Started
 
 ### Quickstart: PIL files
-Load the file `Zhang_etal_Science2007.pil` in an interactive KinDA session, and 
-begin querying basic data.
+PIL files describe the sequences, strands, and complexes in a DNA strand-displacement system. The file `KinDA/examples/Zhang_etal_Science2007.pil` describes an entropy-driven catalytic cascade. 
 
-For example, run the following from within the `examples` subdirectory of KinDA.
+The script `analyze.py` found in the `examples` subdirectory of KinDA shows how to query basic data from a system described by a PIL file. For example, run the following from within the `examples` subdirectory of KinDA.
 
 ```sh
 $ python -i analyze.py Zhang_etal_Science2007.pil
