@@ -67,7 +67,20 @@ If you just want to see a script run, but don't have much time, try the (still n
 $ python -i analyze.py simple.pil
 ```
 
-You can make all this quicker (or slower) by changing the accuracy target and sampling limits, which are given in `analyze.py`.  The comments are hopefully self-explanatory.
+You can make all this quicker (or slower) by changing the accuracy target and sampling limits, which are given in `analyze.py`.  The comments are hopefully self-explanatory.  For example, for a well-under-one-minute run, you can change these lines in `analyze.py` so that the target relative error is a loose 150% (that's the first argument value 1.5):
+
+```
+k1 = rxn_stats.get_k1(1.5, init_batch_size = 50, max_sims=500, verbose = 1) # Get an estimate for k1 with 50% error
+k2 = rxn_stats.get_k2(1.5, init_batch_size = 50, max_sims = 500, verbose = 1) # Get an estimate for k2 with 25% error
+prob = rxn_stats.get_prob(1.5, verbose = 1) # Estimate the probability that a random Multistrand trajectory will follow this reaction (not necessarily physically significant)
+k_coll = rxn_stats.get_kcoll(1.5, verbose = 1) # Estimate k_coll with 25% error
+```
+
+Either way, these scripts will dump you in the python shell at the end, where you can examine your data further, or look at KinDA documentation, e.g.
+
+```
+help(rxn_stats)
+```
 
 ### Gentle introduction: Pure Python scripts
 KinDA objects can be created directly in a Python script using the `kinda.objects` package. For example:
