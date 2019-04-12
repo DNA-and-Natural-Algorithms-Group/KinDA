@@ -49,11 +49,20 @@ $ python setup.py install --user
 ### Quickstart: PIL files
 PIL files describe the sequences, strands, and complexes in a DNA strand-displacement system. The file `KinDA/examples/Zhang_etal_Science2007.pil` describes an entropy-driven catalytic cascade. 
 
-The script `analyze.py` found in the `examples` subdirectory of KinDA shows how to query basic data from a system described by a PIL file. For example, run the following from within the `examples` subdirectory of KinDA.
+The script `analyze.py` found in the `examples` subdirectory of KinDA shows how to query basic data from a system described by a PIL file. For example, run the following from within the `examples` subdirectory of KinDA.  This will take a few hours on a `micro` instance, and proportionally less time on a faster multiprocessor instance.
 
 ```sh
 $ python -i analyze.py Zhang_etal_Science2007.pil
 ```
+
+If you just want to see a script run, but don't have much time, try the (still not so fast) simple toehold-mediated strand displacement example below.
+
+```sh
+$ python -i analyze.py simple.pil
+```
+
+You can make all this quicker (or slower) by changing the accuracy target and sampling limits, which are given in `analyze.py`.
+
 
 ### Quickstart: Pure Python scripts
 KinDA objects can be created directly in a Python script using the `kinda.objects` package. For example:
