@@ -5,9 +5,13 @@
 # -- Separate data files are stored for each simulation.
 
 # Usage:
-#   python figTEMP_simulate.py 37 demo
-#   python figTEMP_simulate.py 25 publication
-#   python figTEMP_simulate.py 55 trial
+#   python fig7_simulate.py 37 demo
+#   python fig7_simulate.py 25 publication
+#   python fig7_simulate.py 55 trial
+
+# Overall usage sequence:
+#   fig7_simulate then fig7_analyze then fig7_timeout_check [optional] then fig7_build_crns [optional] then fig7_plotter [if you have enough data]
+
 
 import sys,os
 import kinda

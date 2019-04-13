@@ -1,10 +1,10 @@
-# Perform data analysis for Figure TEMP (Entropy-driven catalyst, Zhang et al, Science 2007)
-# -- Usage is parallel to figTEMP_simulate.py
+# Perform data analysis for Figure 7 (Entropy-driven catalyst, Zhang et al, Science 2007)
+# -- Usage is parallel to fig7_simulate.py
 
 # Usage:
-#   python figTEMP_analyze.py 37 demo
-#   python figTEMP_analyze.py 25 publication
-#   python figTEMP_analyze.py 55 trial
+#   python fig7_analyze.py 37 demo
+#   python fig7_analyze.py 25 publication
+#   python fig7_analyze.py 55 trial
 
 exp_concs = True  # use experimental concentrations for temporary depletion, or use 100 nM default?
 
