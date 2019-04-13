@@ -33,20 +33,25 @@ Take a look at the default parameters (`KinDA --help`). Your initial run will
 likely not result with the requested relative error goal (0.4) for each complex
 probability or reaction rate. In subsequent runs, use the following command to
 continue your analysis using the previously collected data: 
+
 ```sh
 ~$ KinDA -v -T 55 --multistrand-timeout 10 -d kotani2017_F2_ms10_T55.db  [options]
 ```
+
 Note it is not necessary to specify non-default system parameters of the imported
 database (here: `-T 55 --multistrand-timeout 10`), but it is good practice and will
 avoid warnings.
 
 ## Plot your data
 Once your error goals are satisfied, use the output of KinDA for further analysis:
+
 ```sh
 ~$ KinDA -s 0 -r kotani2017_F2_ms10_T55.db > kotani2017_F2_ms10_T55_kinda.pil
 ```
+
 For example, you can use the `pilsimulator`, which is an executable provided by
 the `peppercornenumerator` library to simulate it: 
+
 ```sh
 ~$ cat kotani2017_F2_ms10_T55_kinda.pil | pilsimulator --atol 1e-13 --rtol 1e-13 --mxstep 100000 \
                                                        --t0 0.01 --t-log 10000 --t8 360000 \
@@ -76,6 +81,7 @@ macrostates from the input file (e.g. as shown in
 ### A rarely successful reaction 
 The reaction {I1 + P1 -> S1 + C1} is rarely successful. To speed up your data
 collection, you can run multiple invocations in parallel:
+
 ```sh
 ~$ cat kotani2017_F2_slow_rxn.pil | KinDA -v -T 55 --multistrand-timeout 10 \
                                        -b kotani2017_F2_ms10_T55_1.db \
@@ -86,13 +92,16 @@ collection, you can run multiple invocations in parallel:
                                        --prob-max-sims 0 \
                                        --rate-max-sims 1000000 --rate-batch-size ...
 ```
+
 then merge the files with the original database:
+
 ```sh
 ~$ KinDA -v -s 0 \
     -T 55 --multistrand-timeout 10 \ # to avoid warnings
     -d kotani2017_F2_ms10_T55.db \
     --merge kotani2017_F2_ms10_T55_1.db kotani2017_F2_ms10_T55_2.db ...
 ```
+
 Beware that the merge option loads data from kinda databases into your present
 system. It will (for good reason) not complain if you merge kinda files that
 have conflicting system parameters!!! You(!) have to make sure that the merge

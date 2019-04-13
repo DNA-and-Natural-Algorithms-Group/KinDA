@@ -5,6 +5,11 @@
 #   python fig7_plotter.py . demo
 #   python fig7_plotter.py publication_data randomR
 
+# Note: Uses the *.csv files produced by fig7_analyze.py
+
+# Note: Requires pdfjam (https://warwick.ac.uk/fac/sci/statistics/staff/academic-research/firth/software/pdfjam/) to combine plots.
+#       Lacking that, you can comment out the relevant lines, and you'll be left with a pile of individual plots.
+
 import sys, os, csv
 import numpy as np
 import matplotlib
@@ -102,7 +107,7 @@ plt.close()
 # now the actual data plots
 
 for temp in range(0,100):
-  ANALYSIS_PATH = '{}figT{:d}_{}_analysis.csv'.format(DIR,temp,MODE)
+  ANALYSIS_PATH = '{}fig7_T{:d}_{}_analysis.csv'.format(DIR,temp,MODE)
   if os.path.exists(ANALYSIS_PATH):
     print "Loading data for temperature T = {:d} and {} mode.".format(temp,MODE)
     temps.append(temp)
@@ -135,8 +140,6 @@ for temp in range(0,100):
             histdata[temp,rxn_i,h] = float(row[h+1])
           for b in range(31):
             histbins[temp,rxn_i,b] = float(row[b+31])
-
-print num_p
 
 print
 
@@ -247,12 +250,12 @@ for pi in range(num_p):
   plt.close()
 
 if num_p==1:
-  cmd="pdfjam plot0.pdf plot1.pdf plot2.pdf plot3.pdf plot4.pdf --nup 1x5 --outfile figTEMP_"+MODE+".pdf --papersize '{1.4in,4.5in}'"
+  cmd="pdfjam plot0.pdf plot1.pdf plot2.pdf plot3.pdf plot4.pdf --nup 1x5 --outfile fig7_"+MODE+".pdf --papersize '{1.4in,4.5in}'"
   os.system(cmd)
   cmd="rm plot0.pdf plot1.pdf plot2.pdf plot3.pdf plot4.pdf"
   os.system(cmd)
 elif num_p==3:
-  cmd="pdfjam plot1.pdf plot2.pdf plot3.pdf plot4.pdf plot5.pdf plot6.pdf --nup 3x2 --outfile figTEMP_"+MODE+".pdf --papersize '{6in,3in}'"
+  cmd="pdfjam plot1.pdf plot2.pdf plot3.pdf plot4.pdf plot5.pdf plot6.pdf --nup 3x2 --outfile fig7_"+MODE+".pdf --papersize '{6in,3in}'"
   os.system(cmd)
   cmd="rm plot1.pdf plot2.pdf plot3.pdf plot4.pdf plot5.pdf plot6.pdf"
   os.system(cmd)
@@ -273,7 +276,7 @@ plt.axis(axisminmax)
 plt.xlabel('value of p', weight='bold')
 plt.ylabel('fraction well-formed', weight='bold')
 plt.legend(short_complex_names,loc='lower left')
-plt.savefig("figT25_{}_p_approx.pdf".format(MODE), bbox_inches='tight')
+plt.savefig("fig7_T25_{}_p_approx.pdf".format(MODE), bbox_inches='tight')
 plt.close()
 
 ### look at the histograms for completion times for each reaction
@@ -297,7 +300,7 @@ for T in [15, 20, 25, 30, 35, 40, 45, 50, 55, 60]:
     plt.savefig("plot{}.pdf".format(i), bbox_inches='tight')
     plt.close()
     if rxn_i==0 and T in [25,60] and MODE=='publication':
-      os.system('cp plot{}.pdf figT{}_publication_hist.pdf'.format(i,T))
+      os.system('cp plot{}.pdf fig7_T{}_publication_hist.pdf'.format(i,T))
     filenames=filenames+' plot{}.pdf'.format(i)
     i=i+1
 

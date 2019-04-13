@@ -6,6 +6,12 @@
 #   python fig7_analyze.py 25 publication
 #   python fig7_analyze.py 55 trial
 
+# To analyze publication data, which is necessary before plotting it:
+#   cd publication_data
+#   python ../fig7_analyze.py 25 randomT
+#   echo "etc etc etc sorry it's not automated... in bash you can do this:"
+#   for i in {15,20,25,30,35,40,45,50,55,60}; do python ../fig7_analyze.py $i randomT; done
+
 exp_concs = True  # use experimental concentrations for temporary depletion, or use 100 nM default?
 
 import sys
@@ -33,8 +39,8 @@ if not MODE in MODELIST:
 print "Loading data for temperature T = {:d} and {} mode.".format(temp,MODE)
 
 # Load the standard raw data file for this temperature and quality
-DATA_PATH = 'figT{:d}_raw_{}.kinda'.format(temp,MODE)
-ANALYSIS_PATH = 'figT{:d}_{}_analysis.csv'.format(temp,MODE)
+DATA_PATH = 'fig7_T{:d}_raw_{}.kinda'.format(temp,MODE)
+ANALYSIS_PATH = 'fig7_T{:d}_{}_analysis.csv'.format(temp,MODE)
 
 out = open(ANALYSIS_PATH, 'w')
 

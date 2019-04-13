@@ -5,6 +5,8 @@
 #   python fig7_build_crns.py . demo
 #   python fig7_build_crns.py publication_data randomT
 
+# Note: Uses the *.csv files produced by fig7_analyze.py
+
 import sys, os, csv
 import numpy as np
 
@@ -26,14 +28,14 @@ temps=[]
 species=['Catalyst','Substrate','Fuel','Intermediate','Output','Signal','Waste'] 
 
 for temp in range(0,100):
-  ANALYSIS_PATH = '{}figT{:d}_{}_analysis.csv'.format(DIR,temp,MODE)
+  ANALYSIS_PATH = '{}fig7_T{:d}_{}_analysis.csv'.format(DIR,temp,MODE)
   if os.path.exists(ANALYSIS_PATH):
     print "Loading data for temperature T = {:d} and {} mode.".format(temp,MODE)
     temps.append(temp)
 
     # produce input file for Stefan Badelt's pilsimulator in Python
 
-    CRN_PATH = 'figT{:d}_{}.crn'.format(temp,MODE)
+    CRN_PATH = 'fig7_T{:d}_{}.crn'.format(temp,MODE)
     out = open(CRN_PATH, 'w')
     out.write('# CRN for Zhang 2007 ({}) at T = {} including all observed reactions from simulations\n\n'.format(MODE,temp))
 
@@ -60,7 +62,7 @@ for temp in range(0,100):
 
     # produce input file for David Soloveichik's CRN Simulator in Mathematica
 
-    MMA_PATH = 'figT{:d}_{}_crn.m'.format(temp,MODE)
+    MMA_PATH = 'fig7_T{:d}_{}_crn.m'.format(temp,MODE)
     out = open(MMA_PATH, 'w')
     out.write('(* CRN for Zhang 2007 ({}) at T = {} including all observed reactions from simulations *)\n\n'.format(MODE,temp))
 

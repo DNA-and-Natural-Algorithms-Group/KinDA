@@ -39,7 +39,7 @@ if MODE == 'randomR' :
   PIL_PATH = 'Zhang2007_R.pil' 
 if MODE == 'randomT' :
   PIL_PATH = 'Zhang2007_T.pil' 
-DATA_PATH = 'figT{:d}_raw_{}.kinda'.format(temp,MODE)
+DATA_PATH = 'fig7_T{:d}_raw_{}.kinda'.format(temp,MODE)
 
 # make use of previous simulations if data is available
 PREV_MODE={

@@ -1,10 +1,12 @@
 # Looks for and reports which reactions had timeouts.  
-# If there were timeouts, then statistics may be invalid, and simulations should be redone with a larger timeout limit.
+# If there were timeouts, then statistics may be influenced, and simulations should be redone with a larger timeout limit if feasible.
 # -- Usage is parallel to fig7_analyze.py, but automatically reads all temperatures, and requires a directory name.
 
 # Usage:
 #   python fig7_timeout_check.py . demo
 #   python fig7_timeout_check.py publication_data publication
+
+# Note: Uses the *.csv files produced by fig7_analyze.py
 
 import sys, os, csv
 
@@ -37,7 +39,7 @@ short_reaction_names=[
   ]
 
 for temp in range(0,100):
-  ANALYSIS_PATH = '{}figT{:d}_{}_analysis.csv'.format(DIR,temp,MODE)
+  ANALYSIS_PATH = '{}fig7_T{:d}_{}_analysis.csv'.format(DIR,temp,MODE)
   if os.path.exists(ANALYSIS_PATH):
     print "Loading data for temperature T = {:d} and {} mode.".format(temp,MODE)
 
