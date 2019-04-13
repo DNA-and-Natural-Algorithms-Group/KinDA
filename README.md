@@ -19,7 +19,7 @@ Journal of The Royal Society Interface, 2018
 
 ## Trying out KinDA (Public AWS Image)
 
-The easiest way to test out KinDA is through the publicly available Amazon Web Services (AWS) Amazon Machine Image (AMI). This image is available to all AWS users, and can be found in the "Community AMIs" section when creating a new EC2 instance, using the search query "KinDA v0.2".
+The easiest way to test out KinDA is through the publicly available Amazon Web Services (AWS) Amazon Machine Image (AMI). This image is available to all AWS users, and can be found in the "Community AMIs" section when creating a new EC2 instance, using the search query "KinDA v0.2".  The scripts should run on a "t2.micro" instance, but we often use "c5.9xlarge" instances for serious simulations.
 
 A note about AWS regions: The KinDA AMI is currently only available in AWS's four U.S. subdivisions. If you are having trouble finding this AMI, your AWS region may be set outside the U.S. Please contact the project team if you cannot switch your account's region setting and would like us to copy the image to a new region.
 
@@ -55,7 +55,7 @@ $ python setup.py install --user
 ### Quickstart: PIL files
 PIL files describe the sequences, strands, and complexes in a DNA strand-displacement system. The file `KinDA/examples/Zhang_etal_Science2007.pil` describes an entropy-driven catalytic cascade. 
 
-The script `analyze.py` found in the `examples` subdirectory of KinDA shows how to query basic data from a system described by a PIL file. For example, run the following from within the `examples` subdirectory of KinDA.  This will take a few hours on a `micro` instance, and proportionally less time on a faster multiprocessor instance.
+The script `analyze.py` found in the `examples` subdirectory of KinDA shows how to query basic data from a system described by a PIL file. For example, run the following from within the `examples` subdirectory of KinDA.  This will take a few hours on a `t2.micro` instance, and proportionally less time on a faster multiprocessor instance.
 
 ```sh
 $ python -i analyze.py Zhang_etal_Science2007.pil
@@ -67,13 +67,14 @@ If you just want to see a script run, but don't have much time, try the (still n
 $ python -i analyze.py simple.pil
 ```
 
-You can make all this quicker (or slower) by changing the accuracy target and sampling limits, which are given in `analyze.py`.  The comments are hopefully self-explanatory.  For example, for a well-under-one-minute run, you can change these lines in `analyze.py` so that the target relative error is a loose 150% (that's the first argument value 1.5):
+You can make all this quicker (or slower) by changing the accuracy target and sampling limits, which are given in `analyze.py`.  The comments are hopefully self-explanatory.  
+For example, for a well-under-one-minute run, you can edit the following lines in `analyze.py` so that the target relative error is a loose 150% (that's the first argument value 1.5):
 
 ```
-k1 = rxn_stats.get_k1(1.5, init_batch_size = 50, max_sims=500, verbose = 1) # Get an estimate for k1 with 50% error
-k2 = rxn_stats.get_k2(1.5, init_batch_size = 50, max_sims = 500, verbose = 1) # Get an estimate for k2 with 25% error
-prob = rxn_stats.get_prob(1.5, verbose = 1) # Estimate the probability that a random Multistrand trajectory will follow this reaction (not necessarily physically significant)
-k_coll = rxn_stats.get_kcoll(1.5, verbose = 1) # Estimate k_coll with 25% error
+k1 = rxn_stats.get_k1(1.5, init_batch_size = 50, max_sims=500, verbose = 1) 
+k2 = rxn_stats.get_k2(1.5, init_batch_size = 50, max_sims = 500, verbose = 1)
+prob = rxn_stats.get_prob(1.5, verbose = 1) 
+k_coll = rxn_stats.get_kcoll(1.5, verbose = 1) 
 ```
 
 Either way, these scripts will dump you in the python shell at the end, where you can examine your data further, or look at KinDA documentation, e.g.
@@ -164,7 +165,17 @@ structure Intermediate = OB + C + LB : .(+((+)).)
 
 ### A deeper dive: The case studies
 
-The directory `case_studies` contains scripts used to run the simulations described in the paper. Note that the simulations for Figure 9 were performed using a commandline script (here, placed in `scripts/KinDA`) and thus that directory needs to be on the path to run the examples in the Figure 9 directory's `README.md`.
+The directory `case_studies` contains scripts used to run the
+simulations described in the paper.  You should take a look at the
+scripts themselves, as instructions for how to configure and run them
+are often included near the top.  
+
+Note that the simulations for Figure 9 were performed using a commandline interface to KinDA (placed in the `scripts` directory)
+that is explained in the Figure 9 directory's `README.md`.
+
+Also note that some scripts produce plots using matplotlib, which on AWS should be able to produce PDF output files, but you won't be able to look at graphics interactively.
+
+In the Amazon AMI, but not the GitHub repository, each case study directory has a subdirectory `publication_data` with KinDA data files that were generated for the paper.  If you are not using the AMI, this data can be obtained from (http://www.dna.caltech.edu/SupplementaryMaterial/KinDA_paper_data/).
 
 ## Configuration Options
 The file `kinda/options.py` contains optional arguments that may be modified to change the default behavior of Multistrand, Peppercorn, NUPACK, and KinDA. This file must be modified prior to installation to set the default behavior.

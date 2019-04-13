@@ -40,14 +40,12 @@ restingset_names = ['Substrate', 'Catalyst', 'Signal', 'Intermediate', 'Fuel', '
 restingset_concs1 = [10e-9, 1e-9, 10e-9, 10e-9, 13e-9, 10e-9, 10e-9]
 restingset_concs2 = [2.5e-7]*7
 
-#temp_depletion_low = np.sqrt(get_temp_depletion(sstats, restingset_names, restingset_concs1))
-#temp_depletion_high = np.sqrt(get_temp_depletion(sstats, restingset_names, restingset_concs2))
 temp_depletion_low = get_temp_depletion(sstats, restingset_names, restingset_concs1)
 temp_depletion_high = get_temp_depletion(sstats, restingset_names, restingset_concs2)
 
 import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-plt.ion()
 
 names_caps = [s.upper() for s in restingset_names]
 VMIN = 0.0

@@ -1,9 +1,17 @@
 # KinDA case study: Kotani 2017 - Figure 2
 
+## Configuration note
+
+This case study also illustrates the commandline interface to KinDA, via the script `scripts/KinDA`,
+which must be in your path for the following commands to work without modification.  E.g. in `bash`,
+
+```sh
+PATH=~/KinDA/scripts:$PATH
+```
 
 ## Full system analysis
 
-It is recommended to enumerate separately with peppercorn first, to have
+It is recommended to enumerate separately with `peppercorn` first, to have
 explicit control over the enumeration semantics. Note, the output file for the
 command below (`kotani2017_F2_enum.pil`) can already be found in this
 directory.
@@ -12,7 +20,7 @@ directory.
 ~$ cat kotani2017_F2.pil | peppercorn -c -d --max-complex-size 7 > kotani2017_F2_enum.pil
 ```
 
-Then, let the commandline executable `KinDA` do the rest:
+Then, let the commandline executable `KinDA` do the rest (eventually -- this could take days):
 
 ```sh
 ~$ cat kotani2017_F2_enum.pil | KinDA --verbose \
@@ -67,7 +75,7 @@ macrostates from the input file (e.g. as shown in
 
 ### A rarely successful reaction 
 The reaction {I1 + P1 -> S1 + C1} is rarely successful. To speed up your data
-collection, you can run multiple invokations in parallel:
+collection, you can run multiple invocations in parallel:
 ```sh
 ~$ cat kotani2017_F2_slow_rxn.pil | KinDA -v -T 55 --multistrand-timeout 10 \
                                        -b kotani2017_F2_ms10_T55_1.db \

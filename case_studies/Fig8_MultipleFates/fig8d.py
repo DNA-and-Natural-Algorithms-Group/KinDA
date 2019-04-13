@@ -47,8 +47,9 @@ for i, sstats in enumerate([sstats1, sstats2]):
   all_gate_prob[i,4] = rs_stats.get_conformation_prob(None, max_sims=0)
   all_gate_prob_err[i,4] = rs_stats.get_conformation_prob_error(None, max_sims=0)
 
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-plt.ion()
 
 ## Figure 8D-left (k1 rate comparison)
 plt.figure(figsize = (5.2,4.8))
