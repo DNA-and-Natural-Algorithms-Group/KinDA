@@ -19,7 +19,7 @@ Journal of The Royal Society Interface, 2018
 
 ## Trying out KinDA (Public AWS Image)
 
-The easiest way to test out KinDA is through the publicly available Amazon Web Services (AWS) Amazon Machine Image (AMI). This image is available to all AWS users, and can be found in the "Community AMIs" section when creating a new EC2 instance, using the search query "KinDA v0.2".  The scripts should run on a "t2.micro" instance, but we often use "c5.9xlarge" instances for serious simulations.
+The easiest way to test out KinDA is through the publicly available Amazon Web Services (AWS) Amazon Machine Image (AMI). This image is available to all AWS users, and can be found in the "Community AMIs" section when creating a new EC2 instance, using the search query "KinDA v0.2".  The scripts should run on a "t2.micro" instance, but we often use "c5.9xlarge" instances for serious simulations.  `matplotlib` is installed with the `Agg` backend default, so it can output files (PDF, etc) but not produce graphics interactively.
 
 A note about AWS regions: The KinDA AMI is currently only available in AWS's four U.S. subdivisions. If you are having trouble finding this AMI, your AWS region may be set outside the U.S. Please contact the project team if you cannot switch your account's region setting and would like us to copy the image to a new region.
 
@@ -40,6 +40,8 @@ of your NUPACK files.
 KinDA will automatically install the following packages, if necessary:
 * Peppercorn enumerator (https://github.com/DNA-and-Natural-Algorithms-Group/peppercornenumerator)
 
+You will need the `future` package to use the commandline KinDA interface, e.g. `pip install future`.  
+To run the plotting examples in the case studies, you will need `matplotlib`.
 
 ### Installation
 ```bash

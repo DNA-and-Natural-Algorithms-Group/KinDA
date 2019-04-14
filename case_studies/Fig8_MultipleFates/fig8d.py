@@ -48,7 +48,6 @@ for i, sstats in enumerate([sstats1, sstats2]):
   all_gate_prob_err[i,4] = rs_stats.get_conformation_prob_error(None, max_sims=0)
 
 import matplotlib
-matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
 ## Figure 8D-left (k1 rate comparison)

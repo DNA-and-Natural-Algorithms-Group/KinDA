@@ -44,7 +44,6 @@ temp_depletion_low = get_temp_depletion(sstats, restingset_names, restingset_con
 temp_depletion_high = get_temp_depletion(sstats, restingset_names, restingset_concs2)
 
 import matplotlib
-matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
 names_caps = [s.upper() for s in restingset_names]
