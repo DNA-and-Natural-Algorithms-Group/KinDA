@@ -85,11 +85,10 @@ for i,s in enumerate(mfe_structs):
 kinda.export_data(kinda_obj, 'analyze.db')
 kinda_obj = kinda.import_data('analyze.db')
 
-# DOES NOT WORK!!!
 ## Getting the (fractional) reactant depletion due to unproductive reactions
-#unproductive_depletion = rs_stats.get_temp_depletion(0.5) # Get depletion with 50% error on any relevant reaction rate
+unproductive_depletion = rs_stats.get_temporary_depletion(0.5) # Get depletion with 50% error on any relevant reaction rate
 ## Getting the rate constant of reactant depletion due to spurious reactions (units: /s)
-#spurious_depletion = rs_stats.get_perm_depletion(0.5) # Get depletion with 50% error on any relevant reaction rate
+spurious_depletion = rs_stats.get_permanent_depletion(0.5) # Get depletion with 50% error on any relevant reaction rate
 
 #### To get a system-level score, use the convenience functions in stats_utils.py
 #kinda.statistics.stats_utils.calc_unproductive_rxn_score(kinda_obj)

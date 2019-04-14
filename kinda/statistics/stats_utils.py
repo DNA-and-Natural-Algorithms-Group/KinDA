@@ -703,30 +703,32 @@ def _import_data_convert_version(sstats_dict, version):
     major, minor, subminor = version_parts
   else:
     print "KinDA: ERROR: Invalid version number {}. Conversion failed. Simulations and statistical calculations may fail.".format(version)
+    return sstats_dict
 
   if major == 0 and minor == 1 and subminor <= 5:
     print "KinDA: ERROR: Invalid version number {}. Conversion failed. Simulations and statistical calculations may fail.".format(version)
-  elif major == 0 and minor == 1 and subminor <= 7:
+    return sstats_dict
+  if major == 0 and minor == 1 and subminor <= 7:
     # add 'valid' entry to all simulation data
     for data in sstats_dict['resting-set-reaction-stats'].values():
       tags = data['simulation_data']['tags']
       num_sims = len(tags)
       MS_TIMEOUT, MS_ERROR = -1, -3
       data['simulation_data']['valid'] = np.array([t!=MS_TIMEOUT and t!=MS_ERROR for t in tags])
-    sstats_dict['version'] = 'v0.1.10'
-  elif major == 0 and minor == 1 and subminor <= 10:
+  if major == 0 and minor == 1 and subminor <= 10:
     # add 'invalid_simulation_data' dict ms_results
     for data in sstats_dict['resting-set-reaction-stats'].values():
       invalid_idxs = filter(lambda i:data['simulation_data']['valid'][i]==0, range(len(data['simulation_data']['valid'])))
       data['invalid_simulation_data'] = [{'simulation_index': i} for i in invalid_idxs]
-    sstats_dict['version'] = 'v0.1.11'
-  elif major == 0 and minor == 1 and subminor <= 12:
+  if major == 0 and minor == 1 and subminor <= 12:
     # change macrostate mode name from 'disassoc' to 'ordered-complex'
     if sstats_dict['initialization_params']['kinda_params']['start_macrostate_mode'] == 'disassoc':
       sstats_dict['initialization_params']['kinda_params']['start_macrostate_mode'] = 'ordered-complex'
     if sstats_dict['initialization_params']['kinda_params']['stop_macrostate_mode'] == 'disassoc':
       sstats_dict['initialization_params']['kinda_params']['stop_macrostate_mode'] = 'ordered-complex'
-    sstats_dict['version'] = 'v0.1.13'
+
+  # sstats_dict should be in v0.2 format now
+  sstats_dict['version'] = 'v0.2'
 
   return sstats_dict
     
