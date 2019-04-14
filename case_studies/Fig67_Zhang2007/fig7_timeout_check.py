@@ -46,6 +46,8 @@ for temp in range(0,100):
     with open(ANALYSIS_PATH, 'r') as f:
       reader = csv.reader(f)
       for row in reader:
+        if len(row)>0 and not row[0].find('HISTOGRAM') == -1:
+          break
         if len(row)>0 and not row[0].find('->') == -1 and row[0] in reaction_names:
           rxn_i = reaction_names.index(row[0])
           successes = int(row[5])
