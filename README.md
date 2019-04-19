@@ -17,6 +17,8 @@ by Joseph Berleant, Christopher Berlind, Stefan Badelt, Frits Dannenberg, Joseph
 Journal of The Royal Society Interface, 2018
 (https://royalsocietypublishing.org/doi/full/10.1098/rsif.2018.0107).
 
+Questions and comments should be addressed to Erik Winfree <winfree@caltech.edu>.
+
 ## Trying out KinDA (Public AWS Image)
 
 The easiest way to test out KinDA is through the publicly available Amazon Web Services (AWS) Amazon Machine Image (AMI). This image is available to all AWS users, and can be found in the "Community AMIs" section when creating a new EC2 instance, using the search query "KinDA v0.2".  The scripts should run on a "t2.micro" instance, but we often use "c5.9xlarge" instances for serious simulations.  `matplotlib` is installed with the `Agg` backend default, so it can output files (PDF, etc) but not produce graphics interactively.
