@@ -102,9 +102,17 @@ then merge the files with the original database:
     --merge kotani2017_F2_ms10_T55_1.db kotani2017_F2_ms10_T55_2.db ...
 ```
 
-Beware that the merge option loads data from kinda databases into your present
-system. It will (for good reason) not complain if you merge kinda files that
+Beware that the merge option loads data from KinDA databases into your present
+system. It will (for good reason) not complain if you merge KinDA files that
 have conflicting system parameters!!! You(!) have to make sure that the merge
 operation does not lead to skewed data.
 
-
+### Simulating a reaction with too few successful runs
+When KinDA does not have enough simulation data (specifically, 0 or 1 successful runs) then 
+it will report an infinite error bar on some reaction rates.   In the case of no successful runs, 
+the KinDA script will output a PIL file that comments out the insufficiently characterized reaction;
+however, in the case of a single successful run, the reaction is reported despite the infinite
+error bar for k2.  While this is reasonable, the released version of `pilsimulator` will crash
+because it cannot parse the error bar value.  If you encounter this error, you can either
+run more simulations, or edit the PIL file by hand to replace `inf` by a numerical value for the offending reaction.
+This bug will be fixed in future versions.
