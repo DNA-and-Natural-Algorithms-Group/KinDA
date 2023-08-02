@@ -34,13 +34,13 @@ def simulate(sim_mode, **params):
     sstats.get_reaction(reactants = [rs_InputB, rs_OR], spurious = False, unproductive = False)
   ]
  
-  print "Reaction analysis order:"
+  print("Reaction analysis order:")
   for i, rxn in enumerate(rxns):
-    print i, rxn
+    print(i, rxn)
  
   rxn_times = []
   for rxn in rxns:
-    print "Analyzing", rxn
+    print("Analyzing", rxn)
  
     start_time = time.time()
 
@@ -51,17 +51,17 @@ def simulate(sim_mode, **params):
 
     end_time = time.time()
  
-    print "k1: {} +/- {}".format(rxn_stats.get_k1(max_sims=0), rxn_stats.get_k1_error(max_sims=0))
-    print "k2: {} +/- {}".format(rxn_stats.get_k2(max_sims=0), rxn_stats.get_k2_error(max_sims=0))
+    print("k1: {} +/- {}".format(rxn_stats.get_k1(max_sims=0), rxn_stats.get_k1_error(max_sims=0)))
+    print("k2: {} +/- {}".format(rxn_stats.get_k2(max_sims=0), rxn_stats.get_k2_error(max_sims=0)))
 
     rxn_times.append(end_time-start_time)
 
-    print "Finished analyzing {} in {} seconds\n".format(rxn, end_time - start_time)
+    print("Finished analyzing {} in {} seconds\n".format(rxn, end_time - start_time))
  
   ## Store results
   kinda.export_data(sstats, '{}_{}.kinda'.format(OUTPUT_PREFIX, sim_mode))
  
-  return sstats, zip(rxns, rxn_times)
+  return sstats, list(zip(rxns, rxn_times))
 
 ## Set up parameters dict
 if MODE == 'demo':

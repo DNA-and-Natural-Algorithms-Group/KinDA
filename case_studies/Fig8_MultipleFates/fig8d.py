@@ -69,7 +69,7 @@ bottom = [[0, 0], all_gate_prob[:,0:2].sum(axis=1), all_gate_prob[:,0:4].sum(axi
 yerr = [all_gate_prob_err[:,0:2].sum(axis=1), all_gate_prob_err[:,2:4].sum(axis=1), all_gate_prob_err[:,4]]
 plt.figure(figsize = (5.2,4.8))
 for h,b,e,c in zip(height, bottom, yerr, colors):
-  print h,b,e,c
+  print(h,b,e,c)
   plt.bar(left, height=h, bottom=b, yerr=e, color=c, capsize=15, width=0.5)
 
 plt.legend(['$B_1 + B_2$', '$B_3 + B_4$', 'spur.'])

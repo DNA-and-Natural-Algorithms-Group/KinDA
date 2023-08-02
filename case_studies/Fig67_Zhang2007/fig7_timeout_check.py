@@ -41,7 +41,7 @@ short_reaction_names=[
 for temp in range(0,100):
   ANALYSIS_PATH = '{}fig7_T{:d}_{}_analysis.csv'.format(DIR,temp,MODE)
   if os.path.exists(ANALYSIS_PATH):
-    print "Loading data for temperature T = {:d} and {} mode.".format(temp,MODE)
+    print("Loading data for temperature T = {:d} and {} mode.".format(temp,MODE))
 
     with open(ANALYSIS_PATH, 'r') as f:
       reader = csv.reader(f)
@@ -54,6 +54,6 @@ for temp in range(0,100):
           timeouts  = int(row[6])
           total     = int(row[7])
           if timeouts>0:
-            print "T = {}, {}: {} successes, {} timeouts, {} total".format(temp,short_reaction_names[rxn_i],successes,timeouts,total)
-print
+            print("T = {}, {}: {} successes, {} timeouts, {} total".format(temp,short_reaction_names[rxn_i],successes,timeouts,total))
+print()
 

@@ -26,12 +26,12 @@ MODE = sys.argv[2]
 
 MODELIST = ['demo', 'trial', 'publication', 'randomR', 'randomT' ] 
 if not MODE in MODELIST:
-  print 'Mode not recognized. Using demo mode.'
+  print('Mode not recognized. Using demo mode.')
   MODE = 'demo'
 
 QUAL = MODE[0:3]
 
-print "Using temperature T = {:d} and {} mode for simulations.".format(temp,MODE)
+print("Using temperature T = {:d} and {} mode for simulations.".format(temp,MODE))
 
 if MODE == 'demo' or MODE == 'trial' or MODE == 'publication' :
   PIL_PATH = 'Zhang2007.pil'
@@ -70,10 +70,10 @@ nupack_params = {
 #### Read domains, strands, and complexes from old-style PIL file
 #### Or recover that information, along with simulation results, from earlier (and perhaps lower-quality) simulations
 if os.path.exists(DATA_PATH):
-    print "Loading previous data for temperature T = {:d} and {} mode.".format(temp,MODE)
+    print("Loading previous data for temperature T = {:d} and {} mode.".format(temp,MODE))
     sstats = kinda.import_data(DATA_PATH)
 elif os.path.exists(PREV_DATA_PATH):
-    print "Loading previous data for temperature T = {:d} and {} mode, boosting for {} mode.".format(temp,PREV_MODE,MODE)
+    print("Loading previous data for temperature T = {:d} and {} mode, boosting for {} mode.".format(temp,PREV_MODE,MODE))
     sstats = kinda.import_data(PREV_DATA_PATH)
     # The resting set analysis may have a changed analysis parameter. 
     # Since samples are saved, it is OK to update the parameter.  (Unlike for the multistrand similarity threshold.)
@@ -92,9 +92,9 @@ else:
 
 desired_rxns = sstats.get_reactions(unproductive = False, spurious = False)
 
-print "Desired reaction analysis order:"
+print("Desired reaction analysis order:")
 for i,r in enumerate(desired_rxns):
-  print i,r
+  print(i,r)
 
 rs_fuel      = sstats.get_restingset(name = 'Fuel')
 rs_substrate = sstats.get_restingset(name = 'Substrate')
@@ -103,19 +103,19 @@ rs_leakint2  = sstats.get_restingset(complex_name = 'cpx_F:SB:LB', spurious=True
 leak_rxns    = sstats.get_reactions(reactants = [rs_fuel, rs_substrate], products = [rs_leakint1], spurious=True) \
              + sstats.get_reactions(reactants = [rs_fuel, rs_substrate], products = [rs_leakint2], spurious=True)
 
-print "Potential leak reaction analysis order:"
+print("Potential leak reaction analysis order:")
 for i,r in enumerate(leak_rxns):
-  print i,r
+  print(i,r)
 
 unproductive_rxns = sstats.get_reactions(unproductive = True, spurious = False)
 
-print "Unproductive reaction analysis order:"
+print("Unproductive reaction analysis order:")
 for i,r in enumerate(unproductive_rxns):
-  print i,r
+  print(i,r)
 
-print
-print '==========================================='
-print
+print()
+print('===========================================')
+print()
 
 ######### OK, get to business now
 
@@ -165,7 +165,7 @@ else:
 ## Simulate each reaction -- desired reactions first
 
 for i, r in enumerate(desired_rxns):
-  print "\nAnalyzing desired reaction {}: {}".format(i,r)
+  print("\nAnalyzing desired reaction {}: {}".format(i,r))
 
   # Get stats object
   rxn_stats = sstats.get_stats(r)
@@ -173,8 +173,8 @@ for i, r in enumerate(desired_rxns):
   # Query k1 and k2 reaction rates to requested precision
   rxn_stats.get_k1(verbose=1, **params)
   rxn_stats.get_k2(verbose=1, **params_uni)
-  print "k1: {} +/- {}".format(rxn_stats.get_k1(max_sims=0), rxn_stats.get_k1_error(max_sims=0))
-  print "k2: {} +/- {}".format(rxn_stats.get_k2(max_sims=0), rxn_stats.get_k2_error(max_sims=0))
+  print("k1: {} +/- {}".format(rxn_stats.get_k1(max_sims=0), rxn_stats.get_k1_error(max_sims=0)))
+  print("k2: {} +/- {}".format(rxn_stats.get_k2(max_sims=0), rxn_stats.get_k2_error(max_sims=0)))
 
 ## Export all collected data  (we'll do it again later, but in case the system crashes...)
 kinda.export_data(sstats, DATA_PATH)
@@ -183,7 +183,7 @@ kinda.export_data(sstats, DATA_PATH)
 ## Simulate the most probable leak reactions, with the same accuracy goals.  We know they're there, so find them!
 
 for i, r in enumerate(leak_rxns):
-  print "\nAnalyzing potential leak reaction {}: {}".format(i,r)
+  print("\nAnalyzing potential leak reaction {}: {}".format(i,r))
 
   # Get stats object
   rxn_stats = sstats.get_stats(r)
@@ -191,8 +191,8 @@ for i, r in enumerate(leak_rxns):
   # Query k1 and k2 reaction rates to requested precision
   rxn_stats.get_k1(verbose=1, **params)
   rxn_stats.get_k2(verbose=1, **params_uni)
-  print "k1: {} +/- {}".format(rxn_stats.get_k1(max_sims=0), rxn_stats.get_k1_error(max_sims=0))
-  print "k2: {} +/- {}".format(rxn_stats.get_k2(max_sims=0), rxn_stats.get_k2_error(max_sims=0))
+  print("k1: {} +/- {}".format(rxn_stats.get_k1(max_sims=0), rxn_stats.get_k1_error(max_sims=0)))
+  print("k2: {} +/- {}".format(rxn_stats.get_k2(max_sims=0), rxn_stats.get_k2_error(max_sims=0)))
 
 ## Export all collected data  (we'll do it again later, but in case the system crashes...)
 kinda.export_data(sstats, DATA_PATH)
@@ -201,7 +201,7 @@ kinda.export_data(sstats, DATA_PATH)
 ## Simulate each reaction -- unproductive reactions now, with more sims, same accuracy goals
 
 for i, r in enumerate(unproductive_rxns):
-  print "\nAnalyzing unproductive reaction {}: {}".format(i,r)
+  print("\nAnalyzing unproductive reaction {}: {}".format(i,r))
 
   # Get stats object
   rxn_stats = sstats.get_stats(r)
@@ -209,8 +209,8 @@ for i, r in enumerate(unproductive_rxns):
   # Query k1 and k2 reaction rates to requested precision
   rxn_stats.get_k1(verbose=1, **params)
   rxn_stats.get_k2(verbose=1, **params_uni)
-  print "k1: {} +/- {}".format(rxn_stats.get_k1(max_sims=0), rxn_stats.get_k1_error(max_sims=0))
-  print "k2: {} +/- {}".format(rxn_stats.get_k2(max_sims=0), rxn_stats.get_k2_error(max_sims=0))
+  print("k1: {} +/- {}".format(rxn_stats.get_k1(max_sims=0), rxn_stats.get_k1_error(max_sims=0)))
+  print("k2: {} +/- {}".format(rxn_stats.get_k2(max_sims=0), rxn_stats.get_k2_error(max_sims=0)))
 
 ## Export all collected data  (we'll do it again later, but in case the system crashes...)
 kinda.export_data(sstats, DATA_PATH)
@@ -222,10 +222,10 @@ kinda.export_data(sstats, DATA_PATH)
 ## Collect all resting sets to analyze.
 restingsets = sstats.get_restingsets()
 
-print "Resting set analysis order:"
+print("Resting set analysis order:")
 for i,rs in enumerate(restingsets):
-  print i,rs
-print
+  print(i,rs)
+print()
 
 ## Set up parameters dict.
 if QUAL == 'dem':
@@ -252,7 +252,7 @@ elif QUAL == 'pub' or QUAL == 'ran':
 
 ## Analyze each resting set
 for i,rs in enumerate(restingsets):
-  print "\nAnalyzing resting set {}: {}".format(i,rs)
+  print("\nAnalyzing resting set {}: {}".format(i,rs))
 
   # Get stats object
   rs_stats = sstats.get_stats(rs)
@@ -262,7 +262,7 @@ for i,rs in enumerate(restingsets):
     if not c.name == None:
       rs_stats.get_conformation_prob(c.name,verbose=1,**params)
   for c in rs.complexes:
-    print c.name, rs_stats.get_conformation_prob(c.name,max_sims=0), '+/-', rs_stats.get_conformation_prob_error(c.name,max_sims=0)
+    print(c.name, rs_stats.get_conformation_prob(c.name,max_sims=0), '+/-', rs_stats.get_conformation_prob_error(c.name,max_sims=0))
 
 ## Export all collected data  (last time.  this overwrites previous exports.)
 kinda.export_data(sstats, DATA_PATH)

@@ -19,9 +19,9 @@ sstats = kinda.from_pil(PIL_PATH)
 ## do not explicitly collect data for spurious reactions.
 rxns = sstats.get_reactions(spurious = False)
 
-print "Reaction analysis order:"
+print("Reaction analysis order:")
 for i,r in enumerate(rxns):
-  print i,r
+  print(i,r)
 
 ## Set up parameters dict.
 if MODE == 'demo':
@@ -43,7 +43,7 @@ elif MODE == 'publication':
 
 ## Simulate each reaction
 for i, r in enumerate(rxns):
-  print "\nAnalyzing reaction {}: {}".format(i,r)
+  print("\nAnalyzing reaction {}: {}".format(i,r))
 
   # Get stats object
   rxn_stats = sstats.get_stats(r)
@@ -51,8 +51,8 @@ for i, r in enumerate(rxns):
   # Query k1 and k2 reaction rates to requested precision
   rxn_stats.get_k1(verbose=1, **params)
   rxn_stats.get_k2(verbose=1, **params)
-  print "k1: {} +/- {}".format(rxn_stats.get_k1(max_sims=0), rxn_stats.get_k1_error(max_sims=0))
-  print "k2: {} +/- {}".format(rxn_stats.get_k2(max_sims=0), rxn_stats.get_k2_error(max_sims=0))
+  print("k1: {} +/- {}".format(rxn_stats.get_k1(max_sims=0), rxn_stats.get_k1_error(max_sims=0)))
+  print("k2: {} +/- {}".format(rxn_stats.get_k2(max_sims=0), rxn_stats.get_k2_error(max_sims=0)))
 
 ## Export all collected data
 kinda.export_data(sstats, DATA_PATH)
@@ -63,10 +63,10 @@ kinda.export_data(sstats, DATA_PATH)
 ## Collect all resting sets to analyze.
 restingsets = sstats.get_restingsets()
 
-print "Resting set analysis order:"
+print("Resting set analysis order:")
 for i,rs in enumerate(restingsets):
-  print i,rs
-print
+  print(i,rs)
+print()
 
 ## Set up parameters dict.
 if MODE == 'demo':
@@ -86,7 +86,7 @@ elif MODE == 'publication':
 
 ## Analyze each resting set
 for i,rs in enumerate(restingsets):
-  print "\nAnalyzing resting set {}: {}".format(i,rs)
+  print("\nAnalyzing resting set {}: {}".format(i,rs))
 
   # Get stats object
   rs_stats = sstats.get_stats(rs)
@@ -94,7 +94,7 @@ for i,rs in enumerate(restingsets):
   # Query probabilities for all conformations (including the spurious conformation, denoted as None)
   rs_stats.get_conformation_probs(verbose=1, **params)
   for c in rs.complexes:
-    print c.name, rs_stats.get_conformation_prob(c.name,max_sims=0), '+/-', rs_stats.get_conformation_prob_error(c.name,max_sims=0)
+    print(c.name, rs_stats.get_conformation_prob(c.name,max_sims=0), '+/-', rs_stats.get_conformation_prob_error(c.name,max_sims=0))
 
 ## Export all collected data
 kinda.export_data(sstats, DATA_PATH)

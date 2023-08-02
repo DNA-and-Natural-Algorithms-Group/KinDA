@@ -33,10 +33,10 @@ else :
 
 MODELIST = ['demo', 'trial', 'publication', 'randomR', 'randomT'] 
 if not MODE in MODELIST:
-  print 'Mode not recognized. Using demo mode.'
+  print('Mode not recognized. Using demo mode.')
   MODE = 'demo'
 
-print "Loading data for temperature T = {:d} and {} mode.".format(temp,MODE)
+print("Loading data for temperature T = {:d} and {} mode.".format(temp,MODE))
 
 # Load the standard raw data file for this temperature and quality
 DATA_PATH = 'fig7_T{:d}_raw_{}.kinda'.format(temp,MODE)

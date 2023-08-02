@@ -108,7 +108,7 @@ plt.close()
 for temp in range(0,100):
   ANALYSIS_PATH = '{}fig7_T{:d}_{}_analysis.csv'.format(DIR,temp,MODE)
   if os.path.exists(ANALYSIS_PATH):
-    print "Loading data for temperature T = {:d} and {} mode.".format(temp,MODE)
+    print("Loading data for temperature T = {:d} and {} mode.".format(temp,MODE))
     temps.append(temp)
 
     num_p=0
@@ -140,21 +140,21 @@ for temp in range(0,100):
           for b in range(31):
             histbins[temp,rxn_i,b] = float(row[b+31])
 
-print
+print()
 
 ## double-check that some stuff got read correctly, if you want
 if False:  
   for temp in temps:
     for i in range(len(reaction_names)):
-      print "T = {} : rxn{}_k1 = {} +/- {} /M/s, rxn{}_k2 = {} +/- {} /s".format(temp,i,rates[temp,i,0],rates[temp,i,1],i,rates[temp,i,2],rates[temp,i,3])
+      print("T = {} : rxn{}_k1 = {} +/- {} /M/s, rxn{}_k2 = {} +/- {} /s".format(temp,i,rates[temp,i,0],rates[temp,i,1],i,rates[temp,i,2],rates[temp,i,3]))
 
-  print
+  print()
 
   for temp in temps:
     for i in range(len(complex_names)):
       for pi in range(num_p):
-        print "T = {}, {} : {}-well-formed = {:4.1f} +/- {:4.1f} %, temporary depletion = {:4.1f} %".format(temp,
-          complex_names[i],formation[temp,i,pi,NUPACK_P],100*formation[temp,i,pi,FORM_PROB],100*formation[temp,i,pi,FORM_ERR],100*depletion[temp,i])
+        print("T = {}, {} : {}-well-formed = {:4.1f} +/- {:4.1f} %, temporary depletion = {:4.1f} %".format(temp,
+          complex_names[i],formation[temp,i,pi,NUPACK_P],100*formation[temp,i,pi,FORM_PROB],100*formation[temp,i,pi,FORM_ERR],100*depletion[temp,i]))
 
 colors=['r','b','g','m','c','k','y']
 

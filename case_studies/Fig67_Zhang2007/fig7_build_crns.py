@@ -30,7 +30,7 @@ species=['Catalyst','Substrate','Fuel','Intermediate','Output','Signal','Waste']
 for temp in range(0,100):
   ANALYSIS_PATH = '{}fig7_T{:d}_{}_analysis.csv'.format(DIR,temp,MODE)
   if os.path.exists(ANALYSIS_PATH):
-    print "Loading data for temperature T = {:d} and {} mode.".format(temp,MODE)
+    print("Loading data for temperature T = {:d} and {} mode.".format(temp,MODE))
     temps.append(temp)
 
     # produce input file for Stefan Badelt's pilsimulator in Python
@@ -94,4 +94,4 @@ for temp in range(0,100):
     out.close()
 
 
-print
+print()
