@@ -23,4 +23,3 @@ import os
 if 'NUPACKHOME' not in os.environ or not os.path.isfile(
         os.path.join(os.environ['NUPACKHOME'], 'build', 'bin', 'sample')):
   raise ImportError(NUPACKERROR)
-

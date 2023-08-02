@@ -10,8 +10,10 @@ import numpy as np
 
 import multiprocessing, signal
 
+import nupack
+
+from .. import options
 from ..objects import utils, Complex
-from .. import nupack, options
 from .sim_utils import print_progress_table
 
 
@@ -385,4 +387,3 @@ class NupackSampleJob:
       struct_list = nupack.subopt(strand_seqs, energy_gap, **self._nupack_params)
       energy_gap += 0.5
     return struct_list
-
