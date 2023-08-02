@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 """
 --------------------------
@@ -22,8 +22,6 @@ cat input.pil | peppercorn -c -d [--options] | KinDA [--options]
         necessary. A clearer separation of system and session-parameters would
         be nice (e.g. multiprocessing)
 """
-
-from __future__ import absolute_import, print_function
 
 import os
 import sys
@@ -686,10 +684,13 @@ def add_kinda_args(parser):
             help=argparse.SUPPRESS)
 
 
-if __name__ == '__main__':
+def cli_main():
     parser = argparse.ArgumentParser(
-            formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     add_kinda_args(parser)
     args = parser.parse_args()
     main(args)
 
+
+if __name__ == '__main__':
+    cli_main()

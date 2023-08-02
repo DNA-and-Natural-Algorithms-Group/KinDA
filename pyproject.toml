@@ -1,0 +1,44 @@
+[build-system]
+requires = ["setuptools>=65", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = 'kinda'
+version = '0.2'
+description = 'Kinetic DNA strand-displacement Analyzer'
+authors = [{name = "Joseph Berleant"}, {name = "Chris Berlind"},
+           {name = "Stefan Badelt"}, {name = "Frits Dannenberg"},
+           {name = "Joseph Schaeffer"},
+           {name = "Erik Winfree", email = "winfree@caltech.edu"}]
+maintainers = [{name = "Boyan Beronov", email = "beronov@cs.ubc.ca"}]
+readme = "README.md"
+license = {file = "LICENSE"}
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "License :: OSI Approved :: MIT License",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+    "Topic :: Scientific/Engineering :: Chemistry",
+    "Topic :: Scientific/Engineering :: Physics",
+    "Environment :: Console",
+    "Natural Language :: English",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+]
+requires-python = ">=3.8"
+dependencies = [
+    "numpy",
+    'peppercornenumerator==0.9',
+    'multistrand==2.1',
+    "matplotlib",
+]
+
+[project.scripts]
+KinDA = "kinda.scripts.KinDA:cli_main"
+
+[project.urls]
+Home = "https://github.com/DNA-and-Natural-Algorithms-Group/KinDA"
