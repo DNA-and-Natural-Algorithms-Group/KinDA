@@ -36,9 +36,9 @@ rxns = kinda_obj.get_reactions(spurious = True) # Get only spurious reactions
 rxns = kinda_obj.get_reactions(spurious = False, unproductive=False) # Get all reactions that were enumerated and not unproductive
 
 ##   3) Print the reactions out so you can see what's going on...
-print "Reactions between", restingsets[0], "and", restingsets[1], ":"
+print("Reactions between", restingsets[0], "and", restingsets[1], ":")
 for i, rxn in enumerate(rxns):
-  print "{0}: {1}".format(i, rxn)
+  print("{0}: {1}".format(i, rxn))
 
 ##   4) Choose a reaction to analyze in more detail
 rxn = rxns[0] # Select the first reaction (you can choose a different one if you like, of course)
@@ -56,9 +56,9 @@ k_coll = rxn_stats.get_kcoll(0.25, verbose = 1) # Estimate k_coll with 25% error
 
 ##   1) Get the resting set you want
 restingsets = list(kinda_obj.get_restingsets()) # Get all resting sets
-print "Resting Sets: "
+print("Resting Sets: ")
 for i, rs in enumerate(restingsets):
-  print "{0}: {1}".format(i, rs)
+  print("{0}: {1}".format(i, rs))
 restingset = restingsets[0] 
 ##      NOTE: You can also use kinda_obj.get_restingset(strands = list_of_strands) and all
 ##      resting sets involving those strands (in ANY order, and including those with additional strands)
@@ -71,16 +71,16 @@ rs_stats = kinda_obj.get_stats(restingset)
 ## Getting the conformation probabilities
 confs = [c.name for c in restingset.complexes] # Get all conformation names in the resting set (most of the time there are only 1 or 2)
 confs.append(None) # None refers to spurious conformations (that aren't similar to any expected conformations)
-print "Conformation probabilities for resting set {0}".format(restingset)
+print("Conformation probabilities for resting set {0}".format(restingset))
 for c in confs:
   p = rs_stats.get_conformation_prob(c, .025, max_sims = 500)
-  print "\t{0}: {1}%".format(c, p*100)
+  print("\t{0}: {1}%".format(c, p*100))
 
 ## Getting the top 10 MFE structures
 mfe_structs = rs_stats.get_top_MFE_structs(10)
-print "Top 10 MFE structures for resting set {0}".format(restingset)
+print("Top 10 MFE structures for resting set {0}".format(restingset))
 for i,s in enumerate(mfe_structs):
-  print "\t{0}: {1} ({2})".format(i, s[0], s[1])
+  print("\t{0}: {1} ({2})".format(i, s[0], s[1]))
 
 kinda.export_data(kinda_obj, 'analyze.db')
 kinda_obj = kinda.import_data('analyze.db')
@@ -94,4 +94,4 @@ spurious_depletion = rs_stats.get_permanent_depletion(0.5) # Get depletion with 
 #kinda.statistics.stats_utils.calc_unproductive_rxn_score(kinda_obj)
 #kinda.statistics.stats_utils.calc_spurious_rxn_score(kinda_obj)
 
-print 'done'
+print('done')
