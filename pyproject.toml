@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = 'kinda'
-version = '0.2'
+version = '0.3'
 description = 'Kinetic DNA strand-displacement Analyzer'
 authors = [{name = "Joseph Berleant"}, {name = "Chris Berlind"},
            {name = "Stefan Badelt"}, {name = "Frits Dannenberg"},
