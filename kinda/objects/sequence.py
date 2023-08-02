@@ -33,7 +33,7 @@ def base_group_intersect(g1, g2):
   bases1 = set(base_group[g1])
   bases2 = set(base_group[g2])
   intersection = bases1.intersection(bases2)
-  for key, val in base_group.items():
+  for key, val in list(base_group.items()):
     if intersection == set(val):
       return key
   return "x"
@@ -54,7 +54,7 @@ class Sequence(str):
     
   def intersection(self, other):
     if len(self) != len(other):
-      print "Cannot intersect constraint sequences {0} and {1}".format(self, other)
+      print("Cannot intersect constraint sequences {0} and {1}".format(self, other))
       return Sequence("")
       
     intersected = "".join([base_group_intersect(g1, g2)

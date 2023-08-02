@@ -83,8 +83,8 @@ def expand_domain_strandlist(structure, strands):
                                 for bd
                                 in strands[b_strand_ind].base_domains()[0:b_domain_ind]])
         b_domain_end = b_domain_start + d.length
-        indices = reversed(range(b_domain_start, b_domain_end))
-        struct.extend(zip([bound[0]] * d.length, indices))
+        indices = reversed(list(range(b_domain_start, b_domain_end)))
+        struct.extend(list(zip([bound[0]] * d.length, indices)))
     expanded.append(struct)
   return expanded
   
@@ -103,7 +103,7 @@ class Structure(object):
     strands [type=list of strands, required] -- List of strands in this structure.
     """
     self._strands = kargs['strands']
-    self._strand_order = range(len(self._strands))
+    self._strand_order = list(range(len(self._strands)))
     
     self.structure = kargs['structure']
 
@@ -154,7 +154,7 @@ class Structure(object):
     # Since the structure now refers to the rotated strands, we need
     # to finalize this rotation.
     self._strands = self.strands
-    self._strand_order = range(len(self._strands))
+    self._strand_order = list(range(len(self._strands)))
     
   @property
   def pseudoknotted(self):

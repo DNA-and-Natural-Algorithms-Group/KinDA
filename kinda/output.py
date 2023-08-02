@@ -1,4 +1,4 @@
-from __future__ import absolute_import
+
 from kinda import __version__
 
 def format_rate_units(rate, arity, molarity, time):
@@ -65,8 +65,8 @@ def write_pil(KindaSystem, fh, spurious=False, unproductive=False, molarity='M',
         k_2 = stats.get_k2(max_sims=0)
         k_2_err = stats.get_k2_error(max_sims=0)
 
-        reactants = map(lambda x:x.name, rxn.reactants)
-        products  = map(lambda x:x.name, rxn.products)
+        reactants = [x.name for x in rxn.reactants]
+        products  = [x.name for x in rxn.products]
         if prefix :
             inter = prefix + str(I)
         else :

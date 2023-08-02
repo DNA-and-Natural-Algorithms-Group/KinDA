@@ -2,7 +2,7 @@ import itertools as it
 
 import peppercornenumerator as enum
 import peppercornenumerator.objects as enumobj
-import dnaobjects as dna
+from . import dnaobjects as dna
 
 ### Possible future TODOs:
 ###   Add conversion functionality to Peppercorn resting sets
@@ -112,9 +112,9 @@ def to_Peppercorn(*args, **kargs):
   
   ## Return in a dict
   results = dict()
-  results['domains'] = enum_domains.items()
-  results['complexes'] = enum_complexes.items()
-  results['reactions'] = enum_reactions.items()
+  results['domains'] = list(enum_domains.items())
+  results['complexes'] = list(enum_complexes.items())
+  results['reactions'] = list(enum_reactions.items())
   return results
 
 #
@@ -193,7 +193,7 @@ def from_Peppercorn_restingset_reaction(reaction, restingsets):
   """
   
   if reaction.rtype != 'condensed':
-    print "KinDA: WARNING: Attempted to convert non-condensed Peppercorn reaction into a RestingSetReaction"
+    print("KinDA: WARNING: Attempted to convert non-condensed Peppercorn reaction into a RestingSetReaction")
   
   reactants = [restingsets[r] for r in reaction.reactants]
   products = [restingsets[p] for p in reaction.products]
@@ -262,9 +262,9 @@ def from_Peppercorn(*args, **kargs):
     
   ## Make return value
   result = dict()
-  result['domains'] = dna_domains.items()
-  result['complexes'] = dna_complexes.items()
-  result['reactions'] = dna_reactions.items()
-  result['restingsets'] = dna_restingsets.items()
-  result['restingsetreactions'] = dna_restingsetreactions.items()
+  result['domains'] = list(dna_domains.items())
+  result['complexes'] = list(dna_complexes.items())
+  result['reactions'] = list(dna_reactions.items())
+  result['restingsets'] = list(dna_restingsets.items())
+  result['restingsetreactions'] = list(dna_restingsetreactions.items())
   return result

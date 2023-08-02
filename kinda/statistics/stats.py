@@ -19,7 +19,8 @@ from ..simulation.nupackjob import NupackSampleJob
 from ..enumeration.enumeratejob import EnumerateJob
 from ..objects import utils, Macrostate
 from .. import nupack, options
-import stats_utils
+from . import stats_utils
+from functools import reduce
     
 
 ## CLASSES
@@ -55,7 +56,7 @@ class RestingSetRxnStats(object):
         self.multijob = FirstPassageTimeModeJob(self.reactants, [self.products], [multijob_tag])
       else:
         self.multijob = None
-        print "KinDA: ERROR: Cannot handle reactions with more than 2 or less than 1 reactants. Simulations of reaction {} -> {} may fail.".format(self.reactants, self.products)
+        print("KinDA: ERROR: Cannot handle reactions with more than 2 or less than 1 reactants. Simulations of reaction {} -> {} may fail.".format(self.reactants, self.products))
     else:
       self.multijob = multijob
     self.multijob_tag = multijob_tag
@@ -71,7 +72,7 @@ class RestingSetRxnStats(object):
     Additional simulations are run until the fractional error is
     below the given relative_error threshold. """
     fractions = [1 - rs.get_temporary_depletion(relative_error, max_sims) \
-                                      for rs in self.rs_stats.values() if rs != None]
+                                      for rs in list(self.rs_stats.values()) if rs != None]
     rate_fraction = reduce(lambda x,y: x*y, fractions, 1.0)
     raw_k1 = self.get_k1(relative_error / rate_fraction, max_sims)
     raw_k1_err = set.get_k1_err(max_sims = 0)
@@ -291,7 +292,7 @@ class RestingSetStats(object):
   def get_temporary_depletion(self, relative_error = 0.5, max_sims = 500):
     binding_polynomial = 1.0
 
-    rxns = list(filter(lambda r: len(r.reactants)>1 and r.reactants == r.products, self.inter_rxns))
+    rxns = list([r for r in self.inter_rxns if len(r.reactants)>1 and r.reactants == r.products])
     for rxn in rxns:
       other_reactant = rxn.reactants[0] if rxn.reactants[0]!=self.restingset else rxn.reactants[1]
       c_max = rxn.get_rs_stats(other_reactant).c_max

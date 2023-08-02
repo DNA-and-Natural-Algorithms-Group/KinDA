@@ -1,1 +1,1 @@
-from nupack_wrapper import *
+from .nupack_wrapper import *

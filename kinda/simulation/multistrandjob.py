@@ -19,7 +19,7 @@ from multistrand.system import SimSystem as MSSimSystem
 
 from ..objects import utils, io_Multistrand, Macrostate, RestingSet, Complex
 
-import sim_utils
+from . import sim_utils
 
 # GLOBALS
 TRAJECTORY_MODE = 128
@@ -38,14 +38,15 @@ try:
   MS_NOINITIALMOVES = MSLiterals.no_initial_moves
   MS_ERROR = MSLiterals.sim_error
 except AttributeError:
-  print "KinDA: WARNING: built-in Multistrand result tags not found."
+  print("KinDA: WARNING: built-in Multistrand result tags not found.")
   MS_TIMEOUT = None
   MS_NOINITIALMOVES = None
   MS_ERROR = None
 
-def run_sims_global((multijob, num_sims)):
+def run_sims_global(xxx_todo_changeme):
   """Multiprocessing function for performing a single simulation.
   """
+  (multijob, num_sims) = xxx_todo_changeme
   ms_options = multijob.create_ms_options(num_sims)
   MSSimSystem(ms_options).start()
   return ms_options
@@ -116,8 +117,8 @@ class MultistrandJob(object):
     ## Extract keyword arguments
     start_state = kargs['start_state']
     stop_conditions = kargs['stop_conditions']
-    resting_sets = list(filter(lambda x: isinstance(x, RestingSet), start_state))
-    complexes = list(filter(lambda x: isinstance(x, Complex), start_state))
+    resting_sets = list([x for x in start_state if isinstance(x, RestingSet)])
+    complexes = list([x for x in start_state if isinstance(x, Complex)])
 
     if kargs['boltzmann_selectors'] is None:
       boltzmann = False
@@ -172,7 +173,7 @@ class MultistrandJob(object):
   def set_simulation_data(self, ms_results):
     # copy data from ms_results to self._ms_results_buff, while preserving data types of
     # numpy arrays in self._ms_results_buff
-    for k,v in ms_results.iteritems():
+    for k,v in ms_results.items():
       self._ms_results_buff[k].resize(len(v), refcheck=False)
       self._ms_results[k] = self._ms_results_buff[k]
       if len(v) > 0:
@@ -184,7 +185,7 @@ class MultistrandJob(object):
     # numpy arrays in self._ms_results_buff
     dim = len(ms_results['tags'])
 
-    for k,v in ms_results.iteritems():
+    for k,v in ms_results.items():
       self._ms_results_buff[k] = np.append(self._ms_results_buff[k], v)
       self._ms_results[k] = self._ms_results_buff[k]
     self.total_sims = len(self._ms_results['tags'])
@@ -246,7 +247,7 @@ class MultistrandJob(object):
     except KeyboardInterrupt:
       # (More) gracefully handle SIGINT by terminating worker processes properly
       # and then allowing SIGINT to be handled normally
-      print "SIGINT: Terminating Multistrand processes prematurely..."
+      print("SIGINT: Terminating Multistrand processes prematurely...")
       p.terminate()
       p.join()
       raise KeyboardInterrupt
@@ -364,9 +365,9 @@ class MultistrandJob(object):
     if verbose:
       if verbose > 1:
         if self._multiprocessing:
-          print '#    [MULTIPROCESSING ON] (over %d cores)'%multiprocessing.cpu_count()
+          print('#    [MULTIPROCESSING ON] (over %d cores)'%multiprocessing.cpu_count())
         else:
-          print '#    [MULTIPROCESSING OFF]'
+          print('#    [MULTIPROCESSING OFF]')
 
       table_update_func = sim_utils.print_progress_table(
           [stat, "error", "err goal", " |", "batch sims", "done/needed", "S/F/T", "progress"],
@@ -533,8 +534,8 @@ class TransitionModeJob(MultistrandJob):
       collapsed_path = collapse_transition_path(path)
       for start, end in zip(collapsed_path[0:-1], collapsed_path[1:]):
         time_diff = end[0] - start[0]
-        key_start = ",".join(filter(lambda x: x[1], enumerate(start[1])))
-        key_end = ",".join(filter(lambda x: x[1], enumerate(end[1])))
+        key_start = ",".join([x for x in enumerate(start[1]) if x[1]])
+        key_end = ",".join([x for x in enumerate(end[1]) if x[1]])
         key = key_start + "->" + key_end
         if key not in self._tag_id_dict:  self._tag_id_dict[key] = len(self._tag_id_dict)
         tags.append(self._tag_id_dict[key])
@@ -557,7 +558,7 @@ class TransitionModeJob(MultistrandJob):
        [[time1, [in_state1, in_state2, ...]]
         [time2, [in_state1, in_state2, ...]]
         ...]"""
-    return filter(lambda x: sum(x[1])>0, transition_path)
+    return [x for x in transition_path if sum(x[1])>0]
     
   
   def reduce_error_to(self, rel_goal, max_sims, start_states, end_states, stat = 'rate', **kwargs):

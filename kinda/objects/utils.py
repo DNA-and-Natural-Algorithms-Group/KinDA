@@ -4,7 +4,7 @@ import itertools as it
                   
 def random_sequence(sequence, base_probs = None):
   import random
-  from sequence import base_group
+  from .sequence import base_group
   def choose_base(bases, base_probs):
     prob_sum = sum([base_probs[b] for b in bases])
     assert prob_sum > 0, "Cannot obtain sequence with constraint " + sequence
@@ -17,12 +17,12 @@ def random_sequence(sequence, base_probs = None):
   if base_probs == None:
     base_probs = {'A': 0.2, 'T': 0.2, 'C': 0.3, 'G': 0.3}
     
-  return "".join(map(lambda b: choose_base(base_group[b], base_probs), sequence))
+  return "".join([choose_base(base_group[b], base_probs) for b in sequence])
   
 ## Functions for Domain objects
 def split_domain(domain, pos):  
   """ Splits a domain into two subdomains. """
-  from domain import Domain
+  from .domain import Domain
   
   section1 = Domain(name = domain.name + "[:{0}]".format(pos),
                     sequence = domain.sequence[:pos])
@@ -33,7 +33,7 @@ def split_domain(domain, pos):
 
 def equate_domains(domains):
   """This is pretty slow and inefficient."""
-  from domain import Domain
+  from .domain import Domain
   
   def update_subdomains_list(subdomains):
     new_subdomains = []
@@ -108,7 +108,7 @@ def domain_defect(complex, strand_num, domain_num, structure):
   specified target structure. If the domain is not completely bound
   or unbound, the results are not very meaningful.
   The defect is calculated as a fraction of the domain's length."""
-  from structure import Structure
+  from .structure import Structure
   
   strandlist = [lst[:] for lst in structure.to_strandlist()]
   strands = structure.strands
@@ -151,7 +151,7 @@ def max_domain_defect(complex, structure):
 def get_dependent_complexes(macrostate):
   """ Returns a list of the Complex objects upon which this
   Macrostate depends. """
-  from macrostate import Macrostate
+  from .macrostate import Macrostate
   
   if macrostate.type == Macrostate.types['conjunction'] or macrostate.type == Macrostate.types['disjunction']:
     return list(set(sum([get_dependent_complexes(m) for m in macrostate.macrostates], [])))
@@ -164,7 +164,7 @@ def macrostate_to_dnf(macrostate, simplify = True):
   only be represented in this way. Also, we don't try to simplify much 
   so the expressions may be inefficient/redundant. Adding simplifications of the
   logical expression using (e.g.) De Morgan's laws is a future optimization. """
-  from macrostate import Macrostate
+  from .macrostate import Macrostate
 
   if macrostate.type != Macrostate.types['conjunction'] and macrostate.type != Macrostate.types['disjunction']:
     dnf_macrostates = [Macrostate(type='conjunction', macrostates=[macrostate])]
@@ -193,19 +193,19 @@ def macrostate_to_dnf(macrostate, simplify = True):
 
   return dnf
 def print_macrostate_tree(m, prefix=''):
-  from macrostate import Macrostate
+  from .macrostate import Macrostate
 
-  print "{}|".format(prefix)
-  print "{}|".format(prefix)
+  print("{}|".format(prefix))
+  print("{}|".format(prefix))
 
   if m.type != Macrostate.types['conjunction'] and m.type != Macrostate.types['disjunction']:
-    print "{}{}".format(prefix, str(m))
-    print prefix
+    print("{}{}".format(prefix, str(m)))
+    print(prefix)
     return
   
   char = '*' if m.type==Macrostate.types['conjunction'] else '+'
   for i,v in enumerate(m.macrostates):
-    print "{}{}-- ".format(prefix, char)
+    print("{}{}-- ".format(prefix, char))
     if i < len(m.macrostates)-1:
       print_macrostate_tree(v, prefix+"|  ")
     else:
@@ -215,7 +215,7 @@ def print_macrostate_tree(m, prefix=''):
     
 ## Complex -> Macrostate functions
 def exact_complex_macrostate(complex):
-  from macrostate import Macrostate
+  from .macrostate import Macrostate
 
   return Macrostate(name = "macrostate_" + complex.name,
                     type = 'exact',
@@ -224,7 +224,7 @@ def count_by_complex_macrostate(complex, cutoff):
   """ Creates a macrostate corresponding to secondary structures that
   match the binding of the given complex, within the given cutoff.
   cutoff is a fractional defect over the entire complex. """
-  from macrostate import Macrostate
+  from .macrostate import Macrostate
 
   return Macrostate(name = "macrostate_{}_{}".format(complex.name, cutoff),
                     type = "count",
@@ -235,9 +235,9 @@ def loose_domain_macrostate(complex, strand_num, domain_num, cutoff):
   of interest. The cutoff is a fractional defect within this domain. The
   results are not meaningful if the domain is not completely bound or 
   completely unbound."""
-  from complex import Complex
-  from structure import Structure
-  from macrostate import Macrostate
+  from .complex import Complex
+  from .structure import Structure
+  from .macrostate import Macrostate
 
   strandlist = [strand_struct[:] for strand_struct in complex.structure.to_strandlist()]
   strands = complex.strands
@@ -270,7 +270,7 @@ def count_by_domain_macrostate(complex, cutoff):
   """ Returns a Macrostate that matches a complex such that every domain
   matches the given complex's structure to within the cutoff fraction. 
   cutoff is a fractional defect allowed over each domain. """
-  from macrostate import Macrostate
+  from .macrostate import Macrostate
 
   macrostates = []
   for strand_num, strand in enumerate(complex.strands):
@@ -285,7 +285,7 @@ def restingset_count_by_complex_macrostate(restingset, cutoff):
   """ Creates a macrostate corresponding to secondary structures that
   match the binding of one of the complexes in the given resting set, within the given cutoff.
   cutoff is a fractional defect over the entire complex. """
-  from macrostate import Macrostate
+  from .macrostate import Macrostate
 
   macrostates = [count_by_complex_macrostate(complex, cutoff) for complex in restingset.complexes]
   return Macrostate(name        = "macrostate_{}".format(restingset.name),
@@ -293,7 +293,7 @@ def restingset_count_by_complex_macrostate(restingset, cutoff):
                     macrostates = macrostates)
 def restingset_count_by_domain_macrostate(restingset, cutoff):
   #print "WARNING: Multistrand may not support macrostates that are defined as a per-domain p-approximation"
-  from macrostate import Macrostate
+  from .macrostate import Macrostate
 
   macrostates = [count_by_domain_macrostate(complex, cutoff) for complex in restingset.complexes]
   return Macrostate(name        = "macrostate_{}".format(restingset.name),
@@ -310,5 +310,5 @@ def get_containing_set(restingsets, complex):
 ## Functions on Structures
 def num_wildcards(structure):
   s = sum(structure.to_strandlist(), [])
-  return len(filter(lambda x: x == '?', s))
+  return len([x for x in s if x == '?'])
   

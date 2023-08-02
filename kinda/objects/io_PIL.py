@@ -4,7 +4,7 @@
 ## IMPORTS
 import re, sys
 
-import dnaobjects as dna
+from . import dnaobjects as dna
 
 ## GLOBALS
 # Helpful regular expressions
@@ -66,11 +66,11 @@ def from_PIL(filename):
       #parseNoninteractingDirective(line, spec)
     else:
       # Unknown directive on this line; print error message and continue
-      print >> sys.stderr, "Warning: Bad syntax on this line:\n%s\nContinuing anyway.\n" % l
+      print("Warning: Bad syntax on this line:\n%s\nContinuing anyway.\n" % l, file=sys.stderr)
       
   spec_file.close()
   
-  return (domains.values(), strands.values(), complexes)
+  return (list(domains.values()), list(strands.values()), complexes)
   
 
 def parseSequenceDirective(line):
@@ -88,7 +88,7 @@ def parseSequenceDirective(line):
     domain = dna.Domain(name = name, sequence = nucleotides)
     return domain
   else:
-    print >> sys.stderr, "Invalid sequence directive:\n%s" % line
+    print("Invalid sequence directive:\n%s" % line, file=sys.stderr)
     
     
 def parseSupseqDirective(line, domains):
@@ -106,7 +106,7 @@ def parseSupseqDirective(line, domains):
     domain = dna.Domain(name = name, subdomains = seq_list)
     return domain
   else:
-    print >> sys.stderr, "Invalid sup-sequence directive:\n%s" % line
+    print("Invalid sup-sequence directive:\n%s" % line, file=sys.stderr)
     
         
 def parseStrandDirective(line, domains):
@@ -123,7 +123,7 @@ def parseStrandDirective(line, domains):
     strand = dna.Strand(name = name, domains = seq_list)
     return strand
   else:
-    print >> sys.stderr, "Invalid strand directive:\n%s" % line
+    print("Invalid strand directive:\n%s" % line, file=sys.stderr)
     
       
 def parseStructDirective(line, strands):
@@ -165,7 +165,7 @@ def parseStructDirective(line, strands):
     complex = dna.Complex(name = name, strands = strand_list, structure = binding) # we're ignoring c_max, opt_value which is not okay
     return complex
   else:
-    print >> sys.stderr, "Invalid structure directive:\n%s" % line
+    print("Invalid structure directive:\n%s" % line, file=sys.stderr)
     
       
 def parseKineticDirective(line):
@@ -215,7 +215,7 @@ def parseKineticDirective(line):
     #spec.add_kinetic(Kinetic(ins, outs, *krange))
     # DON'T RETURN ANYTHING BECAUSE WE DON'T HANDLE THESE STATEMENTS YET :(
   else:
-    print >> sys.stderr, "Invalid kinetic directive:\n%s" % line
+    print("Invalid kinetic directive:\n%s" % line, file=sys.stderr)
     
     
 def parseEqualDirective(line, domains):
@@ -227,7 +227,7 @@ def parseEqualDirective(line, domains):
     seq_list = set([domains[name] for name in match_obj.group(1).split()])
     dna.utils.equate_domains(seq_list)
   else:
-    print >> sys.stderr, "Invalid equal directive:\n%s" % line
+    print("Invalid equal directive:\n%s" % line, file=sys.stderr)
       
       
 def parseNoninteractingDirective(line):
@@ -240,7 +240,7 @@ def parseNoninteractingDirective(line):
     #spec.noninteracting = [spec.structure_dict[name] for name in match_obj.group(1).split()] # does this work?
     # DON'T RETURN ANYTHING BECAUSE WE DON'T HANDLE THESE STATEMENTS YET :(
   else:
-    print >> sys.stderr, "Invalid noninteracting directive:\n%s" % line
+    print("Invalid noninteracting directive:\n%s" % line, file=sys.stderr)
   
 
 def strip_comment(line):

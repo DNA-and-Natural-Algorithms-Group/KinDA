@@ -1,1 +1,1 @@
-from dnaobjects import *
+from .dnaobjects import *

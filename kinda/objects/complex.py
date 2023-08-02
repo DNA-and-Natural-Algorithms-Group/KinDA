@@ -12,8 +12,8 @@ This module defines a simple dna `complex` object.
 """
 
 
-from strand import Strand
-from structure import Structure
+from .strand import Strand
+from .structure import Structure
 
 class Complex(object):
   """

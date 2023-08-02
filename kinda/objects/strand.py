@@ -13,8 +13,8 @@ This module defines a simple dna `strand` object.
 
 import itertools as it
 
-from domain import Domain
-from sequence import Sequence
+from .domain import Domain
+from .sequence import Sequence
 
 class Strand(object):
   """

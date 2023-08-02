@@ -91,19 +91,19 @@ class EnumerateJob(object):
         initial_reactions = [v for _,v in enum_objects['reactions']]
     )
     # Set peppercorn options
-    for k,v in self._peppercorn_params.iteritems():
+    for k,v in self._peppercorn_params.items():
       setattr(e, k, v)
 
     # Perform enumeration
-    print "KinDA: Performing reaction enumeration with Peppercorn...",
+    print("KinDA: Performing reaction enumeration with Peppercorn...", end=' ')
     e.enumerate()
-    print "Done!"
+    print("Done!")
 
     # Perform reaction condensation
-    print "KinDA: Performing reaction condensation with Peppercorn...",
+    print("KinDA: Performing reaction condensation with Peppercorn...", end=' ')
     enumc = enum.PepperCondensation(e)
     enumc.condense()
-    print "Done!"
+    print("Done!")
     
     self._enumerator = e
     self._enumerator_condensor = enumc

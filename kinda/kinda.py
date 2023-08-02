@@ -6,7 +6,7 @@
 
 from .statistics import stats_utils
 from .objects import io_PIL
-import options
+from . import options
   
 
 # Convenience function to create System object from a given PIL file
@@ -104,7 +104,7 @@ class System(object):
 
     # Filter out unimolecular reactions, if these are disabled.
     if not self._kinda_params['enable_unimolecular_reactions']:
-      self._condensed_reactions = set(filter(lambda rxn: len(rxn.reactants)==2, self._condensed_reactions))
+      self._condensed_reactions = set([rxn for rxn in self._condensed_reactions if len(rxn.reactants)==2])
 
     # Create stats objects for reactions and resting sets
     # make_stats() will also make stats objects for potential spurious reactions and resting sets
@@ -122,7 +122,7 @@ class System(object):
     self._spurious_condensed_reactions = set(self._rxn_to_stats.keys()) - self._condensed_reactions
 
     # Set default max concentration for each resting set
-    for rs_stats in self._rs_to_stats.values():
+    for rs_stats in list(self._rs_to_stats.values()):
       rs_stats.c_max = self._kinda_params['max_concentration']
 
   ## Basic get functions for system objects
@@ -194,22 +194,22 @@ class System(object):
       rxns = list(self._spurious_condensed_reactions | self._condensed_reactions)
 
     if unproductive == True:
-      rxns = filter(lambda x: x.has_reactants(x.products) and x.has_products(x.reactants), rxns)
+      rxns = [x for x in rxns if x.has_reactants(x.products) and x.has_products(x.reactants)]
     elif unproductive == False:
-      rxns = filter(lambda x: not(x.has_reactants(x.products) and x.has_products(x.reactants)), rxns)
+      rxns = [x for x in rxns if not(x.has_reactants(x.products) and x.has_products(x.reactants))]
 
     if arity is not None:
-      rxns = filter(lambda x: len(x.reactants)==arity, rxns)
+      rxns = [x for x in rxns if len(x.reactants)==arity]
 
-    return filter(lambda x: x.has_reactants(reactants) and x.has_products(products), rxns)
+    return [x for x in rxns if x.has_reactants(reactants) and x.has_products(products)]
   def get_reaction(self, **kwargs):
     """ Returns a single reaction matching the criteria given. """
     rxns = self.get_reactions(**kwargs)
     if len(rxns) == 0:
-      print "KinDA: ERROR: SystemStats.get_reaction() failed to find a reaction with the given criteria."
+      print("KinDA: ERROR: SystemStats.get_reaction() failed to find a reaction with the given criteria.")
       return None
     elif len(rxns) > 1:
-      print "KinDA: WARNING: SystemStats.get_reactino() found multiple reactions with the given criteria."
+      print("KinDA: WARNING: SystemStats.get_reactino() found multiple reactions with the given criteria.")
 
     return rxns[0]
 
@@ -233,22 +233,22 @@ class System(object):
       rs = list(self._restingsets | self._spurious_restingsets)
 
     if complex is not None:
-      rs = filter(lambda x: complex in x, rs)
+      rs = [x for x in rs if complex in x]
     if strands != []:
-      rs = filter(lambda x: all([s in x.strands for s in strands]), rs)
+      rs = [x for x in rs if all([s in x.strands for s in strands])]
     if name is not None:
-      rs = filter(lambda x: x.name == name, rs)
+      rs = [x for x in rs if x.name == name]
     if complex_name is not None:
-      rs = filter(lambda x: complex_name in [c.name for c in x.complexes], rs)
+      rs = [x for x in rs if complex_name in [c.name for c in x.complexes]]
 
     return rs
   def get_restingset(self, complex = None, strands = [], name = None, complex_name = None, spurious = False):
     rs_list = self.get_restingsets(complex = complex, strands = strands, name = name, complex_name = complex_name, spurious = spurious)
     if len(rs_list) == 0:
-      print "KinDA: ERROR: SystemStats.get_restingset() failed to find a resting set with the given criteria"
+      print("KinDA: ERROR: SystemStats.get_restingset() failed to find a resting set with the given criteria")
       return None
     elif len(rs_list) > 1:
-      print "KinDA: WARNING: SystemStats.get_restingset() found multiple resting sets with the given criteria"
+      print("KinDA: WARNING: SystemStats.get_restingset() found multiple resting sets with the given criteria")
     
     return rs_list[0]
 
@@ -256,16 +256,16 @@ class System(object):
     complexes = list(self._complexes)
     
     if name is not None:
-      complexes = filter(lambda x: x.name == name, complexes)
+      complexes = [x for x in complexes if x.name == name]
 
     return complexes
   def get_complex(self, name = None):
     complexes = self.get_complexes(name = name)
     if len(complexes) == 0:
-      print "KinDA: ERROR: SystemStats.get_complexes() failed to find a complex with the given criteria."
+      print("KinDA: ERROR: SystemStats.get_complexes() failed to find a complex with the given criteria.")
       return None
     elif len(complexes) > 1:
-      print "KinDA: WARNING: SystemStats.get_complexes() found multiple complexes with the given criteria."
+      print("KinDA: WARNING: SystemStats.get_complexes() found multiple complexes with the given criteria.")
     
     return complexes[0]
 
@@ -278,7 +278,7 @@ class System(object):
     elif obj in self._rs_to_stats:
       return self._rs_to_stats[obj]
     else:
-      print "Statistics for object {0} not found.".format(obj)
+      print("Statistics for object {0} not found.".format(obj))
       return None
 
 

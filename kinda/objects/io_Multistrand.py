@@ -1,7 +1,7 @@
 ### TODO: Add conversion from Multistrand objects to DNAObjects objects
 
 import itertools as it
-import utils
+from . import utils
 ##################
 ## Use to_Multistrand() to convert a system of domains, strands, complexes, resting sets, and
 ## macrostates to equivalent Multistrand objects.
@@ -54,13 +54,13 @@ def to_Multistrand_restingstates(resting_sets, ms_complexes):
   
   ms_restingstates = {}
   for rs in resting_sets:
-    ms_restingstates[rs] = ms_complexes[iter(rs.complexes).next()]
+    ms_restingstates[rs] = ms_complexes[next(iter(rs.complexes))]
   return ms_restingstates
   
 def to_Multistrand_macrostates(macrostates, ms_complexes):
   import multistrand.objects as MS
-  from macrostate import Macrostate
-  from utils import num_wildcards, macrostate_to_dnf
+  from .macrostate import Macrostate
+  from .utils import num_wildcards, macrostate_to_dnf
   
   EXACT = 0
   BOUND = 1
@@ -98,11 +98,11 @@ def to_Multistrand_macrostates(macrostates, ms_complexes):
       for ms in m_dnf.macrostates:
         assert(ms.type != Macrostate.types['conjunction'] and ms.type != Macrostate.types['disjunction'])
         if ms not in ms_macrostates:
-          ms_macrostates[ms] = to_Multistrand_macrostates([ms], ms_complexes).values()[0]
+          ms_macrostates[ms] = list(to_Multistrand_macrostates([ms], ms_complexes).values())[0]
       states = sum([ms_macrostates[s][0].complex_items for s in m_dnf.macrostates], [])
       ms_macrostates[m] = [MS.Macrostate(m.name, states)]
     elif m_dnf.type == Macrostate.types['disjunction']:
-      ms_macrostates[m] = list(it.chain(*to_Multistrand_macrostates(m_dnf.macrostates, ms_complexes).values()))
+      ms_macrostates[m] = list(it.chain(*list(to_Multistrand_macrostates(m_dnf.macrostates, ms_complexes).values())))
       for ms in ms_macrostates[m]:  ms.tag = m.name
   return ms_macrostates
   
@@ -121,8 +121,8 @@ def to_Multistrand(*args, **kargs):
   iterated through directly or converted into a dict for object lookup.
   """
   import multistrand.objects as MS
-  from macrostate import Macrostate
-  from utils import get_dependent_complexes
+  from .macrostate import Macrostate
+  from .utils import get_dependent_complexes
   
   ## Extract all objects to be converted
   macrostates = set(kargs.get('macrostates', []))
@@ -150,11 +150,11 @@ def to_Multistrand(*args, **kargs):
   ## Create dict of Multistrand Macrostate objects
   ms_macrostates = to_Multistrand_macrostates(macrostates, ms_complexes)
     
-  results = {'domains': ms_domains.items(),
-             'strands': ms_strands.items(),
-             'complexes': ms_complexes.items(),
-             'restingstates': ms_restingstates.items(),
-             'macrostates': ms_macrostates.items()}
+  results = {'domains': list(ms_domains.items()),
+             'strands': list(ms_strands.items()),
+             'complexes': list(ms_complexes.items()),
+             'restingstates': list(ms_restingstates.items()),
+             'macrostates': list(ms_macrostates.items())}
   return results
     
   

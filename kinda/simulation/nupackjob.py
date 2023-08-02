@@ -14,14 +14,13 @@ import multiprocessing, signal
 
 from ..objects import utils, Complex
 from .. import nupack, options
-from sim_utils import print_progress_table
+from .sim_utils import print_progress_table
 
 
 # NUPACK interface
-def sample_global((self, num_samples)):
+def sample_global(xxx_todo_changeme):
   """ Global function for calling NUPACK, used for multiprocessing  """
-
-  # Set up arguments/options for Nupack call
+  (self, num_samples) = xxx_todo_changeme
   strands = next(iter(self.restingset.complexes)).strands
   strand_seqs = [strand.sequence for strand in strands]
 
@@ -188,7 +187,7 @@ class NupackSampleJob(object):
         sims_completed += len(cplx)
         status_func(sims_completed)
     except KeyboardInterrupt:
-      print "SIGINT: Ending NUPACK sampling prematurely..."
+      print("SIGINT: Ending NUPACK sampling prematurely...")
       p.terminate()
       p.join()
       raise KeyboardInterrupt
@@ -305,9 +304,9 @@ class NupackSampleJob(object):
     if verbose:
       if verbose > 1:
         if self._multiprocessing:
-          print '#    [MULTIPROCESSING ON] (over %d cores)'%multiprocessing.cpu_count()
+          print('#    [MULTIPROCESSING ON] (over %d cores)'%multiprocessing.cpu_count())
         else:
-          print '#    [MULTIPROCESSING OFF]'
+          print('#    [MULTIPROCESSING OFF]')
 
       # Prepare progress table
       update_func = print_progress_table(

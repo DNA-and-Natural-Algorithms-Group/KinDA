@@ -12,7 +12,7 @@ This module defines a simple dna `domain` object.
 """
 
 
-from sequence import Sequence
+from .sequence import Sequence
 
 
 class Domain(object):

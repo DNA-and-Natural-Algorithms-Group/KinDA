@@ -5,10 +5,10 @@
 
 __version__ = "v0.2"
 
-from kinda import System, from_pil, import_data, export_data
-import statistics
-import simulation
-import enumeration
+from .kinda import System, from_pil, import_data, export_data
+from . import statistics
+from . import simulation
+from . import enumeration
 
 
 NUPACKERROR = """\

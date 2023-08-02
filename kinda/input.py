@@ -1,5 +1,5 @@
 
-from __future__ import print_function
+
 import itertools as it
 
 from dsdobjects.parser import parse_kernel_string, parse_kernel_file
@@ -74,7 +74,7 @@ def read_pil(data, is_file = False, composite = False):
                 domains[dom.complement.name] = dom.complement
 
         elif line[0] == 'composite-domain':
-            domain_list = map(lambda x: domains[x], line[2])
+            domain_list = [domains[x] for x in line[2]]
 
             d = dna.Domain(name = name, subdomains = domain_list)
             domains[d.name] = d
@@ -89,7 +89,7 @@ def read_pil(data, is_file = False, composite = False):
 
 
         elif line[0] == 'strand-complex':
-            strand_list = map(lambda x: strands[x], line[2])
+            strand_list = [strands[x] for x in line[2]]
             structure = line[3].replace(' ','')
             cplx = dna.Complex(name = name, strands = strand_list, structure = structure ) 
             complexes[cplx.name] = cplx
@@ -99,7 +99,7 @@ def read_pil(data, is_file = False, composite = False):
 
             # Replace names with domain objects.
             try :
-                sequence = map(lambda d : domains[d], sequence)
+                sequence = [domains[d] for d in sequence]
             except KeyError:
                 raise PilFormatError("Cannot find domain: {}.".format(d))
             
@@ -123,7 +123,7 @@ def read_pil(data, is_file = False, composite = False):
             complexes[cplx.name] = cplx
 
         elif line[0] == 'resting-macrostate':
-            cplxs = map(lambda c : complexes[c], line[2])
+            cplxs = [complexes[c] for c in line[2]]
             resting[name] = dna.RestingSet(name = name, complexes = cplxs)
 
         elif line[0] == 'reaction':
@@ -132,13 +132,13 @@ def read_pil(data, is_file = False, composite = False):
             assert rtype is not None
             
             if rtype == 'condensed' :
-                reactants = map(lambda c : resting[c], line[2])
-                products  = map(lambda c : resting[c], line[3])
+                reactants = [resting[c] for c in line[2]]
+                products  = [resting[c] for c in line[3]]
                 con_reactions.append(
                         dna.RestingSetReaction(reactants = reactants, products = products))
             else :
-                reactants = map(lambda c : complexes[c], line[2])
-                products  = map(lambda c : complexes[c], line[3])
+                reactants = [complexes[c] for c in line[2]]
+                products  = [complexes[c] for c in line[3]]
                 det_reactions.append(
                         dna.Reaction(reactants = reactants, products = products))
 
@@ -148,10 +148,10 @@ def read_pil(data, is_file = False, composite = False):
     # Make sure the reverse reaction between every pair of reactants is
     # included. These unproductive reactions will be important stop states for
     # Mulstistrand simulations. 
-    reactant_pairs = it.product(resting.values(), resting.values())
+    reactant_pairs = it.product(list(resting.values()), list(resting.values()))
     for reactants in reactant_pairs:
         con_reactions.append(dna.RestingSetReaction(reactants = reactants, 
                                                     products  = reactants))
 
-    return complexes.values(), det_reactions, resting.values(), con_reactions
+    return list(complexes.values()), det_reactions, list(resting.values()), con_reactions
 
