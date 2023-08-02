@@ -139,7 +139,7 @@ def from_Peppercorn_domain(domain, seq = None):
   else:  sequence = dna.Sequence(seq)
 
   if domain.is_complement:
-    return dna.Domain(name = domain.identity, sequence = sequence.complement).complement
+    return dna.Domain(name = domain.cname, sequence = sequence.complement).complement
   else:
     return dna.Domain(name = domain.name, sequence = sequence)
 
@@ -238,12 +238,14 @@ def from_Peppercorn(*args, **kargs):
   """
   ## Extract all objects to be converted
   restingsetreactions = set(kargs.get('restingsetreactions', []))
-  restingsets = set(kargs.get('restingsets', [])
-                    + sum([r.reactants + r.products for r in restingsetreactions], []))
+  restingsets = set(it.chain(*it.chain(
+    [kargs.get('restingsets', [])],
+    *([r.reactants, r.products] for r in restingsetreactions))))
   reactions = set(kargs.get('reactions', []))
-  complexes = set(sum([r.reactants + r.products for r in reactions], [])
-                  + sum([rs.complexes for rs in restingsets], [])
-                  + kargs.get('complexes', []))
+  complexes = set(it.chain(*it.chain(
+    *([r.reactants, r.products] for r in reactions),
+    (rs.complexes for rs in restingsets),
+    [kargs.get('complexes', [])])))
   strands = set([tuple(strand) for c in complexes for nick,strand in it.groupby(c.sequence, lambda v:v=='+') if not nick])
   domains = set([d for strand in strands for d in strand]
                 + kargs.get('domains', []))

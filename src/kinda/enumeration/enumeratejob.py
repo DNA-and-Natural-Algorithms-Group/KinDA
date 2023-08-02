@@ -104,7 +104,7 @@ class EnumerateJob:
 
     # Perform reaction condensation
     print("KinDA: Performing reaction condensation with Peppercorn...")
-    enumc = enum.PepperCondensation(e)
+    enumc = enum.condense.PepperCondensation(e)
     enumc.condense()
     print("Done!")
     
@@ -117,7 +117,7 @@ class EnumerateJob:
     dna_objects = dna.io_Peppercorn.from_Peppercorn(
         complexes = e.complexes,
         reactions = e.reactions,
-        restingsets = e.resting_sets,
+        restingsets = e.resting_macrostates,
         restingsetreactions = enumc.condensed_reactions,
         domain_info = domain_info,
         strand_info = strand_info

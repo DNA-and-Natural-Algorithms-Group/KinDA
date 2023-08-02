@@ -60,50 +60,56 @@ def to_Multistrand_restingstates(resting_sets, ms_complexes):
   
 def to_Multistrand_macrostates(macrostates, ms_complexes):
   import multistrand.objects as MS
+  from multistrand.options import Literals as MSLiterals
+
   from .macrostate import Macrostate
   from .utils import num_wildcards, macrostate_to_dnf
   
-  EXACT = 0
-  BOUND = 1
-  DISASSOC = 2
-  LOOSE = 3
-  COUNT = 4
   ms_macrostates = {}
   for m in macrostates:
     m_dnf = macrostate_to_dnf(m)
 
     if m_dnf.type == Macrostate.types['exact']:
       c = ms_complexes[m_dnf.complex]
-      ms_macrostates[m] = [MS.Macrostate(m.name, [(c, EXACT, 0)])]
+      ms_macrostates[m] = [
+        MS.Macrostate(m.name, [(c, MSLiterals.exact_macrostate, 0)])]
     elif m_dnf.type == Macrostate.types['ordered-complex']:
       c = ms_complexes[m_dnf.complex]
-      ms_macrostates[m] = [MS.Macrostate(m.name, [(c, DISASSOC, 0)])]
+      ms_macrostates[m] = [
+        MS.Macrostate(m.name, [(c, MSLiterals.ordered_macrostate, 0)])]
     elif m_dnf.type == Macrostate.types['bound']:
       c = ms_complexes[m_dnf.complex]
-      ms_macrostates[m] = [MS.Macrostate(m.name, [(c, BOUND, 0)])]
+      ms_macrostates[m] = [
+        MS.Macrostate(m.name, [(c, MSLiterals.bound_macrostate, 0)])]
     elif m_dnf.type == Macrostate.types['count']:
       c = ms_complexes[m_dnf.complex]
       if isinstance(m_dnf.cutoff, float):
         cutoff = int(m_dnf.cutoff * (len(c.structure) - c.structure.count('*')))
       else:
         cutoff = m_dnf.cutoff
-      ms_macrostates[m] = [MS.Macrostate(m.name, [(c, COUNT, cutoff)])]
+      ms_macrostates[m] = [
+        MS.Macrostate(m.name, [(c, MSLiterals.count_macrostate, cutoff)])]
     elif m_dnf.type == Macrostate.types['loose']:
       c = ms_complexes[m_dnf.complex]
       if isinstance(m_dnf.cutoff, float):
         cutoff = int(m_dnf.cutoff * (len(c.structure) - c.structure.count('*')))
       else:
         cutoff = m_dnf.cutoff
-      ms_macrostates[m] = [MS.Macrostate(m.name, [(c, LOOSE, cutoff)])]
+      ms_macrostates[m] = [
+        MS.Macrostate(m.name, [(c, MSLiterals.loose_macrostate, cutoff)])]
     elif m_dnf.type == Macrostate.types['conjunction']:
       for ms in m_dnf.macrostates:
-        assert(ms.type != Macrostate.types['conjunction'] and ms.type != Macrostate.types['disjunction'])
+        assert(ms.type != Macrostate.types['conjunction']
+               and ms.type != Macrostate.types['disjunction'])
         if ms not in ms_macrostates:
-          ms_macrostates[ms] = list(to_Multistrand_macrostates([ms], ms_complexes).values())[0]
-      states = sum([ms_macrostates[s][0].complex_items for s in m_dnf.macrostates], [])
+          ms_macrostates[ms] = list(
+            to_Multistrand_macrostates([ms], ms_complexes).values())[0]
+      states = sum(
+        [ms_macrostates[s][0].complex_items for s in m_dnf.macrostates], [])
       ms_macrostates[m] = [MS.Macrostate(m.name, states)]
     elif m_dnf.type == Macrostate.types['disjunction']:
-      ms_macrostates[m] = list(it.chain(*to_Multistrand_macrostates(m_dnf.macrostates, ms_complexes).values()))
+      ms_macrostates[m] = list(it.chain(
+        *to_Multistrand_macrostates(m_dnf.macrostates, ms_complexes).values()))
       for ms in ms_macrostates[m]:  ms.tag = m.name
   return ms_macrostates
   

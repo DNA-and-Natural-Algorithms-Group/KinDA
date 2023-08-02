@@ -32,9 +32,9 @@ multistrand_params = {
 # These defaults are given directly to the Nupack Python interface, unless
 # overridden while initializing a System object
 nupack_params = {
-  'dangles': 'some',
+  'ensemble': 'some',
   'material': 'dna',
-  'T': 25,
+  'celsius': 25,
   'sodium': 1.0,
   'magnesium': 0.0
 }
@@ -47,6 +47,6 @@ peppercorn_params = {
   'max_complex_count': 200,
   'release_cutoff_1_1': 8,
   'release_cutoff_1_N': 8,
-  'remote_migration': True,
-  'max_helix_migration': True
+  'reject_remote': False,
+  'max_helix': True
 }

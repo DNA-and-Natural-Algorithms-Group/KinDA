@@ -1,7 +1,8 @@
 
 import itertools as it
 
-from dsdobjects.parser import parse_pil_string, parse_pil_file, PilFormatError
+from dsdobjects.dsdparser import parse_pil_string, parse_pil_file
+from peppercornenumerator.input import PilFormatError
 
 from .objects import dnaobjects as dna
 

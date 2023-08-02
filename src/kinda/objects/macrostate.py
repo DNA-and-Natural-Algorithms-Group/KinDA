@@ -8,32 +8,34 @@ This module defines a dna `macrostate`, with structure inspired by
 the Multistrand macrostate. Currently, macrostates may only be
 formed as a (nested) conjunction or disjunction of five base macrostate types
 (see Joseph Schaeffer's PhD thesis on Multistrand for more details):
-  EXACT_MACROSTATE        Given a complex of specific structure, this
-                          corresponds to all system microstates in which
-                          this exact complex exists.
-  ORDERED-COMPLEX_MACROSTATE     Given a complex, this corresponds to all system
-                          microstates in which there exists a complex with
-                          the same strands in the same order.
-                          Multistrand calls these DISASSOC macrostates.
-  BOUND_MACROSTATE        Given a complex of a single strand, this corresponds
-                          to all system microstates in which there exists a
-                          complex with this strand and at least one other
-                          strand.
-  COUNT_MACROSTATE        Given a complex and an integer or percentage, this
-                          corresponds to all system microstates in which there
-                          exists a complex with a defect less than or equal to
-                          this number or percentage of nucleotides in the
-                          complex.
-  LOOSE_MACROSTATE        Given a complex, an integer or percentage, and a
-                          set of nucleotides of interest in the complex, this
-                          corresponds to all system microstates in which there
-                          is a complex of the same strands and ordering that
-                          has a defect over the nucleotides of interest less
-                          than or equal to the given number or percentage of
-                          nucleotides in the area of interest.
+
+  exact             Given a complex of specific structure, this
+                    corresponds to all system microstates in which
+                    this exact complex exists.
+  bound             Given a complex of a single strand, this corresponds
+                    to all system microstates in which there exists a
+                    complex with this strand and at least one other
+                    strand.
+  ordered-complex   Given a complex, this corresponds to all system
+                    microstates in which there exists a complex with
+                    the same strands in the same order.
+                    Multistrand calls these DISASSOC macrostates.
+  loose             Given a complex, an integer or percentage, and a
+                    set of nucleotides of interest in the complex, this
+                    corresponds to all system microstates in which there
+                    is a complex of the same strands and ordering that
+                    has a defect over the nucleotides of interest less
+                    than or equal to the given number or percentage of
+                    nucleotides in the area of interest.
+  count             Given a complex and an integer or percentage, this
+                    corresponds to all system microstates in which there
+                    exists a complex with a defect less than or equal to
+                    this number or percentage of nucleotides in the
+                    complex.
 
 `macrostate`
-    Any set of dna microstates (sets of complexes with completely specified structure).
+    Any set of dna microstates (sets of complexes with completely specified
+    structure).
     
 """
 

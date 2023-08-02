@@ -11,7 +11,7 @@ import signal
 import numpy as np
 import multiprocess
 
-import nupack
+import multistrand.utils.thermo as nupack
 
 from .. import options
 from ..objects import utils, Complex
@@ -27,13 +27,12 @@ def sample_global(job_spec):
   strands = next(iter(self.restingset.complexes)).strands
   strand_seqs = [strand.sequence for strand in strands]
 
-  # Call Nupack
+  # Call Multistrand's Nupack wrapper
   structs = nupack.sample(strand_seqs, num_samples, **self._nupack_params)
 
   # Convert each Nupack sampled structure (a dot-paren string) into a
   # DNAObjects Complex object and process.
-  sampled = [Complex(strands = strands, structure = s) for s in structs]
-  return sampled
+  return [Complex(strands=strands, structure=s.dp()) for s in structs]
 
 
 class NupackSampleJob:
@@ -377,13 +376,16 @@ class NupackSampleJob:
         "{:7d}%".format(100*tot_sims/max([0,tot_sims+exp_add_sims]))], inline=False) 
     return num_sims
 
-  # NOTE: actually, these are sampled suboptimal structures
-  def get_top_MFE_structs(self, num):
+  def get_top_MFE_structs(self, num) -> List[Tuple[str, float]]:
+    """
+    NOTE: actually, these are sampled suboptimal structures.
+    """
     strands = next(iter(self.restingset.complexes)).strands
     strand_seqs = [strand.sequence for strand in strands]
     energy_gap = 0.1
     struct_list = []
     while len(struct_list) < num:
+      # Call Multistrand's Nupack wrapper
       struct_list = nupack.subopt(strand_seqs, energy_gap, **self._nupack_params)
       energy_gap += 0.5
-    return struct_list
+    return [(s.structure.dp(), s.energy) for s in struct_list]

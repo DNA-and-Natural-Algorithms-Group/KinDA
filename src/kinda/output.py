@@ -34,7 +34,7 @@ def format_rate_units(rate, arity, molarity, time):
 
 
 def write_pil(KindaSystem: System, fh, spurious=False, unproductive=False,
-              molarity='M', time='s', prefix=None):
+              molarity='nM', time='s', prefix=None):
     """Write the KindaSystem object into a proper *.pil format.
 
     Args:

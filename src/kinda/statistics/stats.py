@@ -283,9 +283,11 @@ class RestingSetStats:
     return self.get_nupackjob().get_complex_count(complex_name)
     
   def get_top_MFE_structs(self, num):
-    """ Attempts to obtain the top <num> MFE structures by calling
-    NUPACK's subopt executable with increasingly higher energy gaps
-    until enough structures are returned. """
+    """
+    Attempts to obtain the top <num> MFE structures by calling NUPACK's subopt
+    executable with increasingly higher energy gaps until enough structures are
+    returned.
+    """
     return self.get_nupackjob().get_top_MFE_structs(num)
     
   def get_temporary_depletion_due_to(self, rxn, relative_error = 0.5, max_sims=500):

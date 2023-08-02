@@ -26,12 +26,19 @@ cat input.pil | peppercorn -c -d [--options] | KinDA [--options]
 import os
 import sys
 import argparse
+from typing import List
+
 import peppercornenumerator
+from peppercornenumerator.input import read_pil as pepper_read_pil
+from peppercornenumerator.output import write_pil as pepper_write_pil
 
 import kinda
 from kinda.input import read_pil
 from kinda.output import write_pil
 from kinda.statistics.stats_utils import import_data, export_data
+from kinda.statistics.stats import RestingSetRxnStats, RestingSetStats
+from kinda.simulation.nupackjob import NupackSampleJob
+from kinda.simulation.multistrandjob import MultistrandJob
 
 
 def init_parameter_dicts(args):
@@ -84,9 +91,9 @@ def init_parameter_dicts(args):
 
     nparams = {
         # System Parameters
-        'dangles': args.dangles,
+        'ensemble': args.dangles,
         'material': args.material.lower(),
-        'T': args.temperature,
+        'celsius': args.temperature,
         'sodium': args.sodium,
         'magnesium': args.magnesium
     }
@@ -116,18 +123,12 @@ def init_parameter_dicts(args):
 
     return kparams, mparams, nparams, rate_params, prob_params
  
+
 def peppercorn(pilstring, is_file = False, params=None):
-    """Requires peppercorn v0.6.2"""
-    from peppercornenumerator import Enumerator
-    from peppercornenumerator.input import read_pil as pepper_read_pil
-    from peppercornenumerator.output import write_pil as pepper_write_pil
-
     cxs, rxns, strands = pepper_read_pil(pilstring, is_file, composite = True)
-
-    enum = Enumerator(cxs.values(), rxns)
+    enum = peppercornenumerator.Enumerator(cxs.values(), rxns)
     enum.enumerate()
-    
-    return pepper_write_pil(enum, fh = None, 
+    return pepper_write_pil(enum, fh = None,
             detailed = True, condensed = True, composite = strands)
 
 
@@ -223,130 +224,64 @@ def calculate_all_reaction_rates(KindaSystem, unproductive, spurious, multip = T
         if (rxn_stats.get_num_sims() - num) and backup :
             export_data(KindaSystem, args.backup, use_pickle)
 
-def get_dsd_objects(system):
-    # Initialize DSD objects from current system.
-    from dsdobjects import DSD_Complex, DSD_RestingSet, DSD_Reaction
-    from dsdobjects import clear_memory
-    clear_memory()
 
-    dsdCX = {}
-    for dna_cplx in system.complexes:
-        sequence = []
-        structure= []
-        for p, strand in enumerate(dna_cplx.base_domains()):
-            pos = 0
-            for q, dom in enumerate(strand):
-                sequence.append(dom.name)
-                if dna_cplx.bound_to(p,q+pos) is None:
-                    structure.append('.')
-                elif (p,q+pos) < dna_cplx.bound_to(p,q+pos):
-                    #print((p,q+pos), dna_cplx.bound_to(p,q+pos))
-                    structure.append('(')
-                else:
-                    structure.append(')')
-                pos += dom.length
-            sequence.append('+')
-            structure.append('+')
-        sequence = sequence[:-1]
-        structure = structure[:-1]
-        dsd_cplx = DSD_Complex(sequence, structure, name=dna_cplx.name)
-        dsdCX[dsd_cplx.name] = dsd_cplx
-
-    #for k, v in dsdCX.items():
-    #    print(v, v.kernel_string)
-
-    dsdRS = {}
-    for dna_rset in system._restingsets:
-        dsd_rset = DSD_RestingSet(map(lambda cx: dsdCX[cx.name], dna_rset.complexes), name=dna_rset.name)
-        dsdRS[dsd_rset.name]=dsd_rset
-
-    #for k, v in dsdRS.items():
-    #    print(k, v.kernel_string)
-
-    dsdDET = set()
-    for dna_rxn in system._detailed_reactions:
-        reactants = map(lambda cx: dsdCX[cx.name], dna_rxn.reactants)
-        products = map(lambda cx: dsdCX[cx.name], dna_rxn.products)
-        dsdDET.add(DSD_Reaction(reactants, products, rtype='detailed'))
-
-    #for det in dsdDET:
-    #    print('d', det)
-
-    dsdCON = {}
-    for dna_rxn in system._condensed_reactions:
-        reactants = map(lambda cx: dsdCX[cx.name], dna_rxn.reactants)
-        products = map(lambda cx: dsdCX[cx.name], dna_rxn.products)
-        #dsdCON.add(DSD_Reaction(reactants, products, rtype='condensed'))
-        dsdCON[DSD_Reaction(reactants, products, rtype='condensed')] = dna_rxn
-
-    #for con in dsdCON:
-    #    print('c', con)
-
-    return dsdCX, dsdRS, dsdDET, dsdCON
-
-
-def merge_databases(refsystem, databases, use_pickle):
-    """Merges multiple database files into your current system.
-
-    Args:
-        refsystem (kinda.System): The current system.
-    
-    Returns: 
-        None
+def merge_databases(ref_sys: kinda.System, databases: List[str],
+                    use_pickle: bool) -> None:
     """
-    import numpy as np
-    refCX, refRS, refDET, refCON = get_dsd_objects(refsystem)
+    Merge multiple database files into your current system.
 
+    NOTE: This imports only simulation statistics for resting sets and their
+    condensed reactions from the supplied `databases`. For a description of the
+    intended use case, see `case_studies/Fig9_Kotani2017/README.md`.
+    """
     for db in databases:
         print('# Importing {}'.format(db))
-        newsys = import_data(db, use_pickle)
+        new_sys = import_data(db, use_pickle)
 
-        newCX, newRS, newDET, newCON = get_dsd_objects(newsys)
+        ref_rs = {rs.name: rs for rs in ref_sys._restingsets}
+        for rs in new_sys._restingsets:
+            assert ref_rs[rs.name] == rs
+            ref_stats = ref_sys.get_stats(rs)
+            if ref_stats is None:
+                raise Exception(f"Cannot find resting set: {rs}")
+            new_stats = new_sys.get_stats(rs)
+            assert isinstance(ref_stats, RestingSetStats)
+            assert isinstance(new_stats, RestingSetStats)
+            nupackjob = ref_stats.get_nupackjob()
+            assert isinstance(nupackjob, NupackSampleJob)
 
-        for rs in newsys._restingsets:
-            assert refRS[rs.name] == newRS[rs.name]
-            refstats = refsystem.get_stats(rs)
-            if refstats is None:
-                raise Exception("Cannot find resting set: {}".format(rs))
-            nupackjob = refstats.get_nupackjob()
-
-            # Now transfer the data:
-            newstats = newsys.get_stats(rs)
+            # Now transfer the data
+            new_data = []
             for cx in rs.complexes:
                 ref_data = list(nupackjob.get_complex_prob_data(cx.name))
-                new_data = list(newstats.get_conformation_prob_data(cx.name))
+                new_data = list(new_stats.get_conformation_prob_data(cx.name))
                 nupackjob.set_complex_prob_data(cx.name, ref_data + new_data)
-                num_sims = len(new_data)
-            nupackjob.total_sims += num_sims
-            nupackjob.update_complex_counts()
+            nupackjob.total_sims += len(new_data)
+            nupackjob.recompute_complex_counts()
 
-        seen = set()
-        for con, new_rxn in newCON.iteritems():
-            ref_rxn = refCON[con]
-            refstats = refsystem.get_stats(ref_rxn)
-            if refstats == None:
-                raise Exception("Cannot find resting set reaction: {}".format(con))
+        ref_rxns = {repr(rxn): rxn for rxn in ref_sys._condensed_reactions}
+        seen_reactants = set()
+        for rxn in new_sys._condensed_reactions:
+            assert ref_rxns[repr(rxn)] == rxn
+            ref_stats = ref_sys.get_stats(rxn)
+            if ref_stats == None:
+                raise Exception(f"Cannot find resting set reaction: {rxn}")
+            new_stats = new_sys.get_stats(rxn)
+            assert isinstance(ref_stats, RestingSetRxnStats)
+            assert isinstance(new_stats, RestingSetRxnStats)
+            assert ref_stats.multijob_tag == new_stats.multijob_tag
+            multijob = ref_stats.get_multistrandjob()
+            assert isinstance(multijob, MultistrandJob)
 
-            if tuple(sorted(con.reactants)) in seen:
-                continue
-            seen.add(tuple(sorted(con.reactants)))
-            multijob = refstats.get_multistrandjob()
+            new_reactants = tuple(sorted(rxn.reactants))
+            if new_reactants not in seen_reactants:
+                seen_reactants.add(new_reactants)
 
-            # Now transfer the data:
-            newstats = newsys.get_stats(new_rxn)
-            assert refstats.multijob_tag == newstats.multijob_tag
-
-            sim_data = newstats.get_simulation_data()
-            multijob.add_simulation_data(sim_data) # adds the data.
-
-            if multijob.get_invalid_simulation_data():
-                raise NotImplementedError('remove this line')
-                inval = multijob.get_invalid_simulation_data()
-                inval += newstats.get_invalid_simulation_data()
-            else :
-                inval = newstats.get_invalid_simulation_data()
-
-            multijob.set_invalid_simulation_data(inval)
+                # Now transfer the data
+                multijob.add_simulation_data(new_stats.get_simulation_data())
+                multijob.set_invalid_simulation_data(
+                    multijob.get_invalid_simulation_data()
+                    + new_stats.get_invalid_simulation_data())
 
 
 def main(args):
@@ -453,7 +388,7 @@ def main(args):
 
         if args.verbose:
             print('# Initializing KinDA system.')
-        KindaSystem = kinda.System(cxs, rss, det, con, enumeration = False, 
+        KindaSystem = kinda.System(cxs, rss, det, con, enumeration = False,
                 kinda_params = kparams, multistrand_params = mparams, nupack_params = nparams)
 
     if args.merge:
@@ -480,7 +415,7 @@ def main(args):
         except KeyError:
             rms_stats.c_max = args.max_concentration
         if args.verbose:
-            print("# {} = {}".format(rms, rms_stats.c_max))
+            print("# {} = {} nM".format(rms, 1e9 * rms_stats.c_max))
 
     # let's do 1)
     calculate_all_complex_probabilities(
@@ -604,13 +539,13 @@ def add_kinda_args(parser):
 
     session.add_argument('--max-concentration', type=float, default = 1e-7, 
             metavar='<float>',
-            help="""Maximum concentration of any resting complex in the system.""")
+            help="""Maximum concentration of any resting complex in the system [M].""")
 
     session.add_argument("--c-max", nargs='+', metavar='<str>=<flt>',
             help="""Vector of maximum restingset concentrations.  E.g. \"--c-max
             S=100e-9 C=10e-9\" overwrites the maximum concentration value for
             species "S" and "C". The default value for all species is set with
-            --max-concentration.""")
+            --max-concentration. [M]""")
 
     session.add_argument('--multistrand-timeout', type=float, default = 1.0, 
             metavar='<float>',

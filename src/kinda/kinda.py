@@ -4,10 +4,12 @@
 # Defines the System class, encapsulating statistics calculations for DNA
 # strand-displacement system properties.
 
+from typing import Optional
+
 from . import options
 from .objects import Complex, RestingSet, Reaction, RestingSetReaction, io_PIL
 from .statistics import stats_utils
-from . import options
+from .statistics.stats import RestingSetStats, RestingSetRxnStats
 
 
 # Convenience function to create System object from a given PIL file
@@ -310,15 +312,21 @@ class System:
             "multiple complexes with the given criteria.")
     return complexes[0]
 
-  def get_stats(self, obj):
-    """ Returns the stats object corresponding to the given system object.
-    obj must be a resting-set reaction or resting set in the system. """
-    if obj in self._rxn_to_stats:
-      return self._rxn_to_stats[obj]
-    elif obj in self._rs_to_stats:
+  def get_stats(self, obj: RestingSet | RestingSetReaction
+                ) -> Optional[RestingSetStats | RestingSetRxnStats]:
+    """
+    Returns the stats object corresponding to the given system object.
+    """
+    assert self._rs_to_stats is not None
+    assert self._rxn_to_stats is not None
+    assert isinstance(obj, (RestingSet, RestingSetReaction))
+
+    if isinstance(obj, RestingSet) and obj in self._rs_to_stats:
       return self._rs_to_stats[obj]
+    elif isinstance(obj, RestingSetReaction) and obj in self._rxn_to_stats:
+      return self._rxn_to_stats[obj]
     else:
-      print("Statistics for object {0} not found.".format(obj))
+      print(f"Statistics for object not found: {obj}")
       return None
 
 

@@ -19,27 +19,10 @@ from ..objects import io_Multistrand, RestingSet, Complex
 from . import sim_utils
 
 
-# GLOBALS
-TRAJECTORY_MODE = 128
-TRANSITION_MODE = 256
-FIRST_PASSAGE_MODE = 16
-FIRST_STEP_MODE = 48
+MS_TIMEOUT = MSLiterals.time_out
+MS_NOINITIALMOVES = MSLiterals.no_initial_moves
+MS_ERROR = MSLiterals.sim_error
 
-EXACT_MACROSTATE = 0
-BOUND_MACROSTATE = 1
-DISASSOC_MACROSTATE = 2
-LOOSE_MACROSTATE = 3
-COUNT_MACROSTATE = 4
-
-try:
-  MS_TIMEOUT = MSLiterals.time_out
-  MS_NOINITIALMOVES = MSLiterals.no_initial_moves
-  MS_ERROR = MSLiterals.sim_error
-except AttributeError:
-  print("KinDA: WARNING: built-in Multistrand result tags not found.")
-  MS_TIMEOUT = None
-  MS_NOINITIALMOVES = None
-  MS_ERROR = None
 
 def run_sims_global(job_spec):
   """Multiprocessing function for performing a single simulation.
@@ -47,6 +30,7 @@ def run_sims_global(job_spec):
   (multijob, num_sims) = job_spec
   ms_options = multijob.create_ms_options(num_sims)
   MSSimSystem(ms_options).start()
+  ms_options.free_sim_system()
   return ms_options
 
 # MultistrandJob class definition
@@ -432,15 +416,10 @@ class MultistrandJob:
 class FirstPassageTimeModeJob(MultistrandJob):
   
   def __init__(self, start_state, stop_conditions, unimolecular_k1_scale = 1000, **kargs):
-      
-    super().__init__(start_state, stop_conditions, FIRST_PASSAGE_MODE, **kargs)
-      
+    super().__init__(start_state, stop_conditions, MSLiterals.first_passage_time,
+                     **kargs)
     self.tags = [sc.tag for sc in self._ms_options_dict['stop_conditions']]
-    self._tag_id_dict = {
-      MS_TIMEOUT: -1,
-      MS_NOINITIALMOVES: -2,
-      MS_ERROR: -3,
-    }
+    self._tag_id_dict.pop('overall')
     self._tag_id_dict.update((t,i) for i,t in enumerate(sorted(self.tags)))
     
     self._stats_funcs['prob'] = (
@@ -495,14 +474,10 @@ class TransitionModeJob(MultistrandJob):
       sc.name = "stop:" + sc.name
       stop_conditions.append(sc)
       
-    super().__init__(start_complex, stop_conditions, TRANSITION_MODE, **kargs)
-      
+    super().__init__(start_state, stop_conditions, MSLiterals.transition,
+                     **kargs)
     self.states = [sc.tag for sc in self._ms_options_dict['stop_conditions']]
-    self._tag_id_dict = {
-      MS_TIMEOUT: -1,
-      MS_NOINITIALMOVES: -2,
-      MS_ERROR: -3,
-    }
+    self._tag_id_dict.pop('overall')
     self._tag_id_dict.update((t,i) for i,t in enumerate(sorted(set(self.states))))
   
   def get_statistic(self, start_states, end_states, stat = 'rate'):
@@ -581,14 +556,8 @@ class TransitionModeJob(MultistrandJob):
 
 class FirstStepModeJob(MultistrandJob):
   def __init__(self, start_state, stop_conditions, **kargs):
-  
-    super().__init__(start_state, stop_conditions, FIRST_STEP_MODE, **kargs)
-      
-    self._tag_id_dict = {
-      MS_TIMEOUT: -1,
-      MS_NOINITIALMOVES: -2,
-      MS_ERROR: -3
-    }
+    super().__init__(start_state, stop_conditions, MSLiterals.first_step, **kargs)
+    self._tag_id_dict.pop('overall')
     self._tag_id_dict.update(
       (t,i) for i,t in enumerate(sorted(set(
         sc.tag for sc in self._ms_options_dict['stop_conditions']))))
