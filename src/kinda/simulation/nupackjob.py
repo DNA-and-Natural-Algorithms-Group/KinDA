@@ -6,9 +6,10 @@
 
 
 import math
-import numpy as np
+import signal
 
-import multiprocessing, signal
+import numpy as np
+import multiprocess
 
 import nupack
 
@@ -58,7 +59,8 @@ class NupackSampleJob:
                multiprocessing = True, nupack_params = {}):
 
     # Store options
-    self._multiprocessing = multiprocessing
+    self.multiprocessing = multiprocessing
+    self._mp_ctx = multiprocess.get_context('spawn')
 
     # Store nupack params
     self._nupack_params = dict(nupack_params)
@@ -164,17 +166,17 @@ class NupackSampleJob:
     ## Recalculate complex counts for new similarity threshold
     self.update_complex_counts()
 
-  def sample(self, num_samples, status_func = lambda x: None):
-    """ Calls sample_multiprocessing or sample_singleprocessing depending on the value of
-    self._multiprocessing """
-
-    if self._multiprocessing:
-      self.sample_multiprocessing(num_samples, status_func = status_func)
+  def sample(self, num_samples, status_func=None):
+    """
+    Calls sample_multiprocessing or sample_singleprocessing depending on the
+    value of self.multiprocessing.
+    """
+    if self.multiprocessing:
+      self.sample_multiprocessing(num_samples, status_func=status_func)
     else:
-      self.sample_singleprocessing(num_samples, status_func = status_func)
+      self.sample_singleprocessing(num_samples, status_func=status_func)
 
-  def sample_multiprocessing(self, num_samples, 
-    status_func = lambda x: None):
+  def sample_multiprocessing(self, num_samples, status_func=None):
     """
     Runs sample() in multiple processes.
     """
@@ -182,8 +184,8 @@ class NupackSampleJob:
     sigint_handler = signal.signal(signal.SIGINT, signal.SIG_IGN)
 
     # Create Pool instance and worker processes
-    k = min(multiprocessing.cpu_count(), num_samples)
-    p = multiprocessing.Pool(processes = k)
+    k = min(self._mp_ctx.cpu_count(), num_samples)
+    p = self._mp_ctx.Pool(processes=k)
 
     # Restore original SIGINT event handler (if possible)
     if sigint_handler is None: sigint_handler = signal.SIG_DFL
@@ -193,24 +195,22 @@ class NupackSampleJob:
     samples_per_worker = int(num_samples / k)
     args = [(self, samples_per_worker+1)] * (num_samples % k)
     args += [(self, samples_per_worker)] * (k - (num_samples % k))
-
     it = p.imap_unordered(sample_global, args)
     p.close()
-
     try:
       sims_completed = 0
       for cplx in it:
         self.add_sampled_complexes(cplx)
         sims_completed += len(cplx)
-        status_func(sims_completed)
+        if status_func is not None:
+          status_func(sims_completed)
     except KeyboardInterrupt:
-      print("SIGINT: Ending NUPACK sampling prematurely...")
+      print("\nSIGINT: Ending NUPACK sampling prematurely...")
       p.terminate()
       p.join()
       raise KeyboardInterrupt
-    return
 
-  def sample_singleprocessing(self, num_samples, status_func = lambda x: None):
+  def sample_singleprocessing(self, num_samples, status_func=None):
     """
     Queries Nupack for num_samples secondary structures, sampled from the
     Boltzmann distribution of secondary structures for this resting set. The
@@ -221,8 +221,8 @@ class NupackSampleJob:
     """
     results = sample_global((self, num_samples))
     self.add_sampled_complexes(results)
-
-    status_func(len(results))
+    if status_func is not None:
+      status_func(len(results))
 
   def add_sampled_complexes(self, sampled):
     """
@@ -325,8 +325,8 @@ class NupackSampleJob:
 
     if verbose:
       if verbose > 1:
-        if self._multiprocessing:
-          print('#    [MULTIPROCESSING ON] (over %d cores)'%multiprocessing.cpu_count())
+        if self.multiprocessing:
+          print(f'#    [MULTIPROCESSING ON] (over {self._mp_ctx.cpu_count()} cores)')
         else:
           print('#    [MULTIPROCESSING OFF]')
 
@@ -354,7 +354,7 @@ class NupackSampleJob:
       # Query Nupack
       if verbose:
         status_func(0) 
-      self.sample(num_trials, status_func = status_func if verbose else lambda x: None)
+      self.sample(num_trials, status_func=status_func if verbose else None)
       if verbose:
         status_func(num_trials, inline=(verbose <= 2))
 

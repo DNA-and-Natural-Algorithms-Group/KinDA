@@ -6,9 +6,10 @@
 # and processing data relevant to each mode.
 
 import itertools as it
-import multiprocessing, signal
+import signal
 
 import numpy as np
+import multiprocess
 
 from multistrand.options import Options as MSOptions
 from multistrand.options import Literals as MSLiterals
@@ -62,12 +63,12 @@ class MultistrandJob:
           multiprocessing = True, 
           multistrand_params = {}):
     self._multistrand_params = dict(multistrand_params)
-    self._ms_options_dict = self.setup_ms_params(start_state = start_state,
-                                          stop_conditions = stop_conditions,
-                                          mode = sim_mode,
-                                          boltzmann_selectors = boltzmann_selectors)
+    self._ms_options_dict = self.setup_ms_params(
+      start_state = start_state, stop_conditions = stop_conditions,
+      mode = sim_mode, boltzmann_selectors = boltzmann_selectors)
 
-    self._multiprocessing = multiprocessing
+    self.multiprocessing = multiprocessing
+    self._mp_ctx = multiprocess.get_context('spawn')
     
     self._stats_funcs = {
         'time': (sim_utils.time_mean, sim_utils.time_std, sim_utils.time_error),
@@ -98,14 +99,6 @@ class MultistrandJob:
   @property
   def multistrand_params(self):
     return dict(self._multistrand_params)
-
-  @property
-  def multiprocessing(self):
-    return self._multiprocessing
-
-  @multiprocessing.setter
-  def multiprocessing(self, val):
-    self._multiprocessing = val
 
   @property
   def tag_id_dict(self):
@@ -203,16 +196,16 @@ class MultistrandJob:
     """
     return MSOptions(**dict(self._ms_options_dict, num_simulations = num_sims))
 
-  def run_simulations(self, num_sims, sims_per_update = 1, sims_per_worker=1, 
-      status_func = lambda:None):
+  def run_simulations(self, num_sims, sims_per_update=1, sims_per_worker=1,
+                      status_func=None):
     ## Run simulations using multiprocessing if specified
-    if self._multiprocessing:
+    if self.multiprocessing:
       self.run_sims_multiprocessing(num_sims, sims_per_update, sims_per_worker, status_func)
     else:
       self.run_sims_singleprocessing(num_sims, sims_per_update, status_func)
 
-  def run_sims_multiprocessing(self, num_sims, sims_per_update = 1,
-                               sims_per_worker = 1, status_func = lambda:None):
+  def run_sims_multiprocessing(self, num_sims, sims_per_update=1,
+                               sims_per_worker=1, status_func=None):
     """
     Sets up a multiprocessing.Pool object to run simulations concurrently over
     multiple subprocesses.
@@ -234,35 +227,34 @@ class MultistrandJob:
     sigint_handler = signal.signal(signal.SIGINT, signal.SIG_IGN)
 
     # Create Pool instance and worker processes
-    k = min(multiprocessing.cpu_count(), num_sims)
-    p = multiprocessing.Pool( processes = k )
+    k = min(self._mp_ctx.cpu_count(), num_sims)
+    p = self._mp_ctx.Pool(processes=k)
 
     # Restore original SIGINT event handler
     if sigint_handler is None:  sigint_handler = signal.SIG_DFL
     signal.signal(signal.SIGINT, sigint_handler)
 
+    # Setup args for each process
     args = [(self, sims_per_worker)] * (num_sims // sims_per_worker)
     if num_sims%sims_per_worker > 0: args += [(self, num_sims%sims_per_worker)]
     it = p.imap_unordered(run_sims_global, args)
     p.close()
-    
     try:
       sims_completed = 0
       for res in it:
         self.process_results(res)
-
         sims_completed += len(res.interface.results)
-        if sims_completed % sims_per_update == 0:
+        if status_func is not None and sims_completed % sims_per_update == 0:
           status_func(sims_completed)
     except KeyboardInterrupt:
       # (More) gracefully handle SIGINT by terminating worker processes properly
       # and then allowing SIGINT to be handled normally
-      print("SIGINT: Terminating Multistrand processes prematurely...")
+      print("\nSIGINT: Terminating Multistrand processes prematurely...")
       p.terminate()
       p.join()
       raise KeyboardInterrupt
 
-  def run_sims_singleprocessing(self, num_sims, sims_per_update = 1, status_func = None):
+  def run_sims_singleprocessing(self, num_sims, sims_per_update=1, status_func=None):
     sims_completed = 0
     while sims_completed < num_sims:
       sims_to_run = min(sims_per_update, num_sims - sims_completed)
@@ -271,8 +263,8 @@ class MultistrandJob:
       self.process_results(results)
 
       sims_completed += sims_to_run
-
-      status_func(sims_completed)
+      if status_func is not None:
+        status_func(sims_completed)
 
   def preallocate_batch(self, batch_size):
     self._ms_results_buff['valid'].resize(self.total_sims + batch_size, refcheck=False)
@@ -374,8 +366,8 @@ class MultistrandJob:
 
     if verbose:
       if verbose > 1:
-        if self._multiprocessing:
-          print('#    [MULTIPROCESSING ON] (over %d cores)'%multiprocessing.cpu_count())
+        if self.multiprocessing:
+          print(f'#    [MULTIPROCESSING ON] (over {self._mp_ctx.cpu_count()} cores)')
         else:
           print('#    [MULTIPROCESSING OFF]')
 
@@ -404,7 +396,7 @@ class MultistrandJob:
       self.run_simulations(num_trials, 
           sims_per_update = sims_per_update, 
           sims_per_worker = sims_per_worker, 
-          status_func = status_func if verbose else lambda x: None)
+          status_func = status_func if verbose else None)
       if verbose:
         status_func(num_trials, inline=(verbose <= 2))
 

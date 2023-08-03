@@ -32,6 +32,7 @@ classifiers = [
 requires-python = ">=3.8"
 dependencies = [
     "numpy",
+    "multiprocess >= 0.70",
     'peppercornenumerator==0.9',
     'multistrand==2.1',
     "matplotlib",
