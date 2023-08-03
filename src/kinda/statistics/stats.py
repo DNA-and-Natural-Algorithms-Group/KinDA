@@ -11,6 +11,7 @@
 
 import math
 from functools import reduce
+from typing import List, Tuple
 
 from ..simulation.multistrandjob import FirstPassageTimeModeJob, FirstStepModeJob
 from ..simulation.nupackjob import NupackSampleJob
@@ -290,14 +291,16 @@ class RestingSetStats:
     """
     return self.get_nupackjob().get_top_MFE_structs(num)
     
-  def get_temporary_depletion_due_to(self, rxn, relative_error = 0.5, max_sims=500):
+  def get_temporary_depletion_due_to(self, rxn, relative_error = 0.5, max_sims=500, **kwargs):
     binding_polynomial = 1. / (1 - self.get_temporary_depletion(relative_error, max_sims))
 
     other_reactant = rxn.reactants[0] if rxn.reactants[0]!=self.restingset else rxn.reactants[1]
     c_max = rxn.get_rs_stats(other_reactant).c_max
     if c_max is None or c_max == 0:  return 0
-    return c_max * rxn.get_k1(max_sims = 0) / rxn.get_k2(max_sims = 0) / binding_polynomial
-  def get_temporary_depletion(self, relative_error = 0.5, max_sims = 500):
+    return c_max * rxn.get_k1(max_sims = 0, **kwargs) \
+      / rxn.get_k2(max_sims = 0, **kwargs) / binding_polynomial
+
+  def get_temporary_depletion(self, relative_error = 0.5, max_sims = 500, **kwargs):
     binding_polynomial = 1.0
 
     rxns = [r for r in self.inter_rxns if len(r.reactants)>1 and r.reactants == r.products]
@@ -306,27 +309,30 @@ class RestingSetStats:
       c_max = rxn.get_rs_stats(other_reactant).c_max
       if c_max is None or c_max == 0:  continue
 
-      rxn.get_k1(relative_error, max_sims = max_sims)
-      rxn.get_k2(relative_error, max_sims = max_sims)
+      rxn.get_k1(relative_error, max_sims = max_sims, **kwargs)
+      rxn.get_k2(relative_error, max_sims = max_sims, **kwargs)
       binding_polynomial += c_max * rxn.get_k1(max_sims = 0) / rxn.get_k2(max_sims = 0)
      
     return 1 - 1/binding_polynomial
 
-  def get_permanent_depletion_due_to(self, rxn, relative_error, max_sims):
+  def get_permanent_depletion_due_to(self, rxn, relative_error, max_sims, **kwargs):
     conc = 1.0
     for reactant in rxn.reactants:
       c_max = rxn.get_rs_stats(reactant).c_max
       if c_max == None:
         return 0.0
       conc *= c_max
-    dep = conc * rxn.get_k1(relative_error, max_sims = max_sims) / self.c_max
+    dep = conc * rxn.get_k1(relative_error, max_sims = max_sims, **kwargs) / self.c_max
     return dep if not math.isnan(dep) else 0.0
-  def get_permanent_depletion(self, relative_error = 0.5, max_sims = 500):
+
+  def get_permanent_depletion(self, relative_error = 0.5, max_sims = 500, **kwargs):
     """ Returns the rate in /s at which the given resting set is depleted due to spurious reactions """
     if self.c_max == None or self.c_max == 0:
       return 0.0
 
-    depletions = [self.get_permanent_depletion_due_to(rxn, relative_error, max_sims) for rxn in self.spurious_rxns]
+    depletions = [
+      self.get_permanent_depletion_due_to(rxn, relative_error, max_sims, **kwargs)
+      for rxn in self.spurious_rxns]
     return sum(depletions)
   
   def add_inter_rxn(self, rxn):

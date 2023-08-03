@@ -8,8 +8,9 @@ KinDA executable workflow:
 cat input.pil | peppercorn -c -d [--options] | KinDA [--options]
 
     Selected options:
-        --backup kotan.db (exports results to kotan.db)
-        --recover kotan.db (loads system from kotan.db)
+        --backup kotani.db (exports results to kotani.db)
+        --restore kotani.db (loads system from kotani.db)
+        --database kotani.db (combines --backup and --restore)
 
     Potential improvements:
         *) it is not possible to load and extend a database, or to read out
@@ -164,9 +165,9 @@ def calculate_all_complex_probabilities(KindaSystem, spurious, nsth, multip = Tr
         # (including the spurious conformation, denoted as None)
         num = rms_stats.get_num_sims()
         rms_stats.get_conformation_probs(verbose = verbose, spurious = False, **kwargs)
-        
-        if num != rms_stats.get_num_sims() and backup :
-            export_data(KindaSystem, args.backup, use_pickle)
+
+        if num != rms_stats.get_num_sims() and backup:
+            export_data(KindaSystem, backup, use_pickle)
 
         if verbose >= 2:
             tot = 0
@@ -221,8 +222,8 @@ def calculate_all_reaction_rates(KindaSystem, unproductive, spurious, multip = T
             max_batch_size = max_bs, 
             verbose = verbose)
 
-        if (rxn_stats.get_num_sims() - num) and backup :
-            export_data(KindaSystem, args.backup, use_pickle)
+        if num != rxn_stats.get_num_sims() and backup:
+            export_data(KindaSystem, backup, use_pickle)
 
 
 def merge_databases(ref_sys: kinda.System, databases: List[str],
@@ -428,20 +429,20 @@ def main(args):
         KindaSystem, unproductive, spurious, not args.no_multiprocessing,
         args.backup, args.verbose, export_pickle, **rparams)
    
-    if args.backup and not os.path.exists(args.backup):
+    if args.backup and (not os.path.exists(args.backup) or args.merge):
         export_data(KindaSystem, args.backup, export_pickle)
-    if args.verbose and args.backup:
-        print("\n# Results stored in {} using {} format.".format(args.backup,
-            'PICKLE' if export_pickle else 'JSON'))
-
+        if args.verbose:
+            print("\n# Results stored in {} using {} format.".format(
+                args.backup, 'PICKLE' if export_pickle else 'JSON'))
 
     ######################
     # Print the results: #
     ######################
+
     if args.output is None:
         write_pil(KindaSystem, sys.stdout, spurious=spurious, unproductive=unproductive)
-    else :
-        with open(args.output, 'w') as pil :
+    else:
+        with open(args.output, 'w') as pil:
             write_pil(KindaSystem, pil, spurious=spurious, unproductive=unproductive)
         print("\n# Results wrote to {} using *.pil format.".format(args.output))
 
@@ -519,7 +520,7 @@ def add_kinda_args(parser):
             help="""Maximum number of NUPACK simulations for this Session.""")
 
     session.add_argument('--rate-batch-size', type=int, nargs=3, 
-            default = [40, 80, 1000], metavar='<int>',
+            default = [50, 100, 1000], metavar='<int>',
             help="""Adjust batch size for Multistrand simulations. 
 
                 - First argument: minimum batch size 
@@ -532,8 +533,8 @@ def add_kinda_args(parser):
             to determine whether a new batch gets submitted. A large batch size
             can lead to excess work in order to reach your error goals.""")
 
-    session.add_argument('--prob-batch-size', type=int, nargs=3, 
-            default = [40, 80, 1000], metavar='<int>',
+    session.add_argument('--prob-batch-size', type=int, nargs=3,
+            default = [100, 100, 1000], metavar='<int>',
             help="""Adjust batch size for NUPACK stochastic backtracking. 
             Equivalent behavior to --rate-batch-size. """)
 

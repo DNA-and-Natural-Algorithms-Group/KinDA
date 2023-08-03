@@ -534,12 +534,14 @@ def export_data(sstats, filepath, use_pickle = False):
     rsstats_to_dict[rs_to_id[rs]] = {
         'similarity_threshold': stats.get_similarity_threshold(), 'c_max': stats.c_max}
     for c in rs.complexes:
+      c_data = list(stats.get_conformation_prob_data(c.name))
       rsstats_to_dict[rs_to_id[rs]][complex_to_id[c]] = {
         'prob': '{0} +/- {1}'.format(
-          stats.get_conformation_prob(c.name, 1, max_sims=0), 
+          stats.get_conformation_prob(c.name, 1, max_sims=0),
           stats.get_conformation_prob_error(c.name, max_sims=0)),
-        'similarity_data': list(stats.get_conformation_prob_data(c.name))
+        'similarity_data': c_data
       }
+      assert len(c_data) == stats.sampler.get_num_sims()
 
   rsrxnstats_to_dict = {}
   for rsrxn in rs_reactions:
@@ -668,7 +670,7 @@ def import_data(filepath, use_pickle = False):
       print("Warning: Could not match up stored statistics for {0}.".format(restingsets[rs_id]))
       continue
     nupackjob = stats.get_nupackjob()
-    num_sims = 0
+    threshold = 0
     for key, val in data.items():
       if key == 'similarity_threshold':
         threshold = val
@@ -676,10 +678,13 @@ def import_data(filepath, use_pickle = False):
         stats.c_max = val
       else:
         c = complexes[key]
-        nupackjob.set_complex_prob_data(c.name, np.array(val['similarity_data']))
-        #NOTE: I think it should be += here
-        num_sims = len(val['similarity_data'])
-    nupackjob.total_sims = num_sims
+        c_data = np.array(val['similarity_data'])
+        nupackjob.set_complex_prob_data(c.name, c_data)
+        if nupackjob.total_sims == 0:
+          nupackjob.total_sims = len(c_data)
+        else:
+          assert nupackjob.total_sims == len(c_data)
+    assert threshold > 0
     stats.set_similarity_threshold(threshold)
 
   for rsrxn_id, data in sstats_dict['resting-set-reaction-stats'].items():
@@ -732,7 +737,7 @@ def _import_data_convert_version(sstats_dict, version):
     if sstats_dict['initialization_params']['kinda_params']['stop_macrostate_mode'] == 'disassoc':
       sstats_dict['initialization_params']['kinda_params']['stop_macrostate_mode'] = 'ordered-complex'
 
-  # sstats_dict should be in v0.2 format now
-  sstats_dict['version'] = 'v0.2'
+  # sstats_dict should be in current format now
+  sstats_dict['version'] = __version__
 
   return sstats_dict

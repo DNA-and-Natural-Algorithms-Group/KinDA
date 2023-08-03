@@ -235,7 +235,8 @@ class System:
     if arity is not None:
       rxns = [x for x in rxns if len(x.reactants)==arity]
 
-    return [x for x in rxns if x.has_reactants(reactants) and x.has_products(products)]
+    return sorted([x for x in rxns
+                   if x.has_reactants(reactants) and x.has_products(products)])
 
   def get_reaction(self, **kwargs):
     """ Returns a single reaction matching the criteria given. """
@@ -278,7 +279,7 @@ class System:
     if complex_name is not None:
       rs = [x for x in rs if complex_name in [c.name for c in x.complexes]]
 
-    return rs
+    return sorted(rs)
 
   def get_restingset(self, complex = None, strands = [], name = None,
                      complex_name = None, spurious = False):
@@ -298,8 +299,7 @@ class System:
     complexes = list(self._complexes)
     if name is not None:
       complexes = [x for x in complexes if x.name == name]
-
-    return complexes
+    return sorted(complexes)
 
   def get_complex(self, name = None):
     complexes = self.get_complexes(name = name)

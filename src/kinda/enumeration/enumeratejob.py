@@ -103,6 +103,7 @@ class EnumerateJob:
     print("Done!")
 
     # Perform reaction condensation
+    print()
     print("KinDA: Performing reaction condensation with Peppercorn...")
     enumc = enum.condense.PepperCondensation(e)
     enumc.condense()

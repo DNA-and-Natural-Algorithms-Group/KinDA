@@ -287,13 +287,13 @@ class MultistrandJob:
     for k in self._ms_results:
       self._ms_results[k] = self._ms_results_buff[k][:self.total_sims]
 
-  def reduce_error_to(self, rel_goal, max_sims, 
-      reaction = 'overall', 
-      stat = 'rate', 
-      init_batch_size = 50, 
-      min_batch_size = 50, 
-      max_batch_size = 500, 
-      sims_per_update = 1, 
+  def reduce_error_to(self, rel_goal, max_sims,
+      reaction = 'overall',
+      stat = 'rate',
+      init_batch_size = 100,
+      min_batch_size = 50,
+      max_batch_size = 1000,
+      sims_per_update = 1,
       sims_per_worker = 1,
       verbose = 0):
     """Stochastic simulations to reduce the error to rel_goal*mean or until max_sims is reached.
@@ -326,16 +326,17 @@ class MultistrandJob:
 
       if exp_add_sims is None:
         table_update_func([mean, error, goal, " |",
-          "{:d}/{:d}".format(batch_sims_done, num_trials), 
-          "{:d}/--".format(total_sims), 
-          "{}/{}/{}".format(total_success, total_failure, total_timeout), 
-          "      {}".format('--')], inline) 
+          "{:d}/{:d}".format(batch_sims_done, num_trials),
+          "{:d}/--".format(total_sims),
+          "{}/{}/{}".format(total_success, total_failure, total_timeout),
+          "{}".format('--')], inline)
       else :
         table_update_func([mean, error, goal, " |",
-          "{:d}/{:d}".format(batch_sims_done, num_trials), 
-          "{:d}/{:d}".format(total_sims, max(0, exp_add_sims-batch_sims_done)), 
-          "{}/{}/{}".format(total_success, total_failure, total_timeout), 
-          "est{:4d}%".format(100*total_sims/(total_sims+max(0, exp_add_sims-batch_sims_done)))], inline)
+          "{:d}/{:d}".format(batch_sims_done, num_trials),
+          "{:d}/{:d}".format(total_sims, max(0, exp_add_sims-batch_sims_done)),
+          "{}/{}/{}".format(total_success, total_failure, total_timeout),
+          "est {:.0%}".format(
+            total_sims / (total_sims+max(0, exp_add_sims-batch_sims_done)))], inline)
 
     def calc_mean():
       return self._stats_funcs[stat][0](self._tag_id_dict[reaction], self._ms_results)
@@ -355,14 +356,22 @@ class MultistrandJob:
         else:
           print('#    [MULTIPROCESSING OFF]')
 
+      val_fmt = "{:.4%}" if stat == "prob" else "{:.3e}"
       table_update_func = sim_utils.print_progress_table(
           [stat, "error", "err goal", " |", "batch sims", "done/needed", "S/F/T", "progress"],
           col_widths = [10, 10, 10, 4, 17, 17, 17, 9],
-          col_format_specs = ['{:.4}', '{:.4}', '{:.4}', '{}', '{}', '{}', '{}', '{}'])
+          col_format_specs = [val_fmt] * 3 + ['{}'] * 5)
       table_update_func([mean, error, goal, " |"
         "--/--", "--/--", "--/--/--", "--"])
 
-    while not error < goal and num_sims < max_sims:
+    # Run simulations
+    while (
+        # await convergence criterion
+        (error > goal and num_sims < max_sims)
+        # force evaluation of first batch (e.g., even if `error-goal` is too high),
+        # except when `max_sims == 0` (e.g., during `export_data()`)
+        or (num_sims == 0 and max_sims > 0)):
+
       # Estimate additional trials based on inverse square root relationship
       # between error and number of trials
       if self.total_sims == 0 :
@@ -402,16 +411,17 @@ class MultistrandJob:
     if verbose:
       if exp_add_sims is None:
         table_update_func([mean, error, goal, " |",
-          "{:d}/{:d}".format(num_sims, max_sims), 
-          "{:d}/--".format(total_sims), 
-          "{:d}/{:d}/{:d}".format(total_success, total_failure, total_timeout), 
-          "      {}".format('--')], inline=False) 
+          "{:d}/{:d}".format(num_sims, max_sims),
+          "{:d}/--".format(total_sims),
+          "{:d}/{:d}/{:d}".format(total_success, total_failure, total_timeout),
+          "{}".format('--')], inline=False)
       else :
         table_update_func([calc_mean(), error, goal, " |",
-          "{:d}/{:d}".format(num_sims, max_sims), 
-          "{:d}/{:d}".format(total_sims, exp_add_sims), 
-          "{:d}/{:d}/{:d}".format(total_success, total_failure, total_timeout), 
-          "{:7d}%".format(100*total_sims/(total_sims+exp_add_sims))], inline=False) 
+          "{:d}/{:d}".format(num_sims, max_sims),
+          "{:d}/{:d}".format(total_sims, exp_add_sims),
+          "{:d}/{:d}/{:d}".format(total_success, total_failure, total_timeout),
+          "{:.1%}".format(total_sims / (total_sims+exp_add_sims))], inline=False)
+
 
 class FirstPassageTimeModeJob(MultistrandJob):
   
@@ -490,6 +500,7 @@ class TransitionModeJob(MultistrandJob):
   
   def process_results(self, ms_options):
     results = ms_options.interface.results
+    n = len(results)
     transition_paths = ms_options.interface.transition_lists
     
     tags = [self._tag_id_dict[r.tag] for r in results]
@@ -587,7 +598,7 @@ class FirstStepModeJob(MultistrandJob):
 
   def process_results(self, ms_options):
     results = ms_options.interface.results
-    n=len(results)
+    n = len(results)
 
     tags = [self._tag_id_dict[r.tag] for r in results]
     valid = [t!=self._tag_id_dict[MS_TIMEOUT]

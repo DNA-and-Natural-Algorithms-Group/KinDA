@@ -7,6 +7,7 @@
 
 import math
 import signal
+from typing import List, Tuple, Optional
 
 import numpy as np
 import multiprocess
@@ -163,7 +164,7 @@ class NupackSampleJob:
     self.similarity_threshold = similarity_threshold
 
     ## Recalculate complex counts for new similarity threshold
-    self.update_complex_counts()
+    self.recompute_complex_counts()
 
   def sample(self, num_samples, status_func=None):
     """
@@ -229,44 +230,48 @@ class NupackSampleJob:
     each of the resting set conformations and updating the estimates for each
     conformation probability.
     """
-
-    ## For each complex in the resting set, add the number of sampled secondary structures
-    ## that satisfy the similarity threshold to the running complex count.
-    spurious_similarities = np.full(len(sampled), True)
-    for c in self.restingset.complexes:
-      similarities = np.array([1-utils.max_domain_defect(s, c.structure) for s in sampled])
-      num_similar = np.sum(similarities >= self.similarity_threshold)
-      self._complex_counts[self.get_complex_index(c.name)] += num_similar
-
-      self._data[c.name] = np.concatenate((self._data[c.name], similarities))
-      spurious_similarities *= similarities < self.similarity_threshold
-
-    ## Update complex count for the spurious complex
-    ## A conformation is considered spurious if it does not satisfy the similarity threshold
-    ## for any of the predicted conformations in the resting set.
-    spurious_idx = self.get_complex_index(None)
-    self._complex_counts[spurious_idx] += np.sum(spurious_similarities)
-        
-    ## Update running count of number of samples
+    self.update_complex_counts(len(sampled), sampled)
     self.total_sims += len(sampled)
 
-  def update_complex_counts(self):
-    ## Recalculate complex counts
+  def recompute_complex_counts(self):
+    """
+    Recalculate complex counts.
+    """
     self._complex_counts = [0] * len(self._complex_tags)
-    spurious_similarities = np.full(self.total_sims, True)
-    for c in self.restingset.complexes:
-      similarities = self._data[c.name]
-      num_similar = np.sum(similarities >= self.similarity_threshold)
-      self._complex_counts[self.get_complex_index(c.name)] = num_similar
-      spurious_similarities *= similarities < self.similarity_threshold
+    self.update_complex_counts(self.total_sims, None)
 
-    ## Update complex counts
+  def update_complex_counts(self, num_samples: int, new_data: Optional[List]):
+    """
+    For each complex in the resting set and for the spurious macrostate, add the
+    number of sampled secondary structures that satisfy the similarity threshold
+    to the running complex count.
+
+    A conformation is considered spurious if it does not satisfy the similarity
+    threshold for any of the predicted conformations in the resting set.
+    """
+    spurious_similarities = np.full(num_samples, True)
+
+    # update resting set complexes
+    for c in self.restingset.complexes:
+      if new_data is None:
+        similarities = self._data[c.name]
+      else:
+        similarities = np.array([1-utils.max_domain_defect(s, c.structure)
+                                 for s in new_data])
+        self._data[c.name] = np.concatenate((self._data[c.name], similarities))
+
+      similar_mask = similarities >= self.similarity_threshold
+      num_similar = np.sum(similar_mask)
+      spurious_similarities *= ~similar_mask
+      self._complex_counts[self.get_complex_index(c.name)] += num_similar
+
+    # update spurious complexes
     spurious_idx = self.get_complex_index(None)
-    self._complex_counts[spurious_idx] = np.sum(spurious_similarities)
-      
-  def reduce_error_to(self, rel_goal, max_sims, complex_name = None, 
-      init_batch_size = 50, 
-      min_batch_size = 50, 
+    self._complex_counts[spurious_idx] += np.sum(spurious_similarities)
+
+  def reduce_error_to(self, rel_goal, max_sims, complex_name = None,
+      init_batch_size = 100,
+      min_batch_size = 100,
       max_batch_size = 1000,
       verbose = 0):
     """Stochastic sampling of secondary structures until the error-bars are satisified.
@@ -303,18 +308,18 @@ class NupackSampleJob:
 
       if exp_add_sims is None:
         assert num_sims + batch_sims_done == self.total_sims
-        update_func([complex_name, prob, error, goal, " |", 
-          "{:d}/{:d}".format(batch_sims_done,num_trials), 
-          "{:d}/--".format(total_sims), 
-          "{:d}/{:d}".format(total_success, total_failure), 
-          "      {}".format('--')], inline) 
+        update_func([complex_name, prob, error, goal, " |",
+          "{:d}/{:d}".format(batch_sims_done,num_trials),
+          "{:d}/--".format(total_sims),
+          "{:d}/{:d}".format(total_success, total_failure),
+          "{}".format('--')], inline)
       else:
-        update_func([complex_name, prob, error, goal, " |", 
-            "{:d}/{:d}".format(batch_sims_done, num_trials), 
-            "{:d}/{:d}".format(total_sims, max(0,exp_add_sims-batch_sims_done)), 
-            "{:d}/{:d}".format(total_success, total_failure), 
-            "est{:4d}%".format(100*total_sims/
-              (total_sims+max(0,exp_add_sims-batch_sims_done)))], inline) 
+        update_func([complex_name, prob, error, goal, " |",
+            "{:d}/{:d}".format(batch_sims_done, num_trials),
+            "{:d}/{:d}".format(total_sims, max(0,exp_add_sims-batch_sims_done)),
+            "{:d}/{:d}".format(total_success, total_failure),
+            "est {:.0%}".format(total_sims/
+              (total_sims+max(0,exp_add_sims-batch_sims_done)))], inline)
  
     # Get initial values
     num_sims = 0 # The number of finished simulations.
@@ -333,12 +338,18 @@ class NupackSampleJob:
       update_func = print_progress_table(
           ["complex", "prob", "error", "err goal", " |", "batch sims", "done/needed", "S/F", "progress"],
           col_widths = [11, 10, 10, 10, 4, 15, 15, 12, 9], 
-          col_format_specs = ['{}', '{:.6f}', '{:1.4g}', '{:1.4g}', '{}', '{}', '{}', '{}', '{}'],
+          col_format_specs = ['{}', '{:.3%}', '{:.3%}', '{:.2%}', '{}', '{}', '{}', '{}', '{}'],
           skip_header = True if verbose == 1 else False)
       update_func([complex_name, prob, error, goal, " |", "--/--", "--/--", "--/--", "--"])
 
     # Run simulations
-    while not error <= goal and num_sims < max_sims:
+    while (
+        # await convergence criterion
+        (error > goal and num_sims < max_sims)
+        # force evaluation of first batch (e.g., even if `error-goal` is too high),
+        # except when `max_sims == 0` (e.g., during `export_data()`)
+        or (num_sims == 0 and max_sims > 0)):
+
       # Estimate additional trials based on inverse square root relationship
       # between error and number of trials
       if self.total_sims == 0:
@@ -373,7 +384,7 @@ class NupackSampleJob:
         "{:d}/{:d}".format(num_sims, max_sims), 
         "{:d}/{:d}".format(tot_sims, exp_add_sims), 
         "{:d}/{:d}".format(total_success, total_failure), 
-        "{:7d}%".format(100*tot_sims/max([0,tot_sims+exp_add_sims]))], inline=False) 
+        "{:.1%}".format(tot_sims / max([0,tot_sims+exp_add_sims]))], inline=False)
     return num_sims
 
   def get_top_MFE_structs(self, num) -> List[Tuple[str, float]]:

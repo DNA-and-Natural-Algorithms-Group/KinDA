@@ -77,26 +77,26 @@ def write_pil(KindaSystem: System, fh, spurious=False, unproductive=False,
             inter = '_'.join(sorted(reactants) + ['to'] + sorted(products))
 
         if k_1 > 0 and k_2 > 0 :
-            output_string('reaction [k1 = {:12g} +/- {:12g} {:4s}] {} -> {}\n'.format(
-                format_rate_units(k_1, (len(reactants), 1), molarity, time), 
-                format_rate_units(k_1_err, (len(reactants), 1), molarity, time), 
+            output_string('  reaction [k1 = {:10.4e} +/- {:10.4e} {:5s}] {} -> {}\n'.format(
+                format_rate_units(k_1, (len(reactants), 1), molarity, time),
+                format_rate_units(k_1_err, (len(reactants), 1), molarity, time),
                 '/{}'.format(molarity)*(len(reactants)-1)+'/{}'.format(time),
                 ' + '.join(reactants), inter))
 
-            output_string('reaction [k2 = {:12g} +/- {:12g} {:4s}] {} -> {}\n'.format(
-                format_rate_units(k_2, (1,len(products)), molarity, time), 
-                format_rate_units(k_2_err, (1,len(products)), molarity, time), 
+            output_string('  reaction [k2 = {:10.4e} +/- {:10.4e} {:5s}] {} -> {}\n'.format(
+                format_rate_units(k_2, (1,len(products)), molarity, time),
+                format_rate_units(k_2_err, (1,len(products)), molarity, time),
                 '/{}'.format(time),
                 inter, ' + '.join(products)))
-        else :
-            output_string('# reaction [k1 = {:12g} +/- {:12g} {:4s}] {} -> {}\n'.format(
-                format_rate_units(k_1, (len(reactants), 1), molarity, time), 
-                format_rate_units(k_1_err, (len(reactants), 1), molarity, time), 
+        else:
+            output_string('# reaction [k1 = {:10.4e} +/- {:10.4e} {:5s}] {} -> {}\n'.format(
+                format_rate_units(k_1, (len(reactants), 1), molarity, time),
+                format_rate_units(k_1_err, (len(reactants), 1), molarity, time),
                 '/{}'.format(molarity)*(len(reactants)-1)+'/{}'.format(time),
                 ' + '.join(reactants), inter))
 
-            output_string('# reaction [k2 = {:12g} +/- {:12g} {:4s}] {} -> {}\n'.format(
-                format_rate_units(k_2, (1,len(products)), molarity, time), 
+            output_string('# reaction [k2 = {:10.4e} +/- {:10.4e} {:5s}] {} -> {}\n'.format(
+                format_rate_units(k_2, (1,len(products)), molarity, time),
                 format_rate_units(k_2_err, (1,len(products)), molarity, time),
                 '/{}'.format(time),
                 inter, ' + '.join(products)))
@@ -104,6 +104,7 @@ def write_pil(KindaSystem: System, fh, spurious=False, unproductive=False,
 
     output_string('\n# Resting macrostate probabilities\n')
     restingsets = KindaSystem.get_restingsets(spurious=spurious)
+    rms_width = max(len(rms.name) for rms in restingsets)
     for rms in restingsets:
         stats = KindaSystem.get_stats(rms)
     
@@ -111,8 +112,8 @@ def write_pil(KindaSystem: System, fh, spurious=False, unproductive=False,
         p_err = stats.get_conformation_prob_error(None, max_sims=0)
         temp_dep = stats.get_temporary_depletion(max_sims=0)
 
-        output_string('# {:20s} [Prob = {:12g} +/- {:12g}; Depletion = {:12g}]\n'.format(
-            rms.name, p, p_err, temp_dep))
+        output_string(f'# {rms.name:{rms_width}s} [Prob = {p: >8.4%} '
+                      f'+/- {p_err: >8.4%}; Depletion = {temp_dep: >8.4%}]\n')
 
     # In a table, print out temporary depletion levels for each pairwise
     # combination of resting sets.
@@ -128,5 +129,5 @@ def write_pil(KindaSystem: System, fh, spurious=False, unproductive=False,
                 rxn_stats = KindaSystem.get_stats(rxns[0])
                 depl = rms_stats.get_temporary_depletion_due_to(rxn_stats, max_sims=0)
 
-                output_string('# {:20s} [Depletion due to {:20s} = {:12g}]\n'.format(
+                output_string('# {:20s} [Depletion due to {:20s} = {: >8.4%}]\n'.format(
                     rms1.name, rms2.name, depl))
