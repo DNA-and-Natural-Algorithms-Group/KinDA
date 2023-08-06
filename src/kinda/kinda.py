@@ -52,6 +52,19 @@ class System:
     self._multistrand_params = dict(options.multistrand_params, **multistrand_params)
     self._nupack_params = dict(options.nupack_params, **nupack_params)
 
+    r_model, r_method, uni_sc, bi_sc = [
+      self._multistrand_params.get(k, None) for k in
+      ["rate_model", "rate_method", "unimolecular_scaling", "bimolecular_scaling"]]
+    assert (
+      (r_model is None and isinstance(r_method, str)
+       and all(isinstance(k, float) for k in [uni_sc, bi_sc])) or
+      (isinstance(r_model, str)
+       and all(k is None for k in [r_method, uni_sc, bi_sc]))), (
+        "In `multistrand_params`, please specify either one of:\n"
+        "  - rate_model: str\n"
+        "  - rate_method: str, "
+        "unimolecular_scaling: float, bimolecular_scaling: float.")
+
     # Store initial DSD system objects
     assert all(isinstance(rxn, RestingSetReaction) for rxn in condensed_reactions)
     self._condensed_reactions = set(condensed_reactions)
@@ -68,7 +81,7 @@ class System:
         + [c for rxn in self._detailed_reactions
            for c in rxn.reactants+rxn.products])
 
-    if enumeration :
+    if enumeration:
       self._peppercorn_params = dict(options.peppercorn_params, **peppercorn_params)
       self.enumerate()
     else:

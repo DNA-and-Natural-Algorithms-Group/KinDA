@@ -178,7 +178,20 @@ class MultistrandJob:
     Creates a fresh MS Options object using the arguments in
     self._ms_options_dict.
     """
-    return MSOptions(**dict(self._ms_options_dict, num_simulations = num_sims))
+    rate_model = self._ms_options_dict.get("rate_model", None)
+    if rate_model is None:
+      opts = MSOptions(**dict(self._ms_options_dict, num_simulations = num_sims))
+    else:
+      opts_dict = self._ms_options_dict.copy()
+      for k in ["rate_method", "unimolecular_scaling", "bimolecular_scaling"]:
+        opts_dict.pop(k, None)
+      opts = MSOptions(**dict(opts_dict, num_simulations = num_sims))
+      # choose parameter preset
+      getattr(opts, rate_model)()
+
+    assert opts.unimolecular_scaling > 0
+    assert opts.bimolecular_scaling > 0
+    return opts
 
   def run_simulations(self, num_sims, sims_per_update=1, sims_per_worker=1,
                       status_func=None):

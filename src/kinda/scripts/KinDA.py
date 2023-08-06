@@ -76,15 +76,13 @@ def init_parameter_dicts(args):
         'dangles': args.dangles.title(), # first letter uppercase
         'substrate_type': args.material,
         'temperature': args.temperature,
-        'unimolecular_scaling': 2.41686715e+06,
-        'bimolecular_scaling': 8.01171383e+05,
         'simulation_time': args.multistrand_timeout,
         'gt_enable': True, # Always True, to be consistent with NUPACK.
         'sodium': args.sodium,
         'magnesium': args.magnesium,
         'output_interval': -1,
         'parameter_type': 'Nupack',
-        'rate_method': 'Metropolis',
+        'rate_model': 'DNA23Metropolis',
         'join_concentration': 1e-15  # collition rate of complexes. ([] * k_bi)
         # join_concentration must be low enough to ensure that no bind
         # reactions occur after the first step of a simulation.
