@@ -1,0 +1,41 @@
+Bootstrap: localimage
+From: ../../multistrand/tools/multistrand.sif
+
+%help
+
+    This Apptainer container definition installs the KinDA package and its
+    dependencies, assuming that the source tree is available on the host system
+    (see %files section). It extends the container image `multistrand.sif`,
+    which must be built beforehand from `tools/multistrand.def` in the
+    Multistrand 2.2+ source tree [1] using Apptainer 1.2+.
+
+    [1] https://github.com/DNA-and-Natural-Algorithms-Group/multistrand
+
+%files
+
+    # copy source trees
+    ../../KinDA /dna/
+
+%environment
+
+    # lib paths
+    export KINDA=/dna/KinDA
+
+%post
+
+    # lib paths
+    export KINDA=/dna/KinDA
+
+    # install KinDA
+    echo "\n\n\n" && cd ${KINDA} && rm -rf .git scripts build
+    pip install -v -e ${KINDA}
+
+    # info
+    echo "\n\n\n" && pip debug && echo && pip list
+
+    # cleanup
+    echo "\n\n\n" && pip cache purge
+
+%labels
+
+    Author Boyan Beronov
