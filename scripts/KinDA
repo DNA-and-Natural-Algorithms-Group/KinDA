@@ -35,6 +35,7 @@ from kinda.input import read_pil
 from kinda.output import write_pil
 from kinda.statistics.stats_utils import import_data, export_data
 
+
 def init_parameter_dicts(args):
     """Initialize kinda's parameter format.
     
@@ -47,7 +48,6 @@ def init_parameter_dicts(args):
 
     Not all parameters can set via commandline arguments, time will tell...
     """
-
     kparams = {
         # System Parameters
         'start_macrostate_mode': args.macrostate_mode if args.macrostate_mode else \
@@ -132,6 +132,7 @@ def peppercorn(pilstring, is_file = False, params=None):
     return pepper_write_pil(enum, fh = None, 
             detailed = True, condensed = True, composite = strands)
 
+
 def calculate_all_complex_probabilities(KindaSystem, spurious, nsth, multip = True,
         backup = None, verbose = 0, use_pickle = True, **kwargs):
     """ TODO
@@ -174,6 +175,7 @@ def calculate_all_complex_probabilities(KindaSystem, spurious, nsth, multip = Tr
                 name = None if c is None else c.name
                 tot += rms_stats.get_conformation_prob(name, max_sims=0)
             print("# Sum of probabilities: {}".format(tot))
+
 
 def calculate_all_reaction_rates(KindaSystem, unproductive, spurious, multip = True,
         backup = None, verbose = 0, use_pickle = True, **kwargs):
@@ -411,7 +413,7 @@ def main(args):
 
         KindaSystem = import_data(args.restore, import_pickle)
 
-        session_params = set(['nupack_multiprocessing', 'multistrand_multiprocessing', 
+        session_params = set(['nupack_multiprocessing', 'multistrand_multiprocessing',
                 'nupack_similarity_threshold', 'max_concentration'])
 
         for k,v in KindaSystem.initialization_params['kinda_params'].items():
@@ -483,13 +485,15 @@ def main(args):
             print("# {} = {}".format(rms, rms_stats.c_max))
 
     # let's do 1)
-    calculate_all_complex_probabilities(KindaSystem, spurious, 
-            args.nupack_similarity_threshold, not args.no_multiprocessing,
-            args.backup, args.verbose, export_pickle, **pparams)
-   
+    calculate_all_complex_probabilities(
+        KindaSystem, spurious, args.nupack_similarity_threshold,
+        not args.no_multiprocessing, args.backup, args.verbose, export_pickle,
+        **pparams)
+
     # let's do 2)
-    calculate_all_reaction_rates(KindaSystem, unproductive, spurious, not args.no_multiprocessing,
-            args.backup, args.verbose, export_pickle, **rparams)
+    calculate_all_reaction_rates(
+        KindaSystem, unproductive, spurious, not args.no_multiprocessing,
+        args.backup, args.verbose, export_pickle, **rparams)
    
     if args.backup and not os.path.exists(args.backup):
         export_data(KindaSystem, args.backup, export_pickle)
@@ -681,7 +685,6 @@ def add_kinda_args(parser):
             choices=('DNA'),  # RNA not supported
             help=argparse.SUPPRESS)
 
-    return
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(

@@ -31,6 +31,7 @@ def split_domain(domain, pos):
       
   domain.subdomains = [section1, section2]
 
+
 def equate_domains(domains):
   """This is pretty slow and inefficient."""
   from .domain import Domain
@@ -101,6 +102,7 @@ def defect(complex, structure):
         defect += 1
   
   return defect
+
   
 def domain_defect(complex, strand_num, domain_num, structure):
   """ Calculates the defect of the binding of the given domain in
@@ -131,6 +133,7 @@ def domain_defect(complex, strand_num, domain_num, structure):
         
   new_struct = Structure(structure = strandlist, strands = structure.strands)
   return defect(complex, new_struct) / float(n)
+
   
 def max_domain_defect(complex, structure):
   """ Returns the maximum domain defect among all domains in the given
@@ -157,6 +160,8 @@ def get_dependent_complexes(macrostate):
     return list(set(sum([get_dependent_complexes(m) for m in macrostate.macrostates], [])))
   else:
     return [macrostate.complex]
+
+
 def macrostate_to_dnf(macrostate, simplify = True):
   """ Returns a macrostate in disjunctive normal form (i.e. an OR of ANDs).
   Note that this may lead to exponential explosion in the number of terms.
@@ -192,6 +197,8 @@ def macrostate_to_dnf(macrostate, simplify = True):
     dnf = Macrostate(type='disjunction', macrostates=dnf_macrostates)
 
   return dnf
+
+
 def print_macrostate_tree(m, prefix=''):
   from .macrostate import Macrostate
 
@@ -211,7 +218,6 @@ def print_macrostate_tree(m, prefix=''):
     else:
       print_macrostate_tree(v, prefix+"   ")
 
-
     
 ## Complex -> Macrostate functions
 def exact_complex_macrostate(complex):
@@ -220,6 +226,8 @@ def exact_complex_macrostate(complex):
   return Macrostate(name = "macrostate_" + complex.name,
                     type = 'exact',
                     complex = complex)
+
+
 def count_by_complex_macrostate(complex, cutoff):
   """ Creates a macrostate corresponding to secondary structures that
   match the binding of the given complex, within the given cutoff.
@@ -230,6 +238,8 @@ def count_by_complex_macrostate(complex, cutoff):
                     type = "count",
                     complex = complex,
                     cutoff = cutoff)
+
+
 def loose_domain_macrostate(complex, strand_num, domain_num, cutoff):
   """ Creates a loose macrostate with the given domain as the region
   of interest. The cutoff is a fractional defect within this domain. The
@@ -265,7 +275,8 @@ def loose_domain_macrostate(complex, strand_num, domain_num, cutoff):
                     type = 'loose',
                     complex = ms_complex,
                     cutoff = int(cutoff * n))
-        
+
+
 def count_by_domain_macrostate(complex, cutoff):
   """ Returns a Macrostate that matches a complex such that every domain
   matches the given complex's structure to within the cutoff fraction. 
@@ -279,7 +290,8 @@ def count_by_domain_macrostate(complex, cutoff):
   return Macrostate(name = complex.name + "_loose-domains",
                     type = 'conjunction',
                     macrostates = macrostates)
-                    
+
+
 ## RestingSet -> Macrostate functions
 def restingset_count_by_complex_macrostate(restingset, cutoff):
   """ Creates a macrostate corresponding to secondary structures that
@@ -291,8 +303,11 @@ def restingset_count_by_complex_macrostate(restingset, cutoff):
   return Macrostate(name        = "macrostate_{}".format(restingset.name),
                     type        = "disjunction",
                     macrostates = macrostates)
+
+
 def restingset_count_by_domain_macrostate(restingset, cutoff):
-  #print "WARNING: Multistrand may not support macrostates that are defined as a per-domain p-approximation"
+  # print("WARNING: Multistrand may not support macrostates that are defined "
+  #       "as a per-domain p-approximation")
   from .macrostate import Macrostate
 
   macrostates = [count_by_domain_macrostate(complex, cutoff) for complex in restingset.complexes]
@@ -300,15 +315,16 @@ def restingset_count_by_domain_macrostate(restingset, cutoff):
                     type        = "disjunction",
                     macrostates = macrostates)
 
+
 ## Functions on RestingSets
 def get_containing_set(restingsets, complex):
   for rs in restingsets:
     if complex in rs:
       return rs
   return None
+
                     
 ## Functions on Structures
 def num_wildcards(structure):
   s = sum(structure.to_strandlist(), [])
   return len([x for x in s if x == '?'])
-  

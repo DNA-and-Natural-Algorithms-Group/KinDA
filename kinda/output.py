@@ -1,5 +1,6 @@
 
-from kinda import __version__
+from kinda import __version__, System
+
 
 def format_rate_units(rate, arity, molarity, time):
     """ Rate must be given in /M and /s. """
@@ -32,20 +33,23 @@ def format_rate_units(rate, arity, molarity, time):
     return rate
 
 
-def write_pil(KindaSystem, fh, spurious=False, unproductive=False, molarity='M', time='s', prefix=None):
+def write_pil(KindaSystem: System, fh, spurious=False, unproductive=False,
+              molarity='M', time='s', prefix=None):
     """Write the KindaSystem object into a proper *.pil format.
 
     Args:
         KindaSystem (:obj:`kinda.System()`): The kinda.System() object.
         fh (filehandle): Filehandle to write to.
-        spurious (bool, optional): Print information about spurious complexes and reactions.
-        unproductive (bool, optional): Print information about unproductive complexes and reactions.
+        spurious (bool, optional): Print information about
+                                   spurious complexes and reactions.
+        unproductive (bool, optional): Print information about unproductive
+                                       complexes and reactions.
 
     NOTE: Eventually, this function should return more than just the CRN. That 
         means info about domains, complexes, strands (ugh), etc.
     """
-
-    I = 0 # counts number of intermediate species.
+    # counts number of intermediate species.
+    I = 0
 
     out = []
     def output_string(string):
@@ -110,7 +114,8 @@ def write_pil(KindaSystem, fh, spurious=False, unproductive=False, molarity='M',
         output_string('# {:20s} [Prob = {:12g} +/- {:12g}; Depletion = {:12g}]\n'.format(
             rms.name, p, p_err, temp_dep))
 
-    # In a table, print out temporary depletion levels for each pairwise combination of resting sets.
+    # In a table, print out temporary depletion levels for each pairwise
+    # combination of resting sets.
     restingsets = KindaSystem.get_restingsets(spurious=False)
     if unproductive is None:
         output_string('\n# Temporary depletion details\n')
@@ -125,5 +130,3 @@ def write_pil(KindaSystem, fh, spurious=False, unproductive=False, molarity='M',
 
                 output_string('# {:20s} [Depletion due to {:20s} = {:12g}]\n'.format(
                     rms1.name, rms2.name, depl))
-
-

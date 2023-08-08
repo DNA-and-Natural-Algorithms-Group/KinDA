@@ -38,7 +38,7 @@ formed as a (nested) conjunction or disjunction of five base macrostate types
 """
 
 
-class Macrostate(object):
+class Macrostate:
   """ Represents a macrostate as defined by a conjunction of one or
   more macrostates of the above types. """
   

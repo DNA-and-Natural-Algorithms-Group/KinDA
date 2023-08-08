@@ -12,22 +12,30 @@
 import sys
 import json
 import pickle
-import numpy as np
 import itertools as it
+from operator import attrgetter
 
-from .. import __version__ as KINDA_VERSION
+import numpy as np
+
+from .. import __version__
 from .. import objects as dna
-from .. import options
+from ..objects.utils import (
+  restingset_count_by_complex_macrostate, restingset_count_by_domain_macrostate)
 from ..simulation.multistrandjob import FirstPassageTimeModeJob, FirstStepModeJob
 from .stats import RestingSetRxnStats, RestingSetStats
+
 
 class SystemStatsImportError(Exception):
   pass
 
+
 ## GLOBALS
 def listminuslist(minuend, subtrahend):
-  """ For each element in subtrahend, removes an equal element in minuend, with earlier
-  elements removed first. The order of the remaining elements in minuend is preserved. """
+  """
+  For each element in subtrahend, removes an equal element in minuend, with
+  earlier elements removed first. The order of the remaining elements in minuend
+  is preserved.
+  """
   difference = minuend[:]
   for elem in subtrahend:
     if elem in difference: difference.remove(elem)
@@ -38,19 +46,20 @@ def listminuslist(minuend, subtrahend):
 # Utilities for making Stats objects #
 ######################################
 
-def make_RestingSetRxnStats(restingsets, detailed_rxns, condensed_rxns, 
+def make_RestingSetRxnStats(restingsets, detailed_rxns, condensed_rxns,
     kinda_params = {}, multistrand_params = {}):
-  """ A convenience function, creating a dict mapping
-  reactions to stats objects such that all stats objects
-  with the same reactants share a Multistrand job object
-  for improved efficiency. """
-
-  #print "KinDA: Constructing internal KinDA objects...\r",
+  """
+  A convenience function, creating a dict mapping reactions to stats objects
+  such that all stats objects with the same reactants share a Multistrand job
+  object for improved efficiency.
+  """
+  # print("KinDA: Constructing internal KinDA objects...\r")
   sys.stdout.flush()
 
-  # Initialize set of spurious reactions
-  spurious_rxns = set([]); # a list of all spurious reactions possible between any reactant pair
-  
+  # Initialize set of spurious reactions:
+  # a list of all spurious reactions possible between any reactant pair
+  spurious_rxns = set([])
+
   # Determine all possible sets of reactants
   # Each reaction may have 1 or 2 reactants
   if kinda_params['enable_unimolecular_reactions']:
@@ -75,7 +84,8 @@ def make_RestingSetRxnStats(restingsets, detailed_rxns, condensed_rxns,
   reactants_to_mjob = {}
   for i, reactants in enumerate(all_reactants):
     # Group all products coming from these reactants together
-    enum_prods = [list(rxn.products) for rxn in condensed_rxns if rxn.reactants_equal(reactants)]
+    enum_prods = [list(rxn.products) for rxn in condensed_rxns
+                  if rxn.reactants_equal(reactants)]
 
     # Get spurious products from these reactants
     spurious_prods = get_spurious_products(reactants, detailed_rxns, enum_prods)
@@ -85,18 +95,19 @@ def make_RestingSetRxnStats(restingsets, detailed_rxns, condensed_rxns,
             products  = p)
         for p in spurious_prods]
     spurious_rxns |= set(new_spurious_rxns)
-    
+
     # Make product tags for each product group so data can be pulled out later
     tags = [str(rxn) for rxn in condensed_rxns if rxn.reactants_equal(reactants)]
-    tags += ['_spurious({})'.format(str(rxn)) for rxn in new_spurious_rxns]
+    tags += [f'_spurious({rxn!s})' for rxn in new_spurious_rxns]
     spurious_flags = [False]*len(enum_prods) + [True]*len(spurious_prods)
     
     # Make Macrostates for Multistrand stop conditions
     stop_conditions = [
-      create_stop_macrostate(state, tag, spurious = spurious_flag, options = kinda_params)
-        for state, tag, spurious_flag
-        in zip(enum_prods + spurious_prods, tags, spurious_flags)
-      ]
+      create_stop_macrostate(
+        state, tag, spurious = spurious_flag, options = kinda_params)
+      for state, tag, spurious_flag
+      in zip(enum_prods + spurious_prods, tags, spurious_flags)
+    ]
     
     # Make Boltzmann sampling selector functions for each reactant
     start_macrostate_mode = kinda_params.get('start_macrostate_mode', 'ordered-complex')
@@ -131,16 +142,18 @@ def make_RestingSetRxnStats(restingsets, detailed_rxns, condensed_rxns,
       )
     reactants_to_mjob[reactants] = job
 
-    #print "KinDA: Constructing internal KinDA objects... {}%\r".format(100*i/len(all_reactants)),
-    #sys.stdout.flush()
-    
+    # print(f"KinDA: Constructing internal KinDA objects... "
+    #       f"{i/len(all_reactants):%}\r")
+    # sys.stdout.flush()
+
   # Create RestingSetRxnStats object for each reaction
   rxn_to_stats = {}
   for rxn in condensed_rxns:
     stats = RestingSetRxnStats(
         reactants = rxn.reactants,
         products = rxn.products,
-        multistrand_job = reactants_to_mjob[tuple(sorted(rxn.reactants, key = lambda rs: rs.id))],
+        multistrand_job = reactants_to_mjob[tuple(sorted(
+          rxn.reactants, key=attrgetter("id")))],
         tag = str(rxn)
     )
     rxn_to_stats[rxn] = stats
@@ -154,8 +167,9 @@ def make_RestingSetRxnStats(restingsets, detailed_rxns, condensed_rxns,
     stats = RestingSetRxnStats(
         reactants = rxn.reactants,
         products = rxn.products,
-        multistrand_job = reactants_to_mjob[tuple(sorted(rxn.reactants, key = lambda rs: rs.id))],
-        tag = '_spurious({0})'.format(str(rxn))
+        multistrand_job = reactants_to_mjob[tuple(sorted(
+          rxn.reactants, key=attrgetter("id")))],
+        tag = f'_spurious({rxn!s})'
     )
     rxn_to_stats[rxn] = stats
 
@@ -176,6 +190,7 @@ def get_spurious_products(reactants, reactions, stop_states):
   are classified as unproductvie unless they dissociate into an
   unenumerated strand-level complex, in which case they are
   considered to be spurious.  """
+
   def hashable_strand_rotation(strands):
     index = 0
     poss_starts = list(range(len(strands)))
@@ -187,9 +202,11 @@ def get_spurious_products(reactants, reactions, stop_states):
       index += 1      
     start = poss_starts[0]
     return tuple(strands[start:] + strands[:start])
+
   def hashable_state(state):
     filtered = [x for x in state if x != ()]
     return tuple(sorted([hashable_strand_rotation(f) for f in filtered]))
+
   def enumerate_states(init_state, reactions, enumerated):
     """ Enumerates all states reachable from init_state by following any of the
     strand-list reactions given. The results are stored in <enumerated>.
@@ -220,6 +237,7 @@ def get_spurious_products(reactants, reactions, stop_states):
 
     spurious_states = set([s for s in spurious_states if s not in valid_states])
     return spurious_states
+
   def dissociation_spurious_states(init_state, valid_states):
     """ Return spurious states one step away from given reactants,
     produced by a dissocation reaction. """
@@ -235,9 +253,11 @@ def get_spurious_products(reactants, reactions, stop_states):
 
     spurious_states = set([s for s in spurious_states if s not in valid_states])
     return spurious_states
+
   def one_step_spurious_states(init_state, valid_states):
     return (binding_spurious_states(init_state, valid_states)
-        | dissociation_spurious_states(init_state, valid_states))
+            | dissociation_spurious_states(init_state, valid_states))
+
   def create_restingsets(valid_objects, spurious_strands):
     strands_to_restingsets = {}
 
@@ -311,8 +331,6 @@ def create_stop_macrostate(state, tag, spurious, options):
   Note that there is no way to represent a macrostate consisting of states with
   2 or more of a certain complex.
   """
-  from kinda.objects.utils import restingset_count_by_complex_macrostate, restingset_count_by_domain_macrostate
-
   mode = options['stop_macrostate_mode']
 
   if mode not in ['ordered-complex', 'count-by-complex', 'count-by-domain']:
@@ -339,12 +357,13 @@ def create_stop_macrostate(state, tag, spurious, options):
 
 ## Boltzmann sample-and-select functions must be picklable
 ## to be used with the multiprocessing library
-class OrderedComplexSelector(object):
+class OrderedComplexSelector:
   def __init__(self, restingset):
     self._restingset = restingset # not actually used
   def __call__(self, struct):
     return True
-class CountByComplexSelector(object):
+
+class CountByComplexSelector:
   def __init__(self, restingset, threshold):
     self._restingset = restingset
     self._threshold = threshold
@@ -354,7 +373,8 @@ class CountByComplexSelector(object):
         dna.utils.defect(complex, kinda_struct) < 1-self._threshold
         for complex in self._restingset.complexes
     )
-class CountByDomainSelector(object):
+
+class CountByDomainSelector:
   def __init__(self, restingset, threshold):
     self._restingset = restingset
     self._threshold = threshold
@@ -391,6 +411,7 @@ def create_boltzmann_selector(restingset, mode, similarity_threshold = None):
     assert similarity_threshold is not None
     return CountByDomainSelector(restingset, similarity_threshold)
 
+
 def make_RestingSetStats(restingsets, kinda_params = {}, nupack_params = {}):
   """ A convenience function to make RestingSetStats objects for
   a list of given RestingSets. Returns a dict mapping the RestingSets
@@ -401,13 +422,17 @@ def make_RestingSetStats(restingsets, kinda_params = {}, nupack_params = {}):
         nupack_params = nupack_params) for rs in restingsets}
   return rs_to_stats
   
-def make_stats(complexes, restingsets, detailed_rxns, condensed_rxns, 
-        kinda_params = {}, multistrand_params = {}, nupack_params = {}):
-  """ Creates a RestingSetRxnStats object for each resting-set reaction
-  and a RestingSetStats object for each resting set. """
 
-  # Make RestingSetRxnStats objects for condensed reactions and predicted spurious reactions.
-  rxn_to_stats = make_RestingSetRxnStats(restingsets, 
+def make_stats(complexes, restingsets, detailed_rxns, condensed_rxns,
+        kinda_params = {}, multistrand_params = {}, nupack_params = {}):
+  """
+  Creates a RestingSetRxnStats object for each resting-set reaction
+  and a RestingSetStats object for each resting set.
+  """
+
+  # Make RestingSetRxnStats objects for condensed reactions and predicted
+  # spurious reactions.
+  rxn_to_stats = make_RestingSetRxnStats(restingsets,
           detailed_rxns, condensed_rxns, kinda_params, multistrand_params)
 
   # Collect all resting sets, including spurious ones predicted by make_RestingSetRxnStats()
@@ -516,7 +541,8 @@ def export_data(sstats, filepath, use_pickle = False):
     products = [complex_to_id[c] for c in r.products]
     rxn_to_dict[r_id] = {'name': r.name, 'reactants': reactants, 'products': products}
 
-  rsrxn_to_id = {rsrxn: 'rsrxn{0}_{1}'.format(rsrxn.id, str(rsrxn)) for rsrxn in rs_reactions}
+  rsrxn_to_id = {rsrxn: 'rsrxn{0}_{1}'.format(rsrxn.id, str(rsrxn))
+                 for rsrxn in rs_reactions}
   rsrxn_to_dict = {}
   for r, r_id in rsrxn_to_id.items():
     reactants = [rs_to_id[rs] for rs in r.reactants]
@@ -571,7 +597,7 @@ def export_data(sstats, filepath, use_pickle = False):
     'resting-set-stats': rsstats_to_dict,
     'resting-set-reaction-stats': rsrxnstats_to_dict,
     'initialization_params': sstats.initialization_params,
-    'version': KINDA_VERSION
+    'version': __version__
   }
   
   if use_pickle : 
@@ -579,7 +605,6 @@ def export_data(sstats, filepath, use_pickle = False):
   else :
     json.dump(sstats_dict, open(filepath, 'w'))
 
-  return
 
 def import_data(filepath, use_pickle = False):
   """ Imports a KinDA object as exported in the format specified by export_data() 
@@ -593,19 +618,18 @@ def import_data(filepath, use_pickle = False):
             - loaded int "nupackjob"
     - resting-set reaction stats:
         => load
-
-  
   """
-
   if use_pickle:
     sstats_dict = pickle.load(open(filepath, "rb"))
   else:
     sstats_dict = json.load(open(filepath))
 
   if 'version' not in sstats_dict:
-    print("# KinDA: WARNING: Imported data file has no version number. Assuming KinDA {}.".format(KINDA_VERSION))
-  elif sstats_dict['version'] != KINDA_VERSION:
-    print("# KinDA: WARNING: Attempting conversion from KinDA {}.".format(sstats_dict['version'], KINDA_VERSION))
+    print(f"# KinDA: WARNING: Imported data file has no version number. "
+          f"Assuming KinDA {__version__}.")
+  elif sstats_dict['version'] != __version__:
+    print(f"# KinDA: WARNING: Attempting conversion from "
+          f"KinDA {sstats_dict['version']}.")
     sstats_dict = _import_data_convert_version(sstats_dict, sstats_dict['version'])
 
   domains = {}
@@ -647,16 +671,17 @@ def import_data(filepath, use_pickle = False):
   nparams = sstats_dict['initialization_params']['nupack_params']
   pparams = sstats_dict['initialization_params']['peppercorn_params']
 
-  from .. import kinda
-  sstats = kinda.System(complexes = list(complexes.values()), 
-          restingsets = list(restingsets.values()), 
-          detailed_reactions = list(reactions.values()), 
-          condensed_reactions = list(rs_reactions.values()),
-          enumeration = False,
-          kinda_params = kparams, 
-          multistrand_params = mparams, 
-          nupack_params = nparams,
-          peppercorn_params = pparams)
+  from kinda import System
+  sstats = System(
+    complexes = list(complexes.values()),
+    restingsets = list(restingsets.values()),
+    detailed_reactions = list(reactions.values()),
+    condensed_reactions = list(rs_reactions.values()),
+    enumeration = False,
+    kinda_params = kparams,
+    multistrand_params = mparams,
+    nupack_params = nparams,
+    peppercorn_params = pparams)
   
   for rs_id, data in sstats_dict['resting-set-stats'].items():
     stats = sstats.get_stats(restingsets[rs_id])
@@ -710,14 +735,15 @@ def _import_data_convert_version(sstats_dict, version):
     return sstats_dict
   if major == 0 and minor == 1 and subminor <= 7:
     # add 'valid' entry to all simulation data
-    for data in list(sstats_dict['resting-set-reaction-stats'].values()):
+    for data in sstats_dict['resting-set-reaction-stats'].values():
       tags = data['simulation_data']['tags']
       num_sims = len(tags)
       MS_TIMEOUT, MS_ERROR = -1, -3
-      data['simulation_data']['valid'] = np.array([t!=MS_TIMEOUT and t!=MS_ERROR for t in tags])
+      data['simulation_data']['valid'] = np.array([
+        t!=MS_TIMEOUT and t!=MS_ERROR for t in tags])
   if major == 0 and minor == 1 and subminor <= 10:
     # add 'invalid_simulation_data' dict ms_results
-    for data in list(sstats_dict['resting-set-reaction-stats'].values()):
+    for data in sstats_dict['resting-set-reaction-stats'].values():
       invalid_idxs = [i for i in range(len(data['simulation_data']['valid'])) if data['simulation_data']['valid'][i]==0]
       data['invalid_simulation_data'] = [{'simulation_index': i} for i in invalid_idxs]
   if major == 0 and minor == 1 and subminor <= 12:
@@ -731,4 +757,3 @@ def _import_data_convert_version(sstats_dict, version):
   sstats_dict['version'] = 'v0.2'
 
   return sstats_dict
-    

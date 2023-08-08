@@ -3,13 +3,10 @@
 #
 # Misc utility functions used by simulation code
 
-
-
 import sys
 import math
 import numpy as np
 
-from multistrand.options import Options as MSOptions
 
 def print_progress_table(col_headers, col_widths = None, col_init_data = None, 
     col_format_specs = None, skip_header=False):
@@ -27,7 +24,6 @@ def print_progress_table(col_headers, col_widths = None, col_init_data = None,
   Returns:
     A progress update function which overwrites the data row (or the last line on screen).
   """
-
   def update_progress(col_data, inline=True):
     """Print new data to your progress table."""
     str_data = [('{:<'+str(w-1)+'}').format(f.format(d))[:w-1] for d,w,f in zip(col_data, col_widths, col_format_specs)]
@@ -66,6 +62,7 @@ def time_mean(success_tag, ms_results):
     return float(success_times.mean())
   else:
     return float('nan')
+
 def time_std(success_tag, ms_results):
   """ Returns the sample standard deviation for a successful simulation time. """
   success_times = np.ma.array(ms_results['times'], mask=(ms_results['tags']!=success_tag))
@@ -74,6 +71,7 @@ def time_std(success_tag, ms_results):
     return float(success_times.std(ddof=1))
   else:
     return float('inf')
+
 def time_error(success_tag, ms_results):
   """ Returns the standard error on the mean simulation time. """
   success_times = np.ma.array(ms_results['times'], mask=(ms_results['tags']!=success_tag))
@@ -94,10 +92,12 @@ def rate_mean(success_tag, ms_results):
     return float(1./success_times.mean())
   else:
     return float('nan')
+
 def rate_std(success_tag, ms_results):
   """ The standard deviation for the random variable k = 1/E[t] is the
   same as the standard error reported by rate_error() """
   return rate_error(success_tag, ms_results)
+
 def rate_error(success_tag, ms_results):
   """Estimates the standard error for the rate estimate from the
   standard error for the measured reaction times. Based on local linearity
@@ -127,6 +127,7 @@ def kcoll_mean(success_tag, ms_results):
     return float(ms_results['kcoll'].max())
   else:
     return float('nan')
+
 def kcoll_std(success_tag, ms_results):
   """ Computes the standard deviation on kcoll, given the sampled values.
   If less than 2 kcoll values have been collected for this reaction, returns float('inf'). """
@@ -136,6 +137,7 @@ def kcoll_std(success_tag, ms_results):
     return float(success_kcolls.std(ddof=1))
   else:
     return float('inf')
+
 def kcoll_error(success_tag, ms_results):
   """ Computes the standard error on the expected value of kcoll.  """
   success_kcolls = np.ma.array(ms_results['kcoll'], mask=(ms_results['tags']!=success_tag))
@@ -158,10 +160,12 @@ def k1_mean(success_tag, ms_results):
     return float(ms_results['kcoll'].max() * (n_s + 1.0) / (n + 2.0))
   else:
     return float('nan')
+
 def k1_std(success_tag, ms_results):
   """ The standard deviation for k1 is the
   same as the standard error reported by k1_error() """
   return k1_error(success_tag, ms_results)
+
 def k1_error(success_tag, ms_results):
   """ Reports the standard error on the expected value of k1.
   See the KinDA paper for a derivation. """
@@ -180,12 +184,14 @@ def bernoulli_mean(success_tag, ms_results):
   n = int(np.sum(ms_results['valid']))
   n_s = int(tag_mask.sum())
   return (n_s + 1.0) / (n + 2.0)
+
 def bernoulli_std(success_tag, ms_results):
   """ Returns the standard deviation of the bernoulli random variable S_i
   which is 1 iff the reaction was successful
   (see KinDA paper for a more complete definition). """
   mean = bernoulli_mean(success_tag, ms_results)
   return math.sqrt(mean * (1 - mean))
+
 def bernoulli_error(success_tag, ms_results):
   """ Returns the standard error of the mean of S_i. """
   tag_mask = ms_results['tags']==success_tag
@@ -203,9 +209,11 @@ def k2_mean(success_tag, ms_results):
     return float(np.sum(success_kcolls) / np.sum(success_kcolls*success_t2s))
   else:
     return float('nan')
+
 def k2_std(success_tag, ms_results):
   """ The standard deviation is the same as the error on the estimate for k2. """
   return k2_error(success_tag, ms_results)
+
 def k2_error(success_tag, ms_results):
   success_kcolls = np.ma.array(ms_results['kcoll'], mask=(ms_results['tags']!=success_tag))
   success_t2s = np.ma.array(ms_results['times'], mask=(ms_results['tags']!=success_tag))
@@ -229,19 +237,21 @@ def uni_kfast(ms_results, unimolecular_k1_scale):
     return float('nan')
 
 # this is super ugly because damn pickling again
-class uni_k1_mean(object):
+class uni_k1_mean:
   def __init__(self, unimolecular_k1_scale):
     self.unimolecular_k1_scale = unimolecular_k1_scale
   def __call__(self, success_tag, ms_results):
     return float(bernoulli_mean(success_tag, ms_results) * uni_kfast(ms_results, self.unimolecular_k1_scale))
-class uni_k1_std(object):
+
+class uni_k1_std:
   def __init__(self, unimolecular_k1_scale):
     self.unimolecular_k1_scale = unimolecular_k1_scale
   def __call__(self, success_tag, ms_results):
     err = bernoulli_error(success_tag, ms_results) * uni_kfast(ms_results, self.unimolecular_k1_scale)
     if math.isnan(err):  return float('inf')
     else:  return float(err)
-class uni_k1_error(object):
+
+class uni_k1_error:
   def __init__(self, unimolecular_k1_scale):
     self.unimolecular_k1_scale = unimolecular_k1_scale
   def __call__(self, success_tag, ms_results):
@@ -251,7 +261,9 @@ class uni_k1_error(object):
 
 def uni_k2_mean(success_tag, ms_results):
   return rate_mean(success_tag, ms_results)
+
 def uni_k2_std(success_tag, ms_results):
   return rate_std(success_tag, ms_results)
+
 def uni_k2_error(success_tag, ms_results):
   return rate_error(success_tag, ms_results)

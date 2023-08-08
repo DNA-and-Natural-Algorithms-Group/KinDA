@@ -1,7 +1,6 @@
 ### TODO: Add functionality to output DNAObjects in a PIL file
 ###       in a to_PIL() function.
 
-## IMPORTS
 import re, sys
 
 from . import dnaobjects as dna
@@ -36,7 +35,6 @@ def from_PIL(filename):
   complexes = []
   # Parse each line with regular expressions
   for l in spec_file:
-    #print l,
     line = strip_comment(l).strip()
     if line == "":
       continue
@@ -71,7 +69,7 @@ def from_PIL(filename):
   spec_file.close()
   
   return (list(domains.values()), list(strands.values()), complexes)
-  
+
 
 def parseSequenceDirective(line):
   # Syntax:
@@ -82,15 +80,13 @@ def parseSequenceDirective(line):
   if match_obj != None:
     name = match_obj.group(1)
     nucleotides = match_obj.group(2)
-    # print name, "=", nucleotides ####
-    
     # Create/add the new Sequence to the Specification
     domain = dna.Domain(name = name, sequence = nucleotides)
     return domain
   else:
     print("Invalid sequence directive:\n%s" % line, file=sys.stderr)
-    
-    
+
+
 def parseSupseqDirective(line, domains):
   # Syntax:
   #   sup-sequence <name> = <seq1> [<seq2> [<seq3> ...]] : <seq_length>
@@ -100,15 +96,13 @@ def parseSupseqDirective(line, domains):
   if match_obj != None:
     name = match_obj.group(1)
     seq_list = [domains[n] for n in match_obj.group(2).split()]
-    # print name, "=", match_obj.group(2).split() ####
-      
     # Create/add the new SuperSequence and its complement
     domain = dna.Domain(name = name, subdomains = seq_list)
     return domain
   else:
     print("Invalid sup-sequence directive:\n%s" % line, file=sys.stderr)
-    
-        
+
+
 def parseStrandDirective(line, domains):
   # Syntax:
   #   strand [\[dummy\]] <name> = <seq1> [<seq2> [<seq3> ...]] : <strand_length>
@@ -118,18 +112,17 @@ def parseStrandDirective(line, domains):
   if match_obj != None:
     name = match_obj.group(1)
     seq_list = [domains[n] for n in match_obj.group(2).split()]
-    # print name, "=", match_obj.group(2).split() ####
-    
     strand = dna.Strand(name = name, domains = seq_list)
     return strand
   else:
     print("Invalid strand directive:\n%s" % line, file=sys.stderr)
-    
-      
+
+
 def parseStructDirective(line, strands):
   # Syntax:
   #   structure [\[<options>\]] <name> = <strand1> [+ <strand2> [+ <strand3> ...]] : <dot_parens>
-  """def parseOptions(opt_str):
+  """
+  def parseOptions(opt_str):
     if opt_str == None:
       return (None, None)
   
@@ -149,25 +142,26 @@ def parseStructDirective(line, strands):
         c_max = convert_to_M(cmax_value, cmax_unit)
       else:
         print >> sys.stderr, "Invalid structure option:%s. Ignoring..." % opt
-    return (opt_value, c_max)"""
-    
-  regex = re.compile("structure" + space + "(" + details + ")?" + space + "(" + word + ")" + space + "=" +
+    return (opt_value, c_max)
+  """
+  regex = re.compile(
+    "structure" + space + "(" + details + ")?" + space + "(" + word + ")" + space + "=" +
     space + "(" + word + space + words_p + ")" + ":" + space + "(" + d_paren + ")")
   match_obj = regex.match(line)
   if match_obj != None:
     #opt_value, c_max = parseOptions(match_obj.group(1)[1:-1])
     name = match_obj.group(2)
-    strand_list = [strands[strand_name.strip()] for strand_name in match_obj.group(3).split("+")]
+    strand_list = [strands[strand_name.strip()] for strand_name
+                   in match_obj.group(3).split("+")]
     binding = match_obj.group(4)
-    # print "opt_val=%s, cmax=%s, name=%s, strandlist=%s, binding=%s" % (opt_value, c_max, name, strand_list, binding) ####
-    
     # Create/add the new Structure
-    complex = dna.Complex(name = name, strands = strand_list, structure = binding) # we're ignoring c_max, opt_value which is not okay
+    complex = dna.Complex(name = name, strands = strand_list, structure = binding)
+    # we're ignoring c_max, opt_value which is not okay
     return complex
   else:
     print("Invalid structure directive:\n%s" % line, file=sys.stderr)
-    
-      
+
+
 def parseKineticDirective(line):
   # Syntax:
   #   kinetic [\[<num> <units> < k < <num> <units>\]] <struct1> [+ <struct2> ...] -> <struct3> [+ <struct4> ...]
@@ -209,15 +203,13 @@ def parseKineticDirective(line):
       
     ins = [spec.structure_dict[s.strip()] for s in match_obj.group(6).split("+")]
     outs = [spec.structure_dict[s.strip()] for s in match_obj.group(7).split("+")]
-    
-    # print "krange = %s, ins = %s, outs = %s" % (krange, match_obj.group(6).split("+"), match_obj.group(7).split("+")) ####
-      
+
     #spec.add_kinetic(Kinetic(ins, outs, *krange))
     # DON'T RETURN ANYTHING BECAUSE WE DON'T HANDLE THESE STATEMENTS YET :(
   else:
     print("Invalid kinetic directive:\n%s" % line, file=sys.stderr)
-    
-    
+
+
 def parseEqualDirective(line, domains):
   # Syntax:
   #   equal <seq1> [<seq2> [<seq3> ...]]
@@ -228,24 +220,23 @@ def parseEqualDirective(line, domains):
     dna.utils.equate_domains(seq_list)
   else:
     print("Invalid equal directive:\n%s" % line, file=sys.stderr)
-      
-      
+
+
 def parseNoninteractingDirective(line):
   # Syntax:
   #   noninteracting \[kinetic\] <struct1> [<struct2> ...]
   regex = re.compile("noninteracting" + space + kin + space + "(" + words_s + ")")
   match_obj = regex.match(line)
   if match_obj != None: pass
-    # print match_obj.groups() ####
-    #spec.noninteracting = [spec.structure_dict[name] for name in match_obj.group(1).split()] # does this work?
+    # does this work?
+    #spec.noninteracting = [spec.structure_dict[name] for name in match_obj.group(1).split()]
     # DON'T RETURN ANYTHING BECAUSE WE DON'T HANDLE THESE STATEMENTS YET :(
   else:
     print("Invalid noninteracting directive:\n%s" % line, file=sys.stderr)
-  
+
 
 def strip_comment(line):
   try:
     return line[:line.index("#")]
   except ValueError:
     return line
-    

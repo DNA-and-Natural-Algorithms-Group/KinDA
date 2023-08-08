@@ -1,12 +1,10 @@
 # nupackjob.py
 # Created by Joseph Berleant, 9/21/2014
 #
-# Implements a class for handling interactions with Nupack to obtain statistics about resting sets.
+# Implements a class for handling interactions with Nupack to obtain statistics
+# about resting sets.
 
 
-## IMPORTS
-
-import sys
 import math
 import numpy as np
 
@@ -18,9 +16,11 @@ from .sim_utils import print_progress_table
 
 
 # NUPACK interface
-def sample_global(xxx_todo_changeme):
-  """ Global function for calling NUPACK, used for multiprocessing  """
-  (self, num_samples) = xxx_todo_changeme
+def sample_global(job_spec):
+  """
+  Global function for calling NUPACK, used for multiprocessing.
+  """
+  (self, num_samples) = job_spec
   strands = next(iter(self.restingset.complexes)).strands
   strand_seqs = [strand.sequence for strand in strands]
 
@@ -30,10 +30,10 @@ def sample_global(xxx_todo_changeme):
   # Convert each Nupack sampled structure (a dot-paren string) into a
   # DNAObjects Complex object and process.
   sampled = [Complex(strands = strands, structure = s) for s in structs]
-
   return sampled
 
-class NupackSampleJob(object):
+
+class NupackSampleJob:
   """Calculate complex probabilities within resting sets using NUPACK.
 
   Args:
@@ -50,7 +50,6 @@ class NupackSampleJob(object):
   probability estimate for a particular complex. To update results for a new
   similarity threshold use set_similarity_threshold().
   """
-
   verbose = 1
 
   def __init__(self, restingset, similarity_threshold = None, 
@@ -64,16 +63,16 @@ class NupackSampleJob(object):
 
     # Store resting set and relevant complex information
     self._restingset = restingset
-    self._complex_tags = {tag: idx for idx, tag in enumerate([c.name for c in restingset.complexes] + [None])}
+    self._complex_tags = {tag: idx for idx, tag in enumerate(
+      [c.name for c in restingset.complexes] + [None])}
     self._complex_counts = [0] * len(self._complex_tags)
     
     # Data structure for storing raw sampling data
     self._data = {tag: np.array([]) for tag in self._complex_tags if tag is not None}
-
     self.total_sims = 0
 
     # Set similarity threshold, using default value in options.py if none specified
-    if similarity_threshold is None:  
+    if similarity_threshold is None:
       similarity_threshold = options.kinda_params['nupack_similarity_threshold']
     self.set_similarity_threshold(similarity_threshold)
 
@@ -90,25 +89,30 @@ class NupackSampleJob(object):
     return self._complex_counts[:]
 
   def get_complex_index(self, complex_name):
-    """Returns the unique index associated with this complex name. """
-    assert complex_name in self._complex_tags, "Complex tag {0} not found in resting set {1}".format(complex_name, self.restingset)
+    """
+    Returns the unique index associated with this complex name.
+    """
+    assert complex_name in self._complex_tags, \
+      f"Complex tag {complex_name} not found in resting set {self.restingset}"
     return self._complex_tags[complex_name]
         
   def get_complex_prob(self, complex_name = None):
-    """ Returns the conformation probability associated with the given complex_name.
-    complex_name should match the name field of one of the complexes in the original resting set used
-    to instantiate this NupackSampleJob.
-    The Bayesian estimator (n+1)/(N+2) is used to estimate this probability, in order to prevent
-    improbable estimates when n=0,N.
+    """
+    Returns the conformation probability associated with the given complex_name.
+    complex_name should match the name field of one of the complexes in the
+    original resting set used to instantiate this NupackSampleJob.
+    The Bayesian estimator (n+1)/(N+2) is used to estimate this probability, in
+    order to prevent improbable estimates when n=0,N.
     """
     N = self.total_sims
     Nc = self.get_complex_count(complex_name)
     return (Nc + 1.0)/(N + 2)
 
   def get_complex_prob_error(self, complex_name = None):
-    """ Returns the standard error on the conformation probability associated with the given complex_name.
-    complex_name should match the name field of one of the complex in the resting set used to
-    construct this NupackSampleJob.
+    """
+    Returns the standard error on the conformation probability associated with
+    the given complex_name. complex_name should match the name field of one of
+    the complex in the resting set used to construct this NupackSampleJob.
     The Bayesian estimator for the standard error is used
       SE = (n+1)*(N-n+1)/((N+3)*(N+2)*(N+2))
     to avoid artifacts when n=0,N.
@@ -119,29 +123,39 @@ class NupackSampleJob(object):
     return math.sqrt((Nc+1.0)*(N-Nc+1)/((N+3)*(N+2)*(N+2)))
 
   def get_complex_prob_data(self, complex_name = None):
-    """ Returns raw sampling data for the given complex_name.
-    Data is returned as a list consisting of float values, where each float value is 1 minus the
-    maximum fractional defect for any domain in that sampled secondary structure. """
+    """
+    Returns raw sampling data for the given complex_name. Data is returned as a
+    list consisting of float values, where each float value is 1 minus the
+    maximum fractional defect for any domain in that sampled secondary
+    structure.
+    """
     return self._data[complex_name]
 
   def set_complex_prob_data(self, complex_name, data):
-    """ Set the raw sampling data for the given complex_name.
-    Should be used only when importing an old KinDA session to restore state. """
+    """
+    Set the raw sampling data for the given complex_name. Should be used only
+    when importing an old KinDA session to restore state.
+    """
     self._data[complex_name] = np.array(data)
 
   def get_num_sims(self):
-    """ Returns the total number of sampled secondary structures. """
+    """
+    Returns the total number of sampled secondary structures.
+    """
     return self.total_sims
+
   def get_complex_count(self, complex_name = None):
     # TODO: fix me, why is the int necessary here if complex_name = None???
     return int(self._complex_counts[self.get_complex_index(complex_name)])
 
   def set_similarity_threshold(self, similarity_threshold):
-    """ Modifies the similarity threshold used to classify each sampled secondary structure as one of
-    the expected complex conformations. The complex probability estimates are recomputed based
-    on the new similarity threshold, so that future calls to get_complex_prob() will give
-    correct statistics based on previously sampled secondary structures. """
-
+    """
+    Modifies the similarity threshold used to classify each sampled secondary
+    structure as one of the expected complex conformations. The complex
+    probability estimates are recomputed based on the new similarity threshold,
+    so that future calls to get_complex_prob() will give correct statistics
+    based on previously sampled secondary structures.
+    """
     ## Change internal similarity threshold
     self.similarity_threshold = similarity_threshold
 
@@ -158,9 +172,10 @@ class NupackSampleJob(object):
       self.sample_singleprocessing(num_samples, status_func = status_func)
 
   def sample_multiprocessing(self, num_samples, 
-      status_func = lambda x: None):
-    """ Runs sample() in multiple processes. """
-
+    status_func = lambda x: None):
+    """
+    Runs sample() in multiple processes.
+    """
     # Temporarily remove SIGINT event handler from current process
     sigint_handler = signal.signal(signal.SIGINT, signal.SIG_IGN)
 
@@ -194,11 +209,13 @@ class NupackSampleJob(object):
     return
 
   def sample_singleprocessing(self, num_samples, status_func = lambda x: None):
-    """ Queries Nupack for num_samples secondary structures, sampled from the Boltzmann distribution
-    of secondary structures for this resting set. The sampled secondary structures are automatically
-    processed to compute new estimates for each conformation probability.
-    The nupack_params dict that was given to this job during initialization is passed along to the
-    Nupack Python interface.
+    """
+    Queries Nupack for num_samples secondary structures, sampled from the
+    Boltzmann distribution of secondary structures for this resting set. The
+    sampled secondary structures are automatically processed to compute new
+    estimates for each conformation probability. The nupack_params dict that was
+    given to this job during initialization is passed along to the Nupack Python
+    interface.
     """
     results = sample_global((self, num_samples))
     self.add_sampled_complexes(results)
@@ -206,8 +223,11 @@ class NupackSampleJob(object):
     status_func(len(results))
 
   def add_sampled_complexes(self, sampled):
-    """ Processes a list of sampled Complex objects, computing the similarity to each of the
-    resting set conformations and updating the estimates for each conformation probability. """
+    """
+    Processes a list of sampled Complex objects, computing the similarity to
+    each of the resting set conformations and updating the estimates for each
+    conformation probability.
+    """
 
     ## For each complex in the resting set, add the number of sampled secondary structures
     ## that satisfy the similarity threshold to the running complex count.

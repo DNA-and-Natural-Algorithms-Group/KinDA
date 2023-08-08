@@ -60,38 +60,51 @@ class Complex(object):
 
     self._canonical_form = None
   
-  
   ## Basic properties
   @property
   def sequence(self):
-    """ Returns the sequence constraints for each strand in the complex. """
+    """
+    Returns the sequence constraints for each strand in the complex.
+    """
     return [s.sequence for s in self._strands]
+
   def length(self):
-    """ Returns the total number of nucleotides in the complex. """
+    """
+    Returns the total number of nucleotides in the complex.
+    """
     return self._length
     
   @property
   def structure(self):
-    """ Returns the binding of this complex in a Structure object."""
+    """
+    Returns the binding of this complex in a Structure object.
+    """
     return self._structure
+
   @structure.setter
   def structure(self, new_struct):
-    """ Sets the binding of this complex. Accepts a structure in dot-paren
-    or strand-list notation. """
+    """
+    Sets the binding of this complex. Accepts a structure in dot-paren or
+    strand-list notation.
+    """
     self._structure = Structure(structure = new_struct,
                                 strands = self._strands)
     self._canonical_form = None
+
   def bound_to(self, strand_num, index):
-    """ Returns the (strand_num, index) pair of the nucleotide bound to
-    the specified nucleotide, or None if the specified nucleotide
-    is unbound."""
+    """
+    Returns the (strand_num, index) pair of the nucleotide bound to the
+    specified nucleotide, or None if the specified nucleotide is unbound.
+    """
     return self._structure.bound_to(strand_num, index)
     
   @property
   def pseduoknotted(self):
-    """ Returns True if this complex's structure has a valid dot-paren
+    """
+    Returns True if this complex's structure has a valid dot-paren
     representation. This corresponds to pseudoknottedness with this
-    strand-ordering if there are no unspecified bonds in the structure."""
+    strand-ordering if there are no unspecified bonds in the structure.
+    """
     return self._structure.pseudoknotted
 
   @property
@@ -114,25 +127,27 @@ class Complex(object):
 
     self._canonical_form = (canonical_strandlist, canonical_structure)
     return self._canonical_form
-    
-    
+
   ## Mutators
   def rotate_strands(self, amount = 1):
     amount = amount % len(self._strands)
     self._strands = self._strands[amount:] + self._strands[:amount]
     self._structure.rotate_strands(amount)
 
-    
   ## DNA object hierarchy
   @property
   def strands(self):
-    """ Returns the ordered list of strands that compose this complex. """
+    """
+    Returns the ordered list of strands that compose this complex.
+    """
     return self._strands
+
   def base_domains(self):
-    """ Returns a list of the non-composite domain breakdown for each
-    strand in the complex. """
+    """
+    Returns a list of the non-composite domain breakdown for each strand in the
+    complex.
+    """
     return [s.base_domains() for s in self._strands]
-  
   
   ## (In)equality
   def __eq__(self, other): 
@@ -151,9 +166,8 @@ class Complex(object):
   
   ## Output
   def __str__(self):
-    """ Human-readable output formatting for this Complex object. """
     strand_info = "[" + ", ".join([str(s) for s in self._strands]) + "]"
     return "Complex {0} {1}: {2}".format(self.name, strand_info, self.structure)
+
   def __repr__(self):
     return "Complex({0})".format(self.name)
-    

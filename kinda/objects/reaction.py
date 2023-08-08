@@ -12,6 +12,7 @@ set(s).
     A set of complex(es) called the 'reactants' and a set of complex(es) called
     the 'products', such that the reactants convert to the products under some
     arbitrary regime.
+
 `resting-set reaction`
     A reaction between resting sets rather than complexes.
 """
@@ -53,6 +54,7 @@ class Reaction(object):
   @property
   def reactants(self):
     return self._reactants
+
   @property
   def products(self):
     return self._products
@@ -60,8 +62,10 @@ class Reaction(object):
   # Basic queries
   def is_reactant(self, c):
     return c in self._reactants
+
   def has_reactants(self, complexes):
     return all([self._reactants.count(c) >= complexes.count(c) for c in complexes])
+
   def reactants_equal(self, complexes):
     reactants = list(self._reactants)
     for c in complexes:
@@ -72,8 +76,11 @@ class Reaction(object):
 
   def is_product(self, c):
     return c in self._products
+
   def has_products(self, complexes):
-    return all([self._products.count(c) >= complexes.count(c) for c in complexes]) # kinda inefficient...
+    # kinda inefficient...
+    return all([self._products.count(c) >= complexes.count(c) for c in complexes])
+
   def products_equal(self, complexes):
     products = list(self._products)
     for c in complexes:
@@ -95,6 +102,7 @@ class Reaction(object):
   # Output
   def __str__(self):
     return self.__repr__()
+
   def __repr__(self):
     reactant_str = ' + '.join([repr(r) for r in sorted(self._reactants, key=lambda c:c.name)])
     product_str = ' + '.join([repr(p) for p in sorted(self._products, key=lambda c:c.name)])
@@ -103,10 +111,11 @@ class Reaction(object):
     
   
 class RestingSetReaction(Reaction):
-  """ The RestingSetReaction class is ostensibly for only reactions between
-  resting sets. However, it is currently identical to the Reaction class and
-  the two are interchangeable."""
-
+  """
+  The RestingSetReaction class is ostensibly for only reactions between resting
+  sets. However, it is currently identical to the Reaction class and the two are
+  interchangeable.
+  """
   def __repr__(self):
     reactant_str = ' + '.join([repr(r) for r in sorted(self._reactants, key=lambda rs:[c.name for c in rs.complexes])])
     product_str = ' + '.join([repr(p) for p in sorted(self._products, key=lambda rs:[c.name for c in rs.complexes])])

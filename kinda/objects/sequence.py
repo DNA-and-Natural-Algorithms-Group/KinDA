@@ -1,6 +1,6 @@
 # Global DNA nucelotide groups
 dna_base_group =  {"A": "A",   "T": "T",   "C": "C",   "G": "G",
-                   "R": "AG",  "Y": "CT",  "W": "AT",  "S": "CG",  "M": "AC",  "K": "GT", 
+                   "R": "AG",  "Y": "CT",  "W": "AT",  "S": "CG",  "M": "AC",  "K": "GT",
                    "B": "CGT", "V": "ACG", "D": "AGT", "H": "ACT",
                    "N": "ACGT", "x": ""
                   }
@@ -11,7 +11,7 @@ dna_base_complement = {"A": "T",   "T": "A",   "C": "G",   "G": "C",
                       }
 # Global RNA nucelotide groups
 rna_base_group =  {"A": "A",   "U": "U",   "C": "C",   "G": "G",
-                   "R": "AG",  "Y": "CU",  "W": "AU",  "S": "CG",  "M": "AC",  "K": "GU", 
+                   "R": "AG",  "Y": "CU",  "W": "AU",  "S": "CG",  "M": "AC",  "K": "GU",
                    "B": "CGU", "V": "ACG", "D": "AGU", "H": "ACU",
                    "N": "ACGU", "x": ""
                   }
@@ -40,13 +40,11 @@ def base_group_intersect(g1, g2):
   
 
 class Sequence(str):
-  """The Sequence class represents a set of constraints
-  on a sequence of nucleotides, with common operations provided for
-  finding the complement or intersection of a constraints sequence. A Sequence
-  object is immutable."""
-  def __init__(self, sequence):
-    super(Sequence, self).__init__(sequence)
-    
+  """
+  The Sequence class represents a set of constraints on a sequence of
+  nucleotides, with common operations provided for finding the complement or
+  intersection of a constraints sequence. A Sequence object is immutable.
+  """
   @property
   def complement(self):
     c = "".join([base_complement[n] for n in reversed(self)])
@@ -54,15 +52,11 @@ class Sequence(str):
     
   def intersection(self, other):
     if len(self) != len(other):
-      print("Cannot intersect constraint sequences {0} and {1}".format(self, other))
+      print(f"Cannot intersect constraint sequences {self} and {other}")
       return Sequence("")
       
-    intersected = "".join([base_group_intersect(g1, g2)
-                             for g1, g2
-                             in zip(self, other)])
+    intersected = "".join([base_group_intersect(g1, g2) for g1, g2 in zip(self, other)])
     return Sequence(intersected)
 
   def __add__(self, other):
     return self.intersection(other)
-  
-  

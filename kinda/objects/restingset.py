@@ -14,12 +14,14 @@ Complex objects.
     
 """
 
-class RestingSet(object):
-  """ Represents a resting set, a list of complexes that
-  may transition amongst themselves quickly. """
-  
+
+class RestingSet:
+  """
+  Represents a resting set, a list of complexes that may transition amongst
+  themselves quickly.
+  """
   id_counter = 0
-  
+
   def __init__(self, *args, **kargs):
     """
     Initialization:
@@ -41,11 +43,14 @@ class RestingSet(object):
     
     # Assign complexes
     self._complexes = frozenset(kargs['complexes'])
-    
+
   @property
   def complexes(self):
-    """ Returns a list of the Complex objects that define this RestingSet. """
+    """
+    Returns a list of the Complex objects that define this RestingSet.
+    """
     return list(self._complexes)
+
   @property
   def strands(self):
     return next(iter(self._complexes)).strands
@@ -54,7 +59,9 @@ class RestingSet(object):
     return [s.sequence for s in self.strands]
     
   def __contains__(self, complex):
-    """ Returns True if the given complex is in this resting set. """
+    """
+    Returns True if the given complex is in this resting set.
+    """
     return complex in self._complexes
     
   def __eq__(self, other):
@@ -67,5 +74,6 @@ class RestingSet(object):
     
   def __str__(self):
     return self.__repr__()
+
   def __repr__(self):
     return "[" + ", ".join([repr(c) for c in self._complexes]) + "]"

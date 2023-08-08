@@ -17,8 +17,10 @@ in the complex.
 #####################
     
 def parse_dotparen(structure):
-  """ Parses the given dot-paren structure, returning
-  a dict of the bound nucleotides. """
+  """
+  Parses the given dot-paren structure, returning a dict of the bound
+  nucleotides.
+  """
   strand_structs = structure.split("+")
   
   bond_dict = {}
@@ -45,19 +47,25 @@ def parse_dotparen(structure):
         raise ValueError("Invalid dot-paren structure.")
 
   return bond_dict
+
   
 def parse_strandlist(structure):
-  """ Parses the given strand-list structure specification, returning
-  a dict of the bonds in the structure. """
+  """
+  Parses the given strand-list structure specification, returning a dict of the
+  bonds in the structure.
+  """
   bond_dict = {}
   for strand_num, strand_struct in enumerate(structure):
     for i, elem in enumerate(strand_struct):
       bond_dict[(strand_num, i)] = elem
   return bond_dict
+
     
 def expand_domain_dotparen(structure, strands):
-  """ Expands a domain-level dot-paren specification into a nucleotide-
-  level representation. """
+  """
+  Expands a domain-level dot-paren specification into a nucleotide-level
+  representation.
+  """
   strand_structs = structure.replace(" ","").split("+")
   expanded = ""
   for strand, strand_struct in zip(strands, strand_structs):
@@ -66,10 +74,13 @@ def expand_domain_dotparen(structure, strands):
       expanded += char * d.length
     expanded += "+"
   return expanded[:-1]
+
   
 def expand_domain_strandlist(structure, strands):
-  """ Expands a domain-level strand-list specification into a nucleotide-
-  level representation. """
+  """
+  Expands a domain-level strand-list specification into a nucleotide- level
+  representation.
+  """
   expanded = []
   for strand, strand_struct in zip(strands, structure):
     struct = []
@@ -88,7 +99,7 @@ def expand_domain_strandlist(structure, strands):
     expanded.append(struct)
   return expanded
   
-class Structure(object):
+class Structure:
   """ A Structure object represents how the nucleotides in a complex
   are bound to each other. It may be input and output in a variety
   of forms, including dot-paren notation and strand-list notation
@@ -112,17 +123,23 @@ class Structure(object):
       
   @property
   def strands(self):
-    """ Returns the strands used in this structure, in the proper order. """
+    """
+    Returns the strands used in this structure, in the proper order.
+    """
     return [self._strands[num] for num in self._strand_order]
   
   @property
   def structure(self):
-    """ Returns this structure in strand-list notation. """
+    """
+    Returns this structure in strand-list notation.
+    """
     return self.to_strandlist()
+
   @structure.setter
   def structure(self, struct):
-    """ Sets this structure with a dot-paren string or strand-list
-    representation. """
+    """
+    Sets this structure with a dot-paren string or strand-list representation.
+    """
     self._dotparen = None # reset these as they are no longer valid
     self._strandlist = None
 
@@ -158,15 +175,19 @@ class Structure(object):
     
   @property
   def pseudoknotted(self):
-    """ Returns if this structure is pseudoknotted under this strand ordering.
-    The result is not really valid if the structure's binding is not completely
-    specified (i.e. '?' appear in it)"""
+    """
+    Returns if this structure is pseudoknotted under this strand ordering. The
+    result is not really valid if the structure's binding is not completely
+    specified (i.e. '?' appear in it)
+    """
     return self._pseudoknotted
     
   ## Utility functions
   def bound_to(self, strand_num, index):
-    """ Returns the strand number and index of the nucleotide bound to the
-    specified nucleotide, or None if it is unbound. """
+    """
+    Returns the strand number and index of the nucleotide bound to the specified
+    nucleotide, or None if it is unbound.
+    """
     real_strand_num = self._strand_order[strand_num]
     real_bound_info = self._bond_dict[(real_strand_num, index)]
     if real_bound_info == None or real_bound_info == '?':
@@ -175,9 +196,11 @@ class Structure(object):
       return (self._strand_order.index(real_bound_info[0]), real_bound_info[1])
     
   def to_dotparen(self):
-    """ Returns a representation of this structure in dot-paren notation.
-    If the structure does not have a valid dot-paren representation (e.g.
-    because of pseudoknots), it will fail. """
+    """
+    Returns a representation of this structure in dot-paren notation. If the
+    structure does not have a valid dot-paren representation (e.g. because of
+    pseudoknots), it will fail.
+    """
     assert not self._pseudoknotted, "Cannot express pseudoknotted structure with dot-paren."
     if self._dotparen is not None:  return self._dotparen
 
@@ -199,7 +222,9 @@ class Structure(object):
     return self._dotparen
     
   def to_strandlist(self):
-    """ Returns a representation of this structure in strand-list notation. """
+    """
+    Returns a representation of this structure in strand-list notation.
+    """
     if self._strandlist is not None:  return self._strandlist
 
     strandlist = []
@@ -213,10 +238,13 @@ class Structure(object):
     return strandlist
     
   def check_pseudoknotted(self):
-    """ Checks if the structure may have pseudoknots (when strands are in
-    their current order). This is not a technical pseudoknot, which would
-    require checking other strand orders, but is suitable for most purposes.
-    There may be a more efficient way to do this..."""
+    """
+    Checks if the structure may have pseudoknots (when strands are in their
+    current order). This is not a technical pseudoknot, which would require
+    checking other strand orders, but is suitable for most purposes.
+
+    There may be a more efficient way to do this...
+    """
     stack = []
     for strand_num, strand in enumerate(self.strands):
       for i in range(strand.length):
@@ -231,8 +259,10 @@ class Structure(object):
     
   ## Modifiers
   def rotate_strands(self, amount = 1):
-    """ Rotates the strands in this structure. Future queries into
-    this structure will use the new strand ordering. """
+    """
+    Rotates the strands in this structure. Future queries into this structure
+    will use the new strand ordering.
+    """
     amount = amount % len(self._strands)
     self._strand_order = self._strand_order[amount:] + self._strand_order[:amount]
     self._dotparen = None
@@ -240,6 +270,7 @@ class Structure(object):
 
   def __str__(self):
     return self.to_dotparen()
+
   def __repr__(self):
     return self.to_dotparen()
     

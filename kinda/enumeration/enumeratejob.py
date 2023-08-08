@@ -1,13 +1,12 @@
-## IMPORTS
+
 import itertools as it
 
 import peppercornenumerator as enum
 
 from .. import objects as dna
-from .. import options
 
-## CLASSES
-class EnumerateJob(object):
+
+class EnumerateJob:
   def __init__(self, *args, **kargs):
     # Pull out domains, strands, complexes
     self._init_reactions = kargs.get('reactions', [])
@@ -53,15 +52,19 @@ class EnumerateJob(object):
   @property
   def enumerated_complexes(self):
     return self._enumerated_complexes
+
   @property
   def enumerated_restingsets(self):
     return self._enumerated_restingsets
+
   @property
   def enumerated_slow_reactions(self):
     return self._enumerated_slow_reactions
+
   @property
   def enumerated_fast_reactions(self):
     return self._enumerated_fast_reactions
+
   @property
   def condensed_reactions(self):
     return self._condensed_reactions
@@ -95,12 +98,12 @@ class EnumerateJob(object):
       setattr(e, k, v)
 
     # Perform enumeration
-    print("KinDA: Performing reaction enumeration with Peppercorn...", end=' ')
+    print("KinDA: Performing reaction enumeration with Peppercorn...")
     e.enumerate()
     print("Done!")
 
     # Perform reaction condensation
-    print("KinDA: Performing reaction condensation with Peppercorn...", end=' ')
+    print("KinDA: Performing reaction condensation with Peppercorn...")
     enumc = enum.PepperCondensation(e)
     enumc.condense()
     print("Done!")
@@ -137,8 +140,7 @@ class EnumerateJob(object):
 
     self._enumerated = True
     self._condensed = True
-    
-   
+
   def get_complexes(self):
     if not self.enumerated: self.enumerate()
     return list(self.enumerated_complexes)
@@ -155,4 +157,3 @@ class EnumerateJob(object):
     if not self.enumerated or not self.condensed:  self.enumerate()
 #    if not self.condensed:  self.condense_reactions()
     return list(self.condensed_reactions)
-  

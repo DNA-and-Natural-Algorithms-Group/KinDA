@@ -2,6 +2,7 @@
 
 import itertools as it
 from . import utils
+
 ##################
 ## Use to_Multistrand() to convert a system of domains, strands, complexes, resting sets, and
 ## macrostates to equivalent Multistrand objects.
@@ -102,7 +103,7 @@ def to_Multistrand_macrostates(macrostates, ms_complexes):
       states = sum([ms_macrostates[s][0].complex_items for s in m_dnf.macrostates], [])
       ms_macrostates[m] = [MS.Macrostate(m.name, states)]
     elif m_dnf.type == Macrostate.types['disjunction']:
-      ms_macrostates[m] = list(it.chain(*list(to_Multistrand_macrostates(m_dnf.macrostates, ms_complexes).values())))
+      ms_macrostates[m] = list(it.chain(*to_Multistrand_macrostates(m_dnf.macrostates, ms_complexes).values()))
       for ms in ms_macrostates[m]:  ms.tag = m.name
   return ms_macrostates
   
@@ -156,5 +157,3 @@ def to_Multistrand(*args, **kargs):
              'restingstates': list(ms_restingstates.items()),
              'macrostates': list(ms_macrostates.items())}
   return results
-    
-  

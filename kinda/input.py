@@ -1,12 +1,10 @@
 
-
 import itertools as it
 
-from dsdobjects.parser import parse_kernel_string, parse_kernel_file
-from dsdobjects.parser import parse_pil_string, parse_pil_file
-from dsdobjects.parser import ParseException, PilFormatError
+from dsdobjects.parser import parse_pil_string, parse_pil_file, PilFormatError
 
 from .objects import dnaobjects as dna
+
 
 def resolve_loops(loop):
     """ Return a sequence, structure pair from kernel format with parenthesis. """
@@ -154,4 +152,3 @@ def read_pil(data, is_file = False, composite = False):
                                                     products  = reactants))
 
     return list(complexes.values()), det_reactions, list(resting.values()), con_reactions
-
