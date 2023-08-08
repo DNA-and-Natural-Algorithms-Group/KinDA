@@ -17,12 +17,21 @@ set(s).
     A reaction between resting sets rather than complexes.
 """
 
-class Reaction(object):
-  """ A Reaction object is defined by a set of complexes (the 'reactants') and
-  a set of complexes (the 'products')."""
-  
+from functools import total_ordering
+
+from .complex import Complex
+from .restingset import RestingSet
+
+
+@total_ordering
+class Reaction:
+  """
+  A Reaction object is defined by a set of complexes (the 'reactants') and a set
+  of complexes (the 'products').
+  """
+  agent_type = Complex
   id_counter = 0
-  
+
   def __init__(self, *args, **kargs):
     """
     Initialization:
@@ -36,17 +45,18 @@ class Reaction(object):
     self.id = Reaction.id_counter
     Reaction.id_counter += 1
     
-    ## Assign object type
-    self._object_type = 'reaction'
-    
     ## Assign object name if supplied, or create an automatic one
     if 'name' in kargs: self.name = kargs['name']
     else: self.name = 'reaction_' + str(self.id)
     
     ## Assign reactants and products
-    self._reactants = tuple(sorted(kargs['reactants'], key = lambda c: c.id))
-    self._products = tuple(sorted(kargs['products'], key = lambda c: c.id))
-    
+    reactants = kargs['reactants']
+    products = kargs['products']
+    assert all(isinstance(a, self.agent_type) for a in reactants)
+    assert all(isinstance(a, self.agent_type) for a in products)
+    self._reactants = tuple(sorted(reactants))
+    self._products = tuple(sorted(products))
+
     ## Optional modifiers
     self.modifiers = {}
   
@@ -91,10 +101,12 @@ class Reaction(object):
     
   # Equality definition
   def __eq__(self, other):
-    return (self._reactants == other._reactants
-        and self._products == other._products)
-  def __ne__(self, other):
-    return not self.__eq__(other)
+    return (self._reactants, self._products).__eq__(
+      (other._reactants, other._products))
+
+  def __lt__(self, other):
+    return (self._reactants, self._products).__lt__(
+      (other._reactants, other._products))
 
   def __hash__(self):
     return hash((self._reactants, self._products))
@@ -104,19 +116,16 @@ class Reaction(object):
     return self.__repr__()
 
   def __repr__(self):
-    reactant_str = ' + '.join([repr(r) for r in sorted(self._reactants, key=lambda c:c.name)])
-    product_str = ' + '.join([repr(p) for p in sorted(self._products, key=lambda c:c.name)])
-    return reactant_str + " -> " + product_str
-    
-    
-  
+    reactant = ' + '.join(map(repr, self._reactants))
+    product = ' + '.join(map(repr, self._products))
+    return f"{reactant} -> {product}"
+
+
+@total_ordering
 class RestingSetReaction(Reaction):
   """
   The RestingSetReaction class is ostensibly for only reactions between resting
   sets. However, it is currently identical to the Reaction class and the two are
   interchangeable.
   """
-  def __repr__(self):
-    reactant_str = ' + '.join([repr(r) for r in sorted(self._reactants, key=lambda rs:[c.name for c in rs.complexes])])
-    product_str = ' + '.join([repr(p) for p in sorted(self._products, key=lambda rs:[c.name for c in rs.complexes])])
-    return reactant_str + " -> " + product_str
+  agent_type = RestingSet

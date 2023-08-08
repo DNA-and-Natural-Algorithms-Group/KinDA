@@ -13,7 +13,6 @@ import sys
 import json
 import pickle
 import itertools as it
-from operator import attrgetter
 
 import numpy as np
 
@@ -62,24 +61,11 @@ def make_RestingSetRxnStats(restingsets, detailed_rxns, condensed_rxns,
 
   # Determine all possible sets of reactants
   # Each reaction may have 1 or 2 reactants
+  all_reactants = set([tuple(sorted(rs)) for rs in
+                       it.product(restingsets, restingsets)])
   if kinda_params['enable_unimolecular_reactions']:
-    all_reactants = set(
-        [
-            tuple(sorted([r1, r2], key = lambda rs: rs.id))
-            for r1, r2
-            in it.product(restingsets, restingsets)
-        ] +
-        [(r,) for r in restingsets]
-    )
-  else:
-    all_reactants = set(
-        [
-            tuple(sorted([r1,r2], key = lambda rs: rs.id))
-            for r1, r2
-            in it.product(restingsets, restingsets)
-        ]
-    )
-  
+    all_reactants |= set([(r,) for r in restingsets])
+
   # Make a Multistrand simulation job for each reactant group
   reactants_to_mjob = {}
   for i, reactants in enumerate(all_reactants):
@@ -149,14 +135,11 @@ def make_RestingSetRxnStats(restingsets, detailed_rxns, condensed_rxns,
   # Create RestingSetRxnStats object for each reaction
   rxn_to_stats = {}
   for rxn in condensed_rxns:
-    stats = RestingSetRxnStats(
+    rxn_to_stats[rxn] = RestingSetRxnStats(
         reactants = rxn.reactants,
         products = rxn.products,
-        multistrand_job = reactants_to_mjob[tuple(sorted(
-          rxn.reactants, key=attrgetter("id")))],
-        tag = str(rxn)
-    )
-    rxn_to_stats[rxn] = stats
+        multistrand_job = reactants_to_mjob[rxn.reactants],
+        tag = str(rxn))
 
   # Create a RestingSetRxnStats object for each spurious reaction between a set
   # of reactants The "unproductive" reaction will be included either as a valid
@@ -164,17 +147,13 @@ def make_RestingSetRxnStats(restingsets, detailed_rxns, condensed_rxns,
   # default we modify Peppercorn enumeration to include all unproductive
   # reactions.
   for rxn in spurious_rxns:
-    stats = RestingSetRxnStats(
+    rxn_to_stats[rxn] = stats = RestingSetRxnStats(
         reactants = rxn.reactants,
         products = rxn.products,
-        multistrand_job = reactants_to_mjob[tuple(sorted(
-          rxn.reactants, key=attrgetter("id")))],
-        tag = f'_spurious({rxn!s})'
-    )
-    rxn_to_stats[rxn] = stats
+        multistrand_job = reactants_to_mjob[rxn.reactants],
+        tag = f'_spurious({rxn!s})')
 
-  #print "KinDA: Constructing internal KinDA objects... Done!"
-
+  # print("KinDA: Constructing internal KinDA objects... Done!")
   return rxn_to_stats
   
 def get_spurious_products(reactants, reactions, stop_states):
@@ -339,7 +318,7 @@ def create_stop_macrostate(state, tag, spurious, options):
 
   obj_to_mstate = {}
   for obj in set(state):
-    assert(obj._object_type == 'resting-set')
+    assert isinstance(obj, dna.RestingSet)
     if mode == 'ordered-complex' or spurious:
       obj_to_mstate[obj] = dna.Macrostate(type = 'ordered-complex', complex = next(iter(obj.complexes)))
     elif mode == 'count-by-complex':

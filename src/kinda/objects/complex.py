@@ -11,11 +11,13 @@ This module defines a simple dna `complex` object.
     A completely connected set of nucleic acid strands.
 """
 
+from functools import total_ordering
 
-from .strand import Strand
 from .structure import Structure
 
-class Complex(object):
+
+@total_ordering
+class Complex:
   """
   A representation of a single connected complex of strands.
   """
@@ -40,8 +42,7 @@ class Complex(object):
     self.id = Complex.id_counter
     Complex.id_counter += 1
     
-    # Assign DNA object type
-    self._object_type = 'complex'
+    self._canonical_form = None
     
     # Assign name
     if 'name' in kargs: self.name = kargs['name']
@@ -58,8 +59,6 @@ class Complex(object):
     if 'structure' in kargs: self.structure = kargs['structure']
     else: self.structure = '+'.join(['*'*s.length for s in self.strands])
 
-    self._canonical_form = None
-  
   ## Basic properties
   @property
   def sequence(self):
@@ -87,9 +86,9 @@ class Complex(object):
     Sets the binding of this complex. Accepts a structure in dot-paren or
     strand-list notation.
     """
+    assert self._canonical_form is None, "Complex should be treated as immutable."
     self._structure = Structure(structure = new_struct,
                                 strands = self._strands)
-    self._canonical_form = None
 
   def bound_to(self, strand_num, index):
     """
@@ -109,23 +108,29 @@ class Complex(object):
 
   @property
   def canonical_form(self):
-    """ Returns a strandlist-structure pair of the complex's canonical form,
-    which can be used to compare two complexes. This is computed as needed
-    and stored to save time in the future. """
-    if self._canonical_form is not None:  return self._canonical_form
+    """
+    Returns a strandlist-structure pair of the complex's canonical form, which
+    can be used to compare two complexes. This is computed as needed and stored
+    to save time in the future.
+    """
+    if self._canonical_form is not None:
+      return self._canonical_form
 
-    canonical_domains = [[d.name for d in d_list] for d_list in self.base_domains()]
-    canonical_strandlist = self.strands
-    canonical_structure = self.structure
-    for rot_amt in range(len(self.strands)):
+    c_domains = [[d.name for d in d_list] for d_list in self.base_domains()]
+    c_strands = self.strands
+    c_structure = self.structure
+
+    for _ in range(len(self.strands)):
       self.rotate_strands()
       domains = [[d.name for d in d_list] for d_list in self.base_domains()]
-      if canonical_domains > domains or canonical_strandlist==self.strands and canonical_structure.to_dotparen() > self.structure.to_dotparen():
-        canonical_domains = domains
-        canonical_strandlist = self.strands
-        canonical_structure = self.structure
+      if (c_domains > domains or
+          (c_strands == self.strands and
+           c_structure.to_dotparen() > self.structure.to_dotparen())):
+        c_domains = domains
+        c_strands = self.strands
+        c_structure = self.structure
 
-    self._canonical_form = (canonical_strandlist, canonical_structure)
+    self._canonical_form = (tuple(c_strands), c_structure)
     return self._canonical_form
 
   ## Mutators
@@ -150,19 +155,19 @@ class Complex(object):
     return [s.base_domains() for s in self._strands]
   
   ## (In)equality
-  def __eq__(self, other): 
-    """ Returns True if the two complexes have the same canonical representation. """
-    if type(self) != type(other):
-      return False
-    if self.canonical_form == other.canonical_form:
-      return True
-    return False
-  def __ne__(self, other):
-    """ Returns True if the complexes are not equal. """
-    return not self.__eq__(other)
+  def __eq__(self, other):
+    """
+    Returns True if the two complexes have the same canonical representation.
+    """
+    assert isinstance(other, self.__class__)
+    return self.canonical_form.__eq__(other.canonical_form)
+
+  def __lt__(self, other):
+    assert isinstance(other, self.__class__)
+    return self.canonical_form.__lt__(other.canonical_form)
+
   def __hash__(self):
-    """ Returns a hash value for this Complex. """
-    return hash(self.canonical_form[1].to_dotparen())
+    return hash(self.canonical_form)
   
   ## Output
   def __str__(self):

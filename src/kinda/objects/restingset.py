@@ -14,7 +14,12 @@ Complex objects.
     
 """
 
+from functools import total_ordering
 
+from .complex import Complex
+
+
+@total_ordering
 class RestingSet:
   """
   Represents a resting set, a list of complexes that may transition amongst
@@ -35,14 +40,14 @@ class RestingSet:
     self.id = RestingSet.id_counter
     RestingSet.id_counter += 1
     
-    self._object_type = 'resting-set'
-    
     # Assign name
     if 'name' in kargs: self.name = kargs['name']
     else: self.name = 'resting_set{0}'.format(self.id)
     
     # Assign complexes
-    self._complexes = frozenset(kargs['complexes'])
+    complexes = kargs['complexes']
+    assert all(isinstance(c, Complex) for c in complexes)
+    self._complexes = tuple(sorted(complexes))
 
   @property
   def complexes(self):
@@ -53,7 +58,8 @@ class RestingSet:
 
   @property
   def strands(self):
-    return next(iter(self._complexes)).strands
+    return self._complexes[0].strands
+
   @property
   def sequence(self):
     return [s.sequence for s in self.strands]
@@ -65,15 +71,18 @@ class RestingSet:
     return complex in self._complexes
     
   def __eq__(self, other):
-    return type(self) == type(other) and self._complexes == other._complexes
-  def __ne__(self, other):
-    return not self.__eq__(other)
-    
+    assert isinstance(other, self.__class__)
+    return self._complexes.__eq__(other._complexes)
+
+  def __lt__(self, other):
+    assert isinstance(other, self.__class__)
+    return self._complexes.__lt__(other._complexes)
+
   def __hash__(self):
     return hash(self._complexes)
     
   def __str__(self):
-    return self.__repr__()
+    return "[" + ", ".join(map(repr, self._complexes)) + "]"
 
   def __repr__(self):
-    return "[" + ", ".join([repr(c) for c in self._complexes]) + "]"
+    return str(self)

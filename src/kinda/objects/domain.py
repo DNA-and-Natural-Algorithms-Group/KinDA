@@ -11,11 +11,13 @@ This module defines a simple dna `domain` object.
     A logical grouping of nucleic acid bases that occur in a specific order. 
 """
 
+from functools import total_ordering
 
 from .sequence import Sequence
 
 
-class Domain(object):
+@total_ordering
+class Domain:
   """
   Represents a DNA domain, a sequence of specified length with constraint sequence
   on the allowed nucleotides at each position in the domain.
@@ -40,9 +42,6 @@ class Domain(object):
     # Assign id
     self.id = Domain.id_counter
     Domain.id_counter += 1
-    
-    # Assign DNA object type
-    self._object_type = 'domain'
     
     # Assign name
     if 'name' in kargs: self.name = kargs['name']
@@ -150,20 +149,21 @@ class Domain(object):
      
   ## (In)equality
   def __eq__(self, other):
-    """Returns True iff the two objects are domains and have the same name."""
-    return self._object_type == other._object_type and self.name == other.name
-  def __ne__(self, other):
-    """Returns True iff the two objects are not equal."""
-    return not self.__eq__(other)
+    """
+    Returns True iff the two objects are domains and have the same name.
+    """
+    assert isinstance(other, self.__class__)
+    return self.name.__eq__(other.name)
+
+  def __lt__(self, other):
+    assert isinstance(other, self.__class__)
+    return self.name.__lt__(other.name)
+
   def __hash__(self):
-    """ Hash function for Domains. """
-    return sum([ord(c) * pow(2,i)
-      for i, c
-      in enumerate(self._object_type + self.name)])
-    
+    return hash(self.name)
+
   ## Output
-  def __str__( self ):
-    """Human-readable output formatting for a domain."""
+  def __str__(self):
     if self.is_composite:
       info = "[" + ", ".join([str(d.name) for d in self._subdomains]) + "]"
     else:
@@ -174,6 +174,7 @@ class Domain(object):
     return str(self)
 
 
+@total_ordering
 class ComplementaryDomain( Domain):
   """
   Represents a complemented domain. Note that this is always
@@ -182,10 +183,11 @@ class ComplementaryDomain( Domain):
   members.
   """
   def __init__(self, complemented_domain ):
-    """Create a new ComplementaryDomain in terms of a given domain.
-    Note that very little data is stored directly this domain. Most
-    data is calculated as requested in terms of the given domain."""
-    self._object_type = 'domain'
+    """
+    Create a new ComplementaryDomain in terms of a given domain. Note that very
+    little data is stored directly this domain. Most data is calculated as
+    requested in terms of the given domain.
+    """
     self._complement = complemented_domain
 
   ## Basic properties  
@@ -301,9 +303,10 @@ class ComplementaryDomain( Domain):
     Returns True iff their complements are equal.
     """
     return self._complement.__eq__(other.complement)
-  def __ne__(self, other):
-    """ Returns True iff they are not equal."""
-    return not self.__eq__(other)
+
+  def __lt__(self, other):
+    return self._complement.__lt__(other.complement)
+
   def __hash__(self):
     return -self._complement.__hash__()
     

@@ -4,8 +4,9 @@
 # Defines the System class, encapsulating statistics calculations for DNA
 # strand-displacement system properties.
 
+from . import options
+from .objects import Complex, RestingSet, Reaction, RestingSetReaction, io_PIL
 from .statistics import stats_utils
-from .objects import io_PIL
 from . import options
 
 
@@ -49,12 +50,17 @@ class System:
     self._multistrand_params = dict(options.multistrand_params, **multistrand_params)
     self._nupack_params = dict(options.nupack_params, **nupack_params)
 
-    # Store initial DSD system objects.
+    # Store initial DSD system objects
+    assert all(isinstance(rxn, RestingSetReaction) for rxn in condensed_reactions)
     self._condensed_reactions = set(condensed_reactions)
+    assert all(isinstance(rxn, Reaction) for rxn in detailed_reactions)
     self._detailed_reactions = set(detailed_reactions)
+
+    assert all(isinstance(rs, RestingSet) for rs in restingsets)
     self._restingsets = set(restingsets
         + [rs for rxn in self._condensed_reactions
            for rs in rxn.reactants+rxn.products])
+    assert all(isinstance(c, Complex) for c in complexes)
     self._complexes = set(complexes
         + [c for rs in self._restingsets for c in rs.complexes]
         + [c for rxn in self._detailed_reactions

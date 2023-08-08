@@ -12,6 +12,8 @@ in the complex.
     A specification for all bound base pairs in a complex.
 """
 
+from functools import total_ordering
+
 #####################
 # PARSING UTILITIES #
 #####################
@@ -99,11 +101,14 @@ def expand_domain_strandlist(structure, strands):
     expanded.append(struct)
   return expanded
   
+
+@total_ordering
 class Structure:
-  """ A Structure object represents how the nucleotides in a complex
-  are bound to each other. It may be input and output in a variety
-  of forms, including dot-paren notation and strand-list notation
-  (for Peppercorn). """
+  """
+  A Structure object represents how the nucleotides in a complex are bound to
+  each other. It may be input and output in a variety of forms, including
+  dot-paren notation and strand-list notation (for Peppercorn).
+  """
   def __init__(self, *args, **kargs):
     """
     Initialization:
@@ -268,11 +273,19 @@ class Structure:
     self._dotparen = None
     self._strandlist = None
 
+  def __eq__(self, other):
+    assert isinstance(other, self.__class__)
+    return self.to_dotparen().__eq__(other.to_dotparen())
+
+  def __lt__(self, other):
+    assert isinstance(other, self.__class__)
+    return self.to_dotparen().__lt__(other.to_dotparen())
+
+  def __hash__(self):
+    return hash(self.to_dotparen())
+
   def __str__(self):
     return self.to_dotparen()
 
   def __repr__(self):
-    return self.to_dotparen()
-    
-  def __eq__(self, other):
-    return self.to_dotparen() == other.to_dotparen()
+    return str(self)

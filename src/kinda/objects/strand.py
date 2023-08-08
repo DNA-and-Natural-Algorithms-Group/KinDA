@@ -13,12 +13,14 @@ This module defines a simple dna `strand` object.
     acid bases.
 """
 
-import itertools as it
+from functools import total_ordering
 
 from .domain import Domain
 from .sequence import Sequence
 
-class Strand(object):
+
+@total_ordering
+class Strand:
   """
   Represents a Strand object, composed of a series of domains or a set of
   sequence constraints.
@@ -37,9 +39,6 @@ class Strand(object):
     # Assign id
     self.id = Strand.id_counter
     Strand.id_counter += 1
-    
-    # Assign DNA object type
-    self._object_type = 'strand'
     
     # Assign name
     if 'name' in kargs: self.name = kargs['name']
@@ -117,15 +116,19 @@ class Strand(object):
     return ComplementaryStrand(self)
 
   def equivalent_to(self, other):
-    """ Returns True iff the operand is a strand with the same
-    base domain breakdown. """
-    return (self._object_type == other._object_type and
+    """
+    Returns True iff the operand is a strand with the same base domain
+    breakdown.
+    """
+    return (isinstance(other, self.__class__) and
             self.base_domains() == other.base_domains())
 
   def complementary_to(self, other):
-    """ Returns True iff the complement of the operand is a strand with
-    the same domain breakdown. """
-    return (self._object_type == other._object_type and
+    """
+    Returns True iff the complement of the operand is a strand with the same
+    domain breakdown.
+    """
+    return (isinstance(other, self.__class__) and
             self.base_domains() == other.complement.base_domains())
 
   ## DNA object hierarchy
@@ -153,18 +156,23 @@ class Strand(object):
 
   ## (In)equality
   def __eq__(self, other):
-    """ Two strands are equal if they have the same name. """
-    ## NOTE: Because Peppercorn no longer preserves strand names, this is not a reliable way to
-    ## check for equality. Instead, we have to check if the list of domains is the same...
-    ## Change this back if Peppercorn is modified.
-    return self._object_type == other._object_type and self.base_domains()==other.base_domains()
-  def __ne__(self, other):
-    """ Returns True iff the two strands are not equal."""
-    return not self.__eq__(other)
+    """
+    Two strands are equal if they have the same name.
+
+    NOTE: Because Peppercorn no longer preserves strand names, this is not a
+    reliable way to check for equality. Instead, we have to check if the list of
+    domains is the same... Change this back if Peppercorn is modified.
+    """
+    assert isinstance(other, self.__class__)
+    return self.base_domains().__eq__(other.base_domains())
+
+  def __lt__(self, other):
+    assert isinstance(other, self.__class__)
+    return self.base_domains().__lt__(other.base_domains())
+
   def __hash__(self):
-    """ Returns a hash value on Strands."""
-    return hash(self._object_type + ''.join(d.name for d in self.base_domains()))
-  
+    return hash(tuple(self.base_domains_iter()))
+
   ## Output
   def __str__(self):
     info = "{" + ", ".join([d.name for d in self._domains]) + "}"
@@ -173,7 +181,9 @@ class Strand(object):
   def __repr__(self):
     return str(self)
 
-class ComplementaryStrand( Strand ):
+
+@total_ordering
+class ComplementaryStrand(Strand):
   """
   Represents a complemented strand. This is always defined in
   terms of an original strand, so that it reflects any change in the
@@ -185,7 +195,6 @@ class ComplementaryStrand( Strand ):
     strand.
     """
     self.id = complemented_strand.id
-    self._object_type = 'strand'
     self._complement = complemented_strand
 
   ## Basic properties
@@ -283,9 +292,10 @@ class ComplementaryStrand( Strand ):
     Returns True iff the complements of the LHS and RHS are equal.
     """
     return self._complement.__eq__(other.complement)
-  def __ne__(self, other):
-    """ Returns True iff the LHS and RHS are not equal."""
-    return not self.__eq__(other)
+
+  def __lt__(self, other):
+    return self._complement.__lt__(other.complement)
+
   def __hash__(self):
     return -self._complement.__hash__()
     

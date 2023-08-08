@@ -79,9 +79,7 @@ class Macrostate:
     # Assign id
     self.id = Macrostate.id_counter
     Macrostate.id_counter += 1
-    
-    self._object_type = 'macrostate'
-    
+
     # Assign name
     if 'name' in kargs: self.name = kargs['name']
     else: self.name = 'macrostate_{0}'.format(self.id)
