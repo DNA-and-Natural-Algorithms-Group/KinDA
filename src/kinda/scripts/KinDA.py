@@ -34,9 +34,7 @@ from peppercornenumerator.input import read_pil as pepper_read_pil
 from peppercornenumerator.output import write_pil as pepper_write_pil
 
 import kinda
-from kinda.input import read_pil
-from kinda.output import write_pil
-from kinda.statistics.stats_utils import import_data, export_data
+from kinda.objects.io_KinDA import read_pil, write_pil, import_data, export_data
 from kinda.statistics.stats import RestingSetRxnStats, RestingSetStats
 from kinda.simulation.nupackjob import NupackSampleJob
 from kinda.simulation.multistrandjob import MultistrandJob

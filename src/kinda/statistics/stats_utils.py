@@ -10,13 +10,8 @@
 ####        calc_intended_rxn_score
 
 import sys
-import json
-import pickle
 import itertools as it
 
-import numpy as np
-
-from .. import __version__
 from .. import objects as dna
 from ..objects.utils import (
   restingset_count_by_complex_macrostate, restingset_count_by_domain_macrostate)
@@ -288,6 +283,7 @@ def get_spurious_products(reactants, reactions, stop_states):
   ]
     
   return spurious_restingsets
+
   
 def create_stop_macrostate(state, tag, spurious, options):
   """ For most simulations, there is a specific way to produce a macrostate
@@ -334,6 +330,7 @@ def create_stop_macrostate(state, tag, spurious, options):
     macrostates = [obj_to_mstate[o] for o in state])
   return macrostates
 
+
 ## Boltzmann sample-and-select functions must be picklable
 ## to be used with the multiprocessing library
 class OrderedComplexSelector:
@@ -363,7 +360,6 @@ class CountByDomainSelector:
         dna.utils.max_domain_defect(complex, kinda_struct) < 1-self._threshold
         for complex in self._restingset.complexes
     )
-
 
 
 def create_boltzmann_selector(restingset, mode, similarity_threshold = None):
@@ -436,7 +432,6 @@ def make_stats(complexes, restingsets, detailed_rxns, condensed_rxns,
   return rs_to_stats, rxn_to_stats
 
 
-
 ######################################
 #          Score calculation         #
 ######################################
@@ -459,285 +454,3 @@ def calc_unproductive_rxn_score(system_stats, relative_error = 0.5, max_sims = 5
     stats = system_stats.get_stats(rs)
     max_depletion = max(max_depletion, stats.get_temporary_depletion(relative_error, max_sims = max_sims))
   return max_depletion
-
-
-
-######################################
-#       Import/Export Utilities      #
-######################################
-
-def export_data(sstats, filepath, use_pickle = False):
-  """ Exports data of this KinDA object so that it can be imported in a later Python session.
-  Does not export the entire KinDA object (only the XXXStats data that has been collected).
-  Data is exported in JSON format.
-  The following constructs are exported:
-    - domains
-    - strands
-    - complexes
-    - resting sets
-    - reactions
-    - resting-set reactions
-    - resting-set statistics objects
-    - resting-set-reaction statistics objects
-  Implemented, but badly and fragily dependent on KinDA object implementation """
-  ## Extract all objects to be exported
-  rs_reactions = sstats._condensed_reactions
-  restingsets = sstats._restingsets
-  reactions = sstats._detailed_reactions
-  complexes = sstats._complexes
-  strands = set(sum([c.strands for c in complexes], []))
-  domains = set(sum([s.base_domains() for s in strands], []))
-
-  # Note: We destroy the domain hierarchy and only store "base" domains. 
-  domain_to_id = {dom: 'dom{0}_{1}'.format(dom.id, dom.name) for dom in domains} 
-  # id #s are guaranteed to be unique within a Python session
-  domain_to_dict = {
-      d_id: {'name': d.name, 'sequence': str(d.sequence)} for d,d_id in domain_to_id.items()}
-
-  strand_to_id = {strand: 'strand{0}_{1}'.format(strand.id, strand.name) for strand in strands}
-  strand_to_dict = {}
-  for s, s_id in strand_to_id.items():
-    strand_domains = [domain_to_id[d] for d in s.base_domains()]
-    strand_to_dict[s_id] = {'name': s.name, 'domains': strand_domains}
-
-  complex_to_id = {cpx: 'cpx{0}_{1}'.format(cpx.id, cpx.name) for cpx in complexes}
-  complex_to_dict = {}
-  for c, c_id in complex_to_id.items():
-    cpx_strands = [strand_to_id[s] for s in c.strands]
-    complex_to_dict[c_id] = {
-        'name': c.name, 'strands': cpx_strands, 'structure': c.structure.to_dotparen()}
-
-  rs_to_id = {rs: 'rs{0}_{1}'.format(rs.id, rs.name) for rs in restingsets}
-  rs_to_dict = {}
-  for rs, rs_id in rs_to_id.items():
-    rs_complexes = [complex_to_id[c] for c in rs.complexes]
-    rs_to_dict[rs_id] = {'name': rs.name, 'complexes': rs_complexes}
-
-  rxn_to_id = {rxn: 'rxn{0}_{1}'.format(rxn.id, str(rxn)) for rxn in reactions}
-  rxn_to_dict = {}
-  for r, r_id in rxn_to_id.items():
-    reactants = [complex_to_id[c] for c in r.reactants]
-    products = [complex_to_id[c] for c in r.products]
-    rxn_to_dict[r_id] = {'name': r.name, 'reactants': reactants, 'products': products}
-
-  rsrxn_to_id = {rsrxn: 'rsrxn{0}_{1}'.format(rsrxn.id, str(rsrxn))
-                 for rsrxn in rs_reactions}
-  rsrxn_to_dict = {}
-  for r, r_id in rsrxn_to_id.items():
-    reactants = [rs_to_id[rs] for rs in r.reactants]
-    products = [rs_to_id[rs] for rs in r.products]
-    rsrxn_to_dict[r_id] = {'name': r.name, 'reactants': reactants, 'products': products}
-
-  rsstats_to_dict = {}
-  for rs in restingsets:
-    stats = sstats.get_stats(rs)
-    rsstats_to_dict[rs_to_id[rs]] = {
-        'similarity_threshold': stats.get_similarity_threshold(), 'c_max': stats.c_max}
-    for c in rs.complexes:
-      c_data = list(stats.get_conformation_prob_data(c.name))
-      rsstats_to_dict[rs_to_id[rs]][complex_to_id[c]] = {
-        'prob': '{0} +/- {1}'.format(
-          stats.get_conformation_prob(c.name, 1, max_sims=0),
-          stats.get_conformation_prob_error(c.name, max_sims=0)),
-        'similarity_data': c_data
-      }
-      assert len(c_data) == stats.sampler.get_num_sims()
-
-  rsrxnstats_to_dict = {}
-  for rsrxn in rs_reactions:
-    stats = sstats.get_stats(rsrxn)
-    sim_data = {key: d.tolist() for key,d in stats.get_simulation_data().items()}
-    if len(rsrxn.reactants) == 2:
-      rsrxnstats_to_dict[rsrxn_to_id[rsrxn]] = {
-        'prob': '{0} +/- {1}'.format(stats.get_prob(max_sims = 0), stats.get_prob_error(max_sims=0)),
-        'kcoll': '{0} +/- {1}'.format(stats.get_kcoll(max_sims = 0), stats.get_kcoll_error(max_sims=0)),
-        'k1': '{0} +/- {1}'.format(stats.get_k1(max_sims = 0), stats.get_k1_error(max_sims=0)),
-        'k2': '{0} +/- {1}'.format(stats.get_k2(max_sims = 0), stats.get_k2_error(max_sims=0)),
-        'simulation_data': sim_data,
-        'invalid_simulation_data': stats.get_invalid_simulation_data(),
-        'tag': stats.multijob_tag
-      }
-    elif len(rsrxn.reactants) == 1:
-      rsrxnstats_to_dict[rsrxn_to_id[rsrxn]] = {
-        'prob': '{0} +/- {1}'.format(stats.get_prob(max_sims = 0), stats.get_prob_error(max_sims=0)),
-        'k1': '{0} +/- {1}'.format(stats.get_k1(max_sims = 0), stats.get_k1_error(max_sims=0)),
-        'k2': '{0} +/- {1}'.format(stats.get_k2(max_sims = 0), stats.get_k2_error(max_sims=0)),
-        'simulation_data': sim_data,
-        'invalid_simulation_data': stats.get_invalid_simulation_data(),
-        'tag': stats.multijob_tag
-      }
-
-  # Prepare the overall dict object to be JSON-ed
-  sstats_dict = {
-    'domains': domain_to_dict,
-    'strands': strand_to_dict,
-    'complexes': complex_to_dict,
-    'resting-sets': rs_to_dict,
-    'reactions': rxn_to_dict,
-    'resting-set-reactions': rsrxn_to_dict,
-    'resting-set-stats': rsstats_to_dict,
-    'resting-set-reaction-stats': rsrxnstats_to_dict,
-    'initialization_params': sstats.initialization_params,
-    'version': __version__
-  }
-  
-  if use_pickle : 
-    pickle.dump(sstats_dict, open(filepath, "wb"))
-  else :
-    json.dump(sstats_dict, open(filepath, 'w'))
-
-
-def import_data(filepath, use_pickle = False):
-  """ Imports a KinDA object as exported in the format specified by export_data() 
-
-  Imports:
-    - domains, strands, complexes, reactions, resting-sets, resting-set reactions
-    - resting-set stats:
-        => similarity-threshold 
-        => c_max (concentration maximum to calculate temporary depletion)
-        => list of simulation results
-            - loaded int "nupackjob"
-    - resting-set reaction stats:
-        => load
-  """
-  if use_pickle:
-    sstats_dict = pickle.load(open(filepath, "rb"))
-  else:
-    sstats_dict = json.load(open(filepath))
-
-  if 'version' not in sstats_dict:
-    print(f"# KinDA: WARNING: Imported data file has no version number. "
-          f"Assuming KinDA {__version__}.")
-  elif sstats_dict['version'] != __version__:
-    print(f"# KinDA: WARNING: Attempting conversion from "
-          f"KinDA {sstats_dict['version']}.")
-    sstats_dict = _import_data_convert_version(sstats_dict, sstats_dict['version'])
-
-  domains = {}
-  for domain_id, data in sstats_dict['domains'].items():
-    domains[domain_id] = dna.Domain(name = data['name'], sequence = data['sequence'])
-
-  strands = {}
-  for strand_id, data in sstats_dict['strands'].items():
-    strand_domains = [domains[d_id] for d_id in data['domains']]
-    strands[strand_id] = dna.Strand(name = data['name'], domains = strand_domains)
-
-  complexes = {}
-  for complex_id, data in sstats_dict['complexes'].items():
-    cpx_strands = [strands[s_id] for s_id in data['strands']]
-    complexes[complex_id] = dna.Complex(name = data['name'], 
-        strands = cpx_strands, structure = data['structure'])
-
-  restingsets = {}
-  for rs_id, data in sstats_dict['resting-sets'].items():
-    rs_complexes = [complexes[c_id] for c_id in data['complexes']]
-    restingsets[rs_id] = dna.RestingSet(name = data['name'], complexes = rs_complexes)
-
-  reactions = {}
-  for rxn_id, data in sstats_dict['reactions'].items():
-    reactants = [complexes[c_id] for c_id in data['reactants']]
-    products = [complexes[c_id] for c_id in data['products']]
-    reactions[rxn_id] = dna.Reaction(name = data['name'], 
-        reactants = reactants, products = products)
-
-  rs_reactions = {}
-  for rsrxn_id, data in sstats_dict['resting-set-reactions'].items():
-    reactants = [restingsets[rs_id] for rs_id in data['reactants']]
-    products = [restingsets[rs_id] for rs_id in data['products']]
-    rs_reactions[rsrxn_id] = dna.RestingSetReaction(name = data['name'], 
-        reactants = reactants, products = products)
-    
-  kparams = sstats_dict['initialization_params']['kinda_params']
-  mparams = sstats_dict['initialization_params']['multistrand_params']
-  nparams = sstats_dict['initialization_params']['nupack_params']
-  pparams = sstats_dict['initialization_params']['peppercorn_params']
-
-  from kinda import System
-  sstats = System(
-    complexes = list(complexes.values()),
-    restingsets = list(restingsets.values()),
-    detailed_reactions = list(reactions.values()),
-    condensed_reactions = list(rs_reactions.values()),
-    enumeration = False,
-    kinda_params = kparams,
-    multistrand_params = mparams,
-    nupack_params = nparams,
-    peppercorn_params = pparams)
-  
-  for rs_id, data in sstats_dict['resting-set-stats'].items():
-    stats = sstats.get_stats(restingsets[rs_id])
-    if stats == None:
-      print("Warning: Could not match up stored statistics for {0}.".format(restingsets[rs_id]))
-      continue
-    nupackjob = stats.get_nupackjob()
-    threshold = 0
-    for key, val in data.items():
-      if key == 'similarity_threshold':
-        threshold = val
-      elif key == 'c_max':
-        stats.c_max = val
-      else:
-        c = complexes[key]
-        c_data = np.array(val['similarity_data'])
-        nupackjob.set_complex_prob_data(c.name, c_data)
-        if nupackjob.total_sims == 0:
-          nupackjob.total_sims = len(c_data)
-        else:
-          assert nupackjob.total_sims == len(c_data)
-    assert threshold > 0
-    stats.set_similarity_threshold(threshold)
-
-  for rsrxn_id, data in sstats_dict['resting-set-reaction-stats'].items():
-    stats = sstats.get_stats(rs_reactions[rsrxn_id])
-    if stats == None:
-      print("Warning: Could not match up stored statistics for {0} with a resting-set reaction in the new KinDA object.".format(rs_reactions[rsrxn_id]))
-      continue
-    multijob = stats.get_multistrandjob()
-    stats.multijob_tag = data['tag']
-
-    num_sims = len(data['simulation_data']['tags'])
-    sim_data = {key:np.array(d) for key,d in data['simulation_data'].items()}
-    multijob.set_simulation_data(sim_data)
-    multijob.set_invalid_simulation_data(data['invalid_simulation_data'])
-    multijob.total_sims = num_sims
-    
-  return sstats
-
-def _import_data_convert_version(sstats_dict, version):
-  version_parts = [int(v) for v in version[1:].split('.')]
-  if len(version_parts) == 2:
-    major, minor = version_parts
-    subminor = -1
-  elif len(version_parts) == 3:
-    major, minor, subminor = version_parts
-  else:
-    print("KinDA: ERROR: Invalid version number {}. Conversion failed. Simulations and statistical calculations may fail.".format(version))
-    return sstats_dict
-
-  if major == 0 and minor == 1 and subminor <= 5:
-    print("KinDA: ERROR: Invalid version number {}. Conversion failed. Simulations and statistical calculations may fail.".format(version))
-    return sstats_dict
-  if major == 0 and minor == 1 and subminor <= 7:
-    # add 'valid' entry to all simulation data
-    for data in sstats_dict['resting-set-reaction-stats'].values():
-      tags = data['simulation_data']['tags']
-      num_sims = len(tags)
-      MS_TIMEOUT, MS_ERROR = -1, -3
-      data['simulation_data']['valid'] = np.array([
-        t!=MS_TIMEOUT and t!=MS_ERROR for t in tags])
-  if major == 0 and minor == 1 and subminor <= 10:
-    # add 'invalid_simulation_data' dict ms_results
-    for data in sstats_dict['resting-set-reaction-stats'].values():
-      invalid_idxs = [i for i in range(len(data['simulation_data']['valid'])) if data['simulation_data']['valid'][i]==0]
-      data['invalid_simulation_data'] = [{'simulation_index': i} for i in invalid_idxs]
-  if major == 0 and minor == 1 and subminor <= 12:
-    # change macrostate mode name from 'disassoc' to 'ordered-complex'
-    if sstats_dict['initialization_params']['kinda_params']['start_macrostate_mode'] == 'disassoc':
-      sstats_dict['initialization_params']['kinda_params']['start_macrostate_mode'] = 'ordered-complex'
-    if sstats_dict['initialization_params']['kinda_params']['stop_macrostate_mode'] == 'disassoc':
-      sstats_dict['initialization_params']['kinda_params']['stop_macrostate_mode'] = 'ordered-complex'
-
-  # sstats_dict should be in current format now
-  sstats_dict['version'] = __version__
-
-  return sstats_dict

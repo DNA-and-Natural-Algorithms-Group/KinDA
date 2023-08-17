@@ -7,16 +7,9 @@
 from typing import Optional
 
 from . import options
-from .objects import Complex, RestingSet, Reaction, RestingSetReaction, io_PIL
+from .objects import Complex, RestingSet, Reaction, RestingSetReaction
 from .statistics import stats_utils
 from .statistics.stats import RestingSetStats, RestingSetRxnStats
-
-
-# Convenience function to create System object from a given PIL file
-# Currently only accepts old-style PIL notation (no kernel notation)
-def from_pil(path, enumeration = True, **kwargs):
-  domains, strands, complexes = io_PIL.from_PIL(path)
-  return System(complexes, enumeration = enumeration, **kwargs)
 
 
 class System:
@@ -341,10 +334,3 @@ class System:
     else:
       print(f"Statistics for object not found: {obj}")
       return None
-
-
-def import_data(path):
-  return stats_utils.import_data(path)
-
-def export_data(sstats, path):
-  return stats_utils.export_data(sstats, path)
