@@ -29,8 +29,8 @@ def plot_reaction_data(rxns_reactants, datasets, dataset_labels, dataset_colors,
     k2_err[:, i] = [rxn_stats.get_k2_error(max_sims=0) for rxn_stats in rxns_stats]
   
     left = np.arange(num_rxns)*(num_datasets+1) + i
-    axes_k1.bar(left = left, height = k1[:,i], width=1, yerr = k1_err[:,i], capsize = 5, color = dataset_colors[i], edgecolor = '0.0')
-    axes_k2.bar(left = left, height = k2[:,i], width=1, yerr = k2_err[:,i], capsize = 5, color = dataset_colors[i], edgecolor = '0.0')
+    axes_k1.bar(x = left, height = k1[:,i], width=1, yerr = k1_err[:,i], capsize = 5, color = dataset_colors[i], edgecolor = '0.0')
+    axes_k2.bar(x = left, height = k2[:,i], width=1, yerr = k2_err[:,i], capsize = 5, color = dataset_colors[i], edgecolor = '0.0')
   
   xticks = np.arange(num_rxns)*(num_datasets+1) + (num_datasets-1)/2.
   xlabels = [' + '.join(r) for r in rxns_reactants]
