@@ -11,56 +11,83 @@ behavior of resting macrostates and condensed reactions are collected using
 Multistrand (https://github.com/DNA-and-Natural-Algorithms-Group/multistrand),
 and may be computed at a desired level of precision using KinDA.
 
-The principles underlying KinDA are introduced in the paper
+The principles underlying KinDA are introduced in the paper:
+```
 "Automated sequence-level analysis of kinetics and thermodynamics for domain-level DNA strand-displacement systems",
-by Joseph Berleant, Christopher Berlind, Stefan Badelt, Frits Dannenberg, Joseph Schaeffer and Erik Winfree,
+Joseph Berleant, Christopher Berlind, Stefan Badelt, Frits Dannenberg, Joseph Schaeffer and Erik Winfree.
 Journal of The Royal Society Interface, 2018
 (https://royalsocietypublishing.org/doi/full/10.1098/rsif.2018.0107).
+```
 
-Questions and comments should be addressed to Erik Winfree <winfree@caltech.edu>.
+General questions and comments should be addressed to Erik Winfree <winfree@caltech.edu>. For software issues regarding the most recent version,
+please contact the current maintainer Boyan Beronov <beronov@cs.ubc.ca>.
 
-## Trying out KinDA (Public AWS Image)
+## Trying out KinDA
+### Public AWS Image
 The easiest way to test out KinDA is through the publicly available Amazon Web Services (AWS) Amazon Machine Image (AMI). This image is available to all AWS users, and can be found in the "Community AMIs" section when creating a new EC2 instance, using the search query "KinDA v0.2".  The scripts should run on a "t2.micro" instance, but we often use "c5.9xlarge" instances for serious simulations.  `matplotlib` is installed with the `Agg` backend default, so it can output files (PDF, etc) but not produce graphics interactively.
 
 A note about AWS regions: The KinDA AMI is currently only available in AWS's four U.S. subdivisions. If you are having trouble finding this AMI, your AWS region may be set outside the U.S. Please contact the project team if you cannot switch your account's region setting and would like us to copy the image to a new region.
 
-## Setup and Installation
-The following instructions are intended for users wishing to setup KinDA on their own machine. They should not be necessary if using the public AWS AMI, which has KinDA and all its dependencies pre-installed.
+### Local installation
+The following instructions are intended for users wishing to setup KinDA on their
+own machine. This should not be necessary if using the public AWS AMI, which has
+KinDA 0.2 and all of its dependencies pre-installed.
 
-### Dependencies
-KinDA requires Python 3.9+ to run.
-
-Prior to installing KinDA, make sure you have the following packages installed:
+KinDA 0.3+ runs on Python 3.9+, and requires a manual installation of the
+following packages:
 * NUPACK 4.0.1+ (http://www.nupack.org)
 * Multistrand 2.2+
   (https://github.com/DNA-and-Natural-Algorithms-Group/multistrand)
 
-KinDA will automatically install the following packages, if necessary:
-* Peppercorn enumerator 1.1+
-  (https://github.com/DNA-and-Natural-Algorithms-Group/peppercornenumerator)
-
-To run the plotting examples in the case studies, you will need `matplotlib`.
-
-### Installation
+Given the above, you can simply execute
 ```bash
 $ pip install .
 ```
 or
-```
+```bash
 $ pip install -e .
 ```
+in the root directoy. This will also install all remaining dependencies
+from the Python Package Index, including:
+* Peppercorn enumerator 1.1+
+  (https://github.com/DNA-and-Natural-Algorithms-Group/peppercornenumerator)
+
+### [Apptainer](https://apptainer.org/) container
+Alternatively, a fully reproducible, isolated and relocatable installation
+can be achieved using containerization.
+
+1. Follow the instructions for building a Multistrand container
+   (https://github.com/DNA-and-Natural-Algorithms-Group/multistrand?tab=readme-ov-file#apptainer-container).
+2. Build a KinDA container layer on top, see `scripts/kinda.def`.
 
 ## Getting Started
 
-### Quickstart: PIL files
-PIL files describe the sequences, strands, and complexes in a DNA
-strand-displacement system. The file `examples/Zhang_etal_Science2007.pil`
-describes an entropy-driven catalytic cascade.
+### Gentle introduction
+#### Input format
+In order to use KinDA for analyzing reaction statistics,
+one has to first create a `kinda.System` object, which has several functions:
 
-The script `analyze.py` found in the `examples` subdirectory of KinDA shows how
-to query basic data from a system described by a PIL file. For example, run the
-following from within the `examples` subdirectory of KinDA. This will take a few
-hours on a `t2.micro` instance, and proportionally less time on a faster
+1. it describes the sequences, strands and complexes in a DNA
+   strand-displacement system,
+2. it provides convenient access to the reactions and resting sets of such
+   a system, and
+3. it holds the corresponding `Stats` objects.
+
+The user needs to provide (1), while (2) and (3) are computed by KinDA.
+In particular, there are several ways of creating a reaction system description:
+
+- Directly build up the Python objects defined in the `kinda.objects`
+  subpackage, as demonstrated in `example/analyze.py::create_system()`.
+- Import from an old-style PIL file, as shown in
+  `example/analyze.py::import_system()`.
+- Import from related Python packages such as Peppercorn or Multistrand,
+  using the corresponding modules `kinda.objects.io_*`.
+
+#### Analysis
+The script `examples/analyze.py` shows how to query basic data for a system
+described by a PIL file. For a comprehensive example, run the
+following from within the `examples` directory, which will take a few
+hours on an AWS `t2.micro` instance, and proportionally less time on a faster
 multiprocessor instance.
 
 ```sh
@@ -77,107 +104,20 @@ $ python -i analyze.py simple.pil
 
 You can make all this quicker (or slower) by changing the accuracy target
 (relative error) and sampling budget (number of Nupack samples / Multistrand
-trajectories) at the following lines in `analyze.py`. The comments are hopefully
-self-explanatory.
+trajectories) at the following lines in `analyze.py`. The comments are
+hopefully self-explanatory.
 
 ```
 rel_error = 0.25
 max_sims = 1000
 ```
 
-Either way, these scripts will dump you in the python shell at the end, where
-you can examine your data further, or look at the KinDA documentation, e.g.,
+Either way, running these scripts with the `python -i` flag will dump you into
+the Python shell at the end, where you can examine your data further, or look
+at the KinDA documentation, e.g.,
 
 ```
 help(rxn_stats)
-```
-
-### Gentle introduction: Pure Python scripts
-KinDA objects can be created directly in a Python script using the
-`kinda.objects` package. For example:
-
-```
-# simple.py
-#
-# This Python file creates a simple toehold-exchange system.
-# The objects are identical to those described in KinDA/examples/simple.pil
-
-# Import kinda and kinda.objects
-import kinda
-import kinda.objects
-
-# Create domains
-t1 = kinda.objects.Domain(name='t1', sequence='AAAGAT')
-d2 = kinda.objects.Domain(name='d2', sequence='AGCTGACTTA')
-t3 = kinda.objects.Domain(name='t3', sequence='TCCCTT')
-
-# Create strands
-strand_top1 = kinda.objects.Strand(name='strand_top1', domains=[t1, d2])
-strand_top2 = kinda.objects.Strand(name='strand_top2', domains=[d2, t3])
-strand_base = kinda.objects.Strand(
-    name='strand_base', domains=[t3.complement, d2.complement, t1.complement])
-
-# Create complexes
-T1Bound = kinda.objects.Complex(
-    name='T1Bound', strands=[strand_top1, strand_base], structure='((+.))')
-T3Intruder = kinda.objects.Complex(
-    name='T3Intruder', strands=[strand_top2], structure='..')
-T3Bound = kinda.objects.Complex(
-    name='T3Bound', strands=[strand_top2, strand_base], structure='((+)).')
-T1Intruder = kinda.objects.Complex(
-    name='T1Intruder', strands=[strand_top1], structure='..')
-
-# Create System object
-system = kinda.System(complexes=[T1Bound, T3Intruder, T3Bound, T1Intruder])
-
-# Get statistics about productive condensed reactions
-print()
-reactions = system.get_reactions(spurious=False, unproductive=False)
-reaction = reactions[0]
-system.get_stats(reaction).get_k1(relative_error=0.25, max_sims=2000, verbose=1)
-system.get_stats(reaction).get_k2(relative_error=0.25, max_sims=2000, verbose=1)
-
-# Similar functions can be used to get information about resting sets (i.e.
-# resting macrostates)
-```
-
-### Gentle introduction: Input format
-Currently, PIL Files must be input in old-style PIL notation. Support for
-new-style (kernel) notation is planned for a future release. This example file
-is specified in old-style notation:
-
-```
-# examples/Zhang_etal_Science2007.pil
-#
-# This PIL file represents the entropy-driven catalyst system described by:
-#  David Zhang, Andrew Turberfield, Bernard Yurke, Erik Winfree (Science, 2007)
-#  Engineering Entropy-Driven Reactions and Networks Catalyzed by DNA
-# 
-# See Figure 1B for description of each system component.
-
-# Specify all domains
-sequence d1 = CTTTCCTACA : 10
-sequence d2 = CCTACGTCTCCAACTAACTTACGG : 24
-sequence t3 = CCCT : 4
-sequence d4 = CATTCAATACCCTACG : 16
-sequence t5 = TCTCCA : 6
-sequence d6 = CCACATACATCATATT : 16
-
-# Specify all strands
-strand F = d2 t3 d4 : 44
-strand C = d4 t5 : 22
-strand OB = d1 d2 : 34
-strand SB = d6 t3 d4 : 36
-strand LB = t5* d4* t3* d2* : 50
-
-# Specify all predicted complexes
-structure Fuel = F : ...
-structure Catalyst = C : ..
-structure Substrate = OB + SB + LB : .(+.((+.)))
-structure Waste = F + LB : (((+.)))
-structure Signal = SB : ...
-structure Output = OB : ..
-structure Intermediate = OB + C + LB : .(+((+)).)
 ```
 
 ### A deeper dive: The case studies
@@ -198,11 +138,11 @@ a subdirectory `publication_data` with KinDA data files that were generated for
 the paper. If you are not using the AMI, this data can be obtained from
 (http://www.dna.caltech.edu/SupplementaryMaterial/KinDA_paper_data/).
 
-## Configuration Options
-The file `src/kinda/options.py` contains optional arguments that may be modified
-to change the default behavior of Multistrand, Peppercorn, NUPACK, and KinDA.
-This file must be modified prior to installation to set the default behavior,
-unless the installation is in editable mode (via `pip install -e`).
+### Configuration
+The file `src/kinda/options.py` contains optional arguments that may be
+modified to change the *default* behavior of Multistrand, Peppercorn, NUPACK,
+and KinDA. This file must be modified prior to installation to set the default
+behavior, unless the installation is in editable mode (via `pip install -e`).
 
 `src/kinda/options.py` contains four `dict` objects:
 * `kinda_params`: General parameters for KinDA and its interactions with
@@ -214,10 +154,10 @@ unless the installation is in editable mode (via `pip install -e`).
 * `peppercorn_params`: Parameters for Peppercorn enumeration, given to the
   enumerator just prior to enumeration.
 
-The initialization function for the `kinda.System()` object accepts an optional
-keyword argument for each of these `dict`s. Each keyword argument should be
-supplied as a `dict` object, whose key-value pairs will override the defaults in
-`src/kinda/options.py`.
+The initialization function for the `kinda.System()` object accepts
+an optional keyword argument for each of these `dict`s at runtime.
+Each keyword argument should be supplied as a `dict` object, whose key-value
+pairs will override the defaults.
 
 ## Version History
 ### 0.3 (August 2023)
@@ -243,5 +183,5 @@ supplied as a `dict` object, whose key-value pairs will override the defaults in
 Joseph Berleant, Chris Berlind, Stefan Badelt, Frits Dannenberg, Joseph
 Schaeffer, and Erik Winfree
 
-### Later contributors
+### Current maintainer
 Boyan Beronov

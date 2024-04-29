@@ -3,33 +3,59 @@ from typing import List
 
 import kinda
 from kinda import System
-from kinda.objects import RestingSet, RestingSetReaction
+from kinda.objects import \
+  Domain, Strand, Complex, RestingSet, RestingSetReaction
 from kinda.statistics.stats import RestingSetStats, RestingSetRxnStats
 
 
-## Choose the accuracy target and computational budget for the rate estimation.
-## Note that these options can be specified separately for each statistically
-## estimated quantity.
+# Choose the accuracy target and computational budget for the rate estimation.
+# Note that these options can be specified separately for each statistically
+# estimated quantity.
 rel_error = 0.25
 max_sims = 1000
 
 
 def import_system(pilpath: str) -> System:
-  #### To use KinDA to analyze statistics, create a System object, which provides
-  #### convenient ways to access the reactions and resting sets of a a system,
-  #### along with access to the corresponding Stats objects. The System object
-  #### sets a fair number of things up behind the scenes, so while it's possible
-  #### to avoid using the System object (and set everything up manually), it's not
-  #### recommended unless you know the code fairly well.
+  """
+  To use KinDA to analyze statistics, create a `System` object, which provides
+  convenient ways to access the reactions and resting sets of a a system,
+  along with access to the corresponding `Stats` objects.
 
-  #### Create the System object
-  ##   Here, the System object is created automatically from a PIL file. It can
-  ##   also be created with kinda.System(complexes = complexes, ...) The c_max
-  ##   parameter is the default maximum concentration for any resting set, used
-  ##   for calculating overall unproductive and spurious scores for the system.
-  ##   c_max can be set manually for particular resting sets (see below)
-  ##   [TODO: Show example]
+  Here, the `System` object is imported from a PIL file definition.
+  Alternatively, it can be created programmatically within Python, as shown
+  in `create_system()` below.
+
+  The `max_concentration` parameter is the default maximum concentration
+  for any resting set, used for calculating overall unproductive and
+  spurious scores for the system. It can also be set manually for particular
+  resting sets.
+  """
   return kinda.from_pil(pilpath, kinda_params = {'max_concentration': 1e-7})
+
+
+def create_system() -> System:
+  """
+  This function is equivalent to `import_system("simple.pil")`.
+  """
+  # Create domains
+  t1 = Domain(name='t1', sequence='AAAGAT')
+  d2 = Domain(name='d2', sequence='AGCTGACTTA')
+  t3 = Domain(name='t3', sequence='TCCCTT')
+
+  # Create strands
+  top1 = Strand(name='strand_top1', domains=[t1, d2])
+  top2 = Strand(name='strand_top2', domains=[d2, t3])
+  base = Strand(name='strand_base',
+                domains=[t3.complement, d2.complement, t1.complement])
+
+  # Create complexes
+  T1Bound = Complex(name='T1Bound', strands=[top1, base], structure='((+.))')
+  T3Intruder = Complex(name='T3Intruder', strands=[top2], structure='..')
+  T3Bound = Complex(name='T3Bound', strands=[top2, base], structure='((+)).')
+  T1Intruder = Complex(name='T1Intruder', strands=[top1], structure='..')
+
+  # Create System object
+  return System(complexes=[T1Bound, T3Intruder, T3Bound, T1Intruder])
 
 
 def export_import_data(kinda_obj: System) -> System:
@@ -53,8 +79,8 @@ def get_restingsets(kinda_obj: System) -> List[RestingSet]:
 
 def get_reactions(kinda_obj: System, restingsets: List[RestingSet]
                   ) -> List[RestingSetReaction]:
-  ## Try:
-  # Get all spurious reactions involving restingsets[0] and restingsets[1]
+  # Try:
+  # Get all spurious reactions involving specific resting sets
   rxns = kinda_obj.get_reactions(reactants=[restingsets[0], restingsets[1]],
                                  spurious=True)
   # Get all reactions
@@ -62,14 +88,14 @@ def get_reactions(kinda_obj: System, restingsets: List[RestingSet]
   # Get only spurious reactions
   rxns = kinda_obj.get_reactions(spurious=True)
 
-  ## Default:
+  # Default:
   # Get all reactions that were enumerated and not unproductive
   rxns = kinda_obj.get_reactions(spurious=False, unproductive=False)
   rxns = list(sorted(rxns))
 
-  ## Print the reactions out so you can see what's going on...
+  # Print the reactions out so you can see what's going on...
   print()
-  print("Reactions between", restingsets[0], "and", restingsets[1], ":")
+  print(f"Reactions between {restingsets[0]} and {restingsets[1]}:")
   for i, rxn in enumerate(rxns):
     print(f"\t{i}: {rxn}")
   return rxns
@@ -103,9 +129,11 @@ def choose_restingset(restingsets: List[RestingSet]) -> RestingSet:
   restingset = restingsets[i_restingset]
   print()
   print(f"Analyzing in the following:\n\t{i_restingset}: {restingset}")
-  ## NOTE: You can also use kinda_obj.get_restingset(strands = list_of_strands)
-  ## and all resting sets involving those strands (in ANY order, and
-  ## including those with additional strands) will be returned.
+  # NOTE:
+  # You can also use
+  # `kinda_obj.get_restingset(strands = list_of_strands)`
+  # and all resting sets involving those strands (in ANY order, and
+  # including those with additional strands) will be returned.
   return restingset
 
 
@@ -146,42 +174,44 @@ def get_permanent_depletion(rs_stats: RestingSetStats):
   spurious_depletion = rs_stats.get_permanent_depletion(
     rel_error, max_sims=max_sims, verbose=1)
 
-  #### To get a system-level score, use the convenience functions in stats_utils.py
+  ### To get a system-level score, use the convenience functions in stats_utils.py
   #kinda.statistics.stats_utils.calc_unproductive_rxn_score(kinda_obj)
   #kinda.statistics.stats_utils.calc_spurious_rxn_score(kinda_obj)
 
 
 def main(pilpath: str):
-  #### Read domains, strands, and complexes from old-style PIL file
-  ## Ability to read kernel-style PIL notation to be implemented in the future.
+  ### Read domains, strands, and complexes from old-style PIL file
+  # Ability to read kernel-style PIL notation to be implemented in the future.
   kinda_obj = import_system(pilpath)
+  # Alternatively, define the reaction system programmatically.
+  # kinda_obj = create_system()
 
-  #### To analyze a reaction in detail...
-  ##   1) Get the resting sets in the system (if you don't have them already)
+  ### To analyze a reaction in detail...
+  #  1) Get the resting sets in the system (if you don't have them already)
   restingsets = get_restingsets(kinda_obj)
-  ##   2) Get reactions in the system that you're interested in
+  #  2) Get reactions in the system that you're interested in
   rxns = get_reactions(kinda_obj, restingsets)
-  ##   3) Choose a reaction to analyze in more detail
+  #  3) Choose a reaction to analyze in more detail
   rxn = choose_reaction(rxns)
-  ##   4) Get the associated RestingSetRxnStats object
+  #  4) Get the associated RestingSetRxnStats object
   rxn_stats = kinda_obj.get_stats(rxn)
-  ##   5) Use the Stats object to get data!
+  #  5) Use the Stats object to get data!
   sample_trajectories(rxn_stats)
 
-  #### To analyze a resting set in detail...
-  ##   1) Get the resting set you want
+  ### To analyze a resting set in detail...
+  #  1) Get the resting set you want
   restingset = choose_restingset(restingsets)
-  ##   2) Get the associated RestingSetStats object
+  #  2) Get the associated RestingSetStats object
   rs_stats = kinda_obj.get_stats(restingset)
-  ##   3) Get data!
-  ## Getting the conformation probabilities
+  #  3) Get data!
+  # Getting the conformation probabilities
   get_conformation_probabilities(restingset, rs_stats)
-  ## Getting the top 20 MFE structures
+  # Getting the top 20 MFE structures
   get_mfe_structures(restingset, rs_stats)
   kinda_obj = export_import_data(kinda_obj)
-  ## Getting the (fractional) reactant depletion due to unproductive reactions
+  # Getting the (fractional) reactant depletion due to unproductive reactions
   get_temporary_depletion(rs_stats)
-  ## Getting the rate constant of reactant depletion due to spurious reactions (units: /s)
+  # Getting the rate constant of reactant depletion due to spurious reactions (units: /s)
   get_permanent_depletion(rs_stats)
   print()
   print('Done!')
