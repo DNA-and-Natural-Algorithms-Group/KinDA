@@ -60,23 +60,25 @@ def simulate(sim_mode):
  
   return sstats, list(zip(rxns, rxn_times))
 
-if MODE == 'demo':
-  params = {
-    'relative_error':  0.5,
-    'init_batch_size': 50,
-    'max_batch_size':  5000,
-    'max_sims':        5000,
+if __name__ == "__main__":
+
+  if MODE == 'demo':
+    params = {
+      'relative_error':  0.5,
+      'init_batch_size': 50,
+      'max_batch_size':  5000,
+      'max_sims':        5000,
   }
-elif MODE == 'publication':
-  params = {
-    'relative_error':  0.025,
-    'init_batch_size': 500,
-    'max_batch_size':  10000,
-    'max_sims':        500000,
-    'sims_per_worker': 5
+  elif MODE == 'publication':
+    params = {
+      'relative_error':  0.025,
+      'init_batch_size': 500,
+      'max_batch_size':  10000,
+      'max_sims':        500000,
+      'sims_per_worker': 5
   }
  
-## Run simulations at each mode
-sstats_disassoc = simulate('ordered-complex')
-sstats_cbc = simulate('count-by-complex')
-sstats_cbd = simulate('count-by-domain')
+  ## Run simulations at each mode
+  sstats_disassoc = simulate('ordered-complex')
+  sstats_cbc = simulate('count-by-complex')
+  sstats_cbd = simulate('count-by-domain')
