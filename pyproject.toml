@@ -27,13 +27,14 @@ classifiers = [
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
 ]
 requires-python = ">= 3.9"
 dependencies = [
     "multistrand >= 2.2",
     "peppercornenumerator >= 1.1.1",
     "crnsimulator >= 0.9",
-    "multiprocess >= 0.70",
+    "multiprocess >= 0.70.15",
     "numpy >= 1.24",
     "matplotlib",
 ]

@@ -23,8 +23,8 @@ multistrand_params = {
   'dangles': 'Some',
   'gt_enable': True,
 
-  'simulation_time': 1.00, 
-  'output_interval': 0,
+  'simulation_time': 1.00,
+  'output_interval': -1,
 
   'parameter_type': 'Nupack',
   'substrate_type': 'DNA',
@@ -39,7 +39,7 @@ multistrand_params = {
   # Choose a kinetic model from the presets defined in
   # `multistrand.options.Options`:
   #     "JSDefault", "JSMetropolis25", "JSKawasaki25", "JSKawasaki37",
-  #     "JSMetropolis37", "DNA23Metropolis", "DNA23Arrhenius"
+  #     "JSMetropolis37", "DNA23Metropolis", "DNA23Arrhenius", "DNA29Arrhenius"
   'rate_model': "DNA23Metropolis",
 
   # Alternatively, use the following options to specify a custom kinetic model.

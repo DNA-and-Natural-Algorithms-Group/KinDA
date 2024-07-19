@@ -164,12 +164,13 @@ pairs will override the defaults.
 - Migrated to Python 3.9+ and updated the Python package definition.
 - Updated dependencies: Multistrand 2.2, NUPACK 4.0.1, Peppercorn enumerator
   1.1, DSDobjects 0.8.
-- Created an [Apptainer](https://apptainer.org/) container for a fully
-  reproducible installation.
+- Created an [Apptainer](https://apptainer.org/) container definition for a
+  fully reproducible installation, see `scripts/kinda.def`.
 - Reworked the order semantics of the internal object hierarchy, leading to more
   consistent analysis outputs.
 - Added an optional `rate_model` key to the `multistrand_params` configuration,
-  which invokes a kinetic parameter preset in Multistrand.
+  which invokes a kinetic parameter preset in Multistrand instead of specifying
+  parameters individually.
 - Improved the reliability of `simulation.*job` by switching from the standard
   library module `multiprocessing` to the `multiprocess` package.
 - Improved argument handling and output formatting in analysis scripts.
