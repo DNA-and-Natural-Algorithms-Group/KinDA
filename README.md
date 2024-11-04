@@ -33,7 +33,7 @@ The following instructions are intended for users wishing to setup KinDA on thei
 own machine. This should not be necessary if using the public AWS AMI, which has
 KinDA 0.2 and all of its dependencies pre-installed.
 
-KinDA 0.3+ runs on Python 3.9+, and requires a manual installation of the
+KinDA 0.3+ runs on Python 3.10+, and requires a manual installation of the
 following packages:
 * NUPACK 4.0.1+ (http://www.nupack.org)
 * Multistrand 2.2+
@@ -161,7 +161,7 @@ pairs will override the defaults.
 
 ## Version History
 ### 0.3 (August 2023)
-- Migrated to Python 3.9+ and updated the Python package definition.
+- Migrated to Python 3.10+ and updated the Python package definition.
 - Updated dependencies: Multistrand 2.2, NUPACK 4.0.1, Peppercorn enumerator
   1.1, DSDobjects 0.8.
 - Created an [Apptainer](https://apptainer.org/) container definition for a
