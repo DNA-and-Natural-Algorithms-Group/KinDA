@@ -1,41 +1,49 @@
-Bootstrap: localimage
-From: ../../multistrand/tools/multistrand.sif
+Bootstrap: docker
+From: ghcr.io/astral-sh/uv:debian-slim
 
 %help
-
-    This Apptainer container definition installs the KinDA package and its
-    dependencies, assuming that the source tree is available on the host system
-    (see %files section). It extends the container image `multistrand.sif`,
-    which must be built beforehand from `tools/multistrand.def` in the
-    Multistrand 2.2+ source tree [1] using Apptainer 1.2+.
+    This Apptainer container provides the NUPACK [1], Multistrand [2] and KinDA
+    [3] packages, in a Python environment managed by `uv`. The container build
+    script requires the NUPACK release archive to be available on the host
+    system.
 
     [1] https://github.com/DNA-and-Natural-Algorithms-Group/multistrand
+    [2] https://www.nupack.org/
+    [3] https://github.com/DNA-and-Natural-Algorithms-Group/KinDA
+
+%arguments
+    NU_VER=4.0.2.0
 
 %files
+    ../../nupack-{{NU_VER}}.zip /dna/
 
-    # copy source trees
-    ../../KinDA /dna/
+    ../../KinDA/README.md /dna/kinda/
+    ../../KinDA/LICENSE /dna/kinda/
+    ../../KinDA/.python-version /dna/kinda/
+    ../../KinDA/pyproject.toml /dna/kinda/
+    ../../KinDA/src /dna/kinda/
+    ../../KinDA/examples /dna/kinda/
+    ../../KinDA/case_studies /dna/kinda/
 
 %environment
-
-    # lib paths
-    export KINDA=/dna/KinDA
+    export UV_PROJECT_ENVIRONMENT=/dna/kinda/.venv
+    export PATH="$UV_PROJECT_ENVIRONMENT/bin:$PATH" \
+           VIRTUAL_ENV=$UV_PROJECT_ENVIRONMENT
+    export UV_LOCKED=1 UV_NO_CACHE=1 UV_LINK_MODE=copy \
+           UV_PYTHON_PREFERENCE=only-managed UV_COMPILE_BYTECODE=1
 
 %post
+    apt-get update
+    apt-get install -y --no-install-recommends \
+        ca-certificates curl unzip git bat tree build-essential
+    apt-get clean
 
-    # lib paths
-    export KINDA=/dna/KinDA
+    export UV_NO_CACHE=1 UV_LINK_MODE=copy \
+        UV_PYTHON_PREFERENCE=only-managed UV_COMPILE_BYTECODE=1
 
-    # install KinDA
-    echo "\n\n\n" && cd ${KINDA} && rm -rf .git scripts build
-    pip install -v -e ${KINDA}
-
-    # info
-    echo "\n\n\n" && pip debug && echo && pip list
-
-    # cleanup
-    echo "\n\n\n" && pip cache purge
+    cd /dna && unzip -q nupack-{{NU_VER}}.zip
+    cd /dna/kinda && uv sync -v
+    cd /dna && rm -r nupack-{{NU_VER}}.zip nupack-{{NU_VER}}
 
 %labels
-
     Author Boyan Beronov

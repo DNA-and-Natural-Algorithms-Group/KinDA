@@ -43,3 +43,16 @@ KinDA = "kinda.scripts.KinDA:cli_main"
 
 [project.urls]
 Home = "https://github.com/DNA-and-Natural-Algorithms-Group/KinDA"
+
+[[tool.uv.index]]
+name = "nupack"
+format = "flat"
+explicit = true
+url = "../nupack-4.0.2.0/package"
+
+[tool.uv.sources.nupack]
+index = "nupack"
+
+[tool.uv.sources.multistrand]
+git = "https://github.com/DNA-and-Natural-Algorithms-Group/multistrand"
+branch = "development-2.2"

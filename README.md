@@ -22,43 +22,40 @@ Journal of The Royal Society Interface, 2018
 General questions and comments should be addressed to Erik Winfree <winfree@caltech.edu>. For software issues regarding the most recent version,
 please contact the current maintainer Boyan Beronov <beronov@cs.ubc.ca>.
 
-## Trying out KinDA
-### Public AWS Image
-The easiest way to test out KinDA is through the publicly available Amazon Web Services (AWS) Amazon Machine Image (AMI). This image is available to all AWS users, and can be found in the "Community AMIs" section when creating a new EC2 instance, using the search query "KinDA v0.2".  The scripts should run on a "t2.micro" instance, but we often use "c5.9xlarge" instances for serious simulations.  `matplotlib` is installed with the `Agg` backend default, so it can output files (PDF, etc) but not produce graphics interactively.
-
-A note about AWS regions: The KinDA AMI is currently only available in AWS's four U.S. subdivisions. If you are having trouble finding this AMI, your AWS region may be set outside the U.S. Please contact the project team if you cannot switch your account's region setting and would like us to copy the image to a new region.
-
+## Installation
 ### Local installation
-The following instructions are intended for users wishing to setup KinDA on their
-own machine. This should not be necessary if using the public AWS AMI, which has
-KinDA 0.2 and all of its dependencies pre-installed.
-
-KinDA 0.3+ runs on Python 3.10+, and requires a manual installation of the
-following packages:
+KinDA 0.3+ runs on Python 3.10+, and requires:
 * NUPACK 4.0.1+ (http://www.nupack.org)
 * Multistrand 2.2+
   (https://github.com/DNA-and-Natural-Algorithms-Group/multistrand)
-
-Given the above, you can simply execute
-```bash
-$ pip install .
-```
-or
-```bash
-$ pip install -e .
-```
-in the root directoy. This will also install all remaining dependencies
-from the Python Package Index, including:
 * Peppercorn enumerator 1.1+
   (https://github.com/DNA-and-Natural-Algorithms-Group/peppercornenumerator)
 
-### [Apptainer](https://apptainer.org/) container
-Alternatively, a fully reproducible, isolated and relocatable installation
-can be achieved using containerization.
+Please follow the instructions for [locally installing Multistrand](
+https://github.com/DNA-and-Natural-Algorithms-Group/multistrand?tab=readme-ov-file#in-an-existing-python-environment),
+but in the root directory of this repository.
 
-1. Follow the instructions for building a Multistrand container
-   (https://github.com/DNA-and-Natural-Algorithms-Group/multistrand?tab=readme-ov-file#apptainer-container).
-2. Build a KinDA container layer on top, see `scripts/kinda.def`.
+### [Apptainer](https://apptainer.org/) container
+Alternatively, a fully reproducible, isolated and relocatable installation can
+be achieved using containerization. Please follow the instructions for [building
+a Multistrand container](
+https://github.com/DNA-and-Natural-Algorithms-Group/multistrand?tab=readme-ov-file#as-a-container),
+but using the container definition file `scripts/kinda.def` in this repository.
+
+### Public AWS Image (legacy version: KinDA 0.2 on Python 2.7)
+Another way to test out KinDA is through the publicly available Amazon Web
+Services (AWS) Amazon Machine Image (AMI). This image is available to all AWS
+users, and can be found in the "Community AMIs" section when creating a new EC2
+instance, using the search query "KinDA v0.2". The scripts should run on a
+"t2.micro" instance, but we often use "c5.9xlarge" instances for serious
+simulations. `matplotlib` is installed with the `Agg` backend default, so it can
+output files (PDF, etc) but not produce graphics interactively.
+
+A note about AWS regions: The KinDA AMI is currently only available in AWS's
+four U.S. subdivisions. If you are having trouble finding this AMI, your AWS
+region may be set outside the U.S. Please contact the project team if you cannot
+switch your account's region setting and would like us to copy the image to a
+new region.
 
 ## Getting Started
 
